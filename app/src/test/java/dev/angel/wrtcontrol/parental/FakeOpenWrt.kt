@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -23,19 +24,24 @@ import java.time.ZoneOffset
 /**
  * OpenWrt simulado con lo que hace el rpcd real (uci.c, session.c) en lo que importa aquí:
  * cambios pendientes por sesión, `uci apply` con reversión, sesión reclamada mientras hay un
- * apply pendiente, y fw4 recargando con handles nuevos (o sin cargar si [fw4Accepts] es false).
+ * apply pendiente, fw4 recargando con handles nuevos (o sin cargar si [fw4Accepts] es false) y
+ * las instancias de dnsmasq que salen de la configuración `dhcp`.
  */
 class FakeOpenWrt(
     /** Hora local del router en segundos (como si fuera UTC) y su desfase con UTC. */
     var localTime: Long = LocalDateTime.of(2026, 11, 4, 22, 20).toEpochSecond(ZoneOffset.UTC),
     var offsetSeconds: Long = -21_600,
 ) {
+    /** Secciones confirmadas de todas las configuraciones; cada una lleva su configuración en ".config". */
     val committed = linkedMapOf<String, MutableMap<String, JsonElement>>()
     val files = mutableMapOf<String, String>()
     var fw4Accepts = true
 
     /** rpcd sin copia que restaurar (otra sesión hizo `uci apply` sin reversión): rollback no cambia nada. */
     var snapshotLost = false
+
+    /** El DNS para familias no contesta desde el router (p. ej. el proveedor lo bloquea). */
+    var familyDnsDown = false
     var pendingApply: String? = null
     var tzStrings = mapOf("America/Mexico_City" to "CST6", "UTC" to "GMT0")
 
@@ -49,10 +55,24 @@ class FakeOpenWrt(
     val calls get() = router.calls.map { it.name }
 
     fun section(name: String, type: String, vararg options: Pair<String, Any>) {
-        committed[name] = linkedMapOf<String, JsonElement>(".type" to JsonPrimitive(type)).apply {
+        committed[name] = linkedMapOf<String, JsonElement>(".type" to JsonPrimitive(type), ".config" to JsonPrimitive(configOf(type))).apply {
             for ((k, v) in options) put(k, if (v is List<*>) JsonArray(v.map { JsonPrimitive(it.toString()) }) else JsonPrimitive(v.toString()))
         }
         reload()
+    }
+
+    /** Valor de texto de una opción de una sección confirmada. */
+    fun option(section: String, key: String): String? = committed[section]?.get(key)?.let {
+        if (it is JsonArray) it.joinToString(" ") { e -> e.jsonPrimitive.content } else it.jsonPrimitive.content
+    }
+
+    fun list(section: String, key: String): List<String> =
+        (committed[section]?.get(key) as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty()
+
+    private fun configOf(type: String) = when (type) {
+        "system" -> "system"
+        "dnsmasq", "dhcp", "host", "odhcpd" -> "dhcp"
+        else -> "firewall"
     }
 
     private fun handle(call: RecordedCall): Reply = synchronized(this) {
@@ -67,9 +87,10 @@ class FakeOpenWrt(
             "session.access" -> ok("""{"access":true}""")
             "uci.get" -> ok(uciGet(call.sid, arg("config")!!, arg("type")).toString())
             "uci.add" -> stage(call.sid) { cfg ->
-                cfg[arg("name")!!] = linkedMapOf<String, JsonElement>(".type" to JsonPrimitive(arg("type")!!)).apply {
-                    putAll(a["values"]!!.jsonObject)
-                }
+                cfg[arg("name")!!] = linkedMapOf<String, JsonElement>(
+                    ".type" to JsonPrimitive(arg("type")!!),
+                    ".config" to JsonPrimitive(arg("config")!!),
+                ).apply { putAll(a["values"]!!.jsonObject) }
             }.let { ok("""{"section":"${arg("name")}"}""") }
             "uci.delete" -> stage(call.sid) { cfg -> cfg.remove(arg("section")!!) }.let { ok() }
             "uci.set" -> stage(call.sid) { cfg -> cfg[arg("section")!!]?.putAll(a["values"]!!.jsonObject) }.let { ok() }
@@ -96,10 +117,46 @@ class FakeOpenWrt(
             "system.info" -> ok("""{"localtime":$localTime,"uptime":100}""")
             "luci.getUnixtime" -> ok("""{"result":${localTime - offsetSeconds}}""")
             "luci.getTimezones" -> ok(buildJsonObject { tzStrings.forEach { (z, tz) -> putJsonObject(z) { put("tzstring", tz) } } }.toString())
+            "service.list" -> ok(serviceList().toString())
             "file.write" -> { files[arg("path")!!] = arg("data")!!; ok() }
             "file.remove" -> { files.remove(arg("path")!!); ok() }
-            "file.exec" -> ok(buildJsonObject { put("code", 0); put("stdout", loaded.toString()) }.toString())
+            "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })
             else -> status(3)
+        }
+    }
+
+    private fun exec(command: String, params: List<String>): Reply {
+        val stdout = when (command) {
+            "/usr/sbin/nft" -> loaded.toString()
+            "/usr/bin/nslookup" -> nslookup(params)
+            else -> return status(6)
+        }
+        return ok(buildJsonObject { put("code", 0); put("stdout", stdout) }.toString())
+    }
+
+    /** Como el nslookup de BusyBox contra una de las instancias de dnsmasq. */
+    private fun nslookup(params: List<String>): String {
+        val port = params.firstOrNull { it.startsWith("-port=") }?.removePrefix("-port=")?.toInt() ?: 53
+        val domain = params.first { !it.startsWith("-") }
+        val resolved = "Server:\t\t127.0.0.1\nAddress:\t127.0.0.1:$port\n\nName:\t$domain\nAddress: 192.0.2.10\n"
+        val noServer = ";; connection timed out; no servers could be reached\n"
+        if (port == 53) return resolved
+        val instance = committed.values.firstOrNull { it[".type"]?.jsonPrimitive?.content == "dnsmasq" && it["port"]?.jsonPrimitive?.content == "$port" }
+            ?: return noServer
+        val blocked = (instance["address"] as? JsonArray)?.map { it.jsonPrimitive.content.trim('/') }.orEmpty()
+        if (blocked.any { domain == it || domain.endsWith(".$it") }) return "** server can't find $domain: NXDOMAIN\n"
+        val servers = (instance["server"] as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty()
+        val family = servers.any { it in setOf("1.1.1.3", "1.0.0.3", "185.228.168.168", "185.228.169.168") }
+        return if (family && familyDnsDown) noServer else resolved
+    }
+
+    private fun serviceList(): JsonObject = buildJsonObject {
+        putJsonObject("dnsmasq") {
+            putJsonObject("instances") {
+                putJsonObject("cfg01411c") { put("running", true) }
+                committed.filter { (name, s) -> name.startsWith("wrtc_dns_") && s[".type"]?.jsonPrimitive?.content == "dnsmasq" }
+                    .keys.forEach { putJsonObject(it) { put("running", true) } }
+            }
         }
     }
 
@@ -144,12 +201,12 @@ class FakeOpenWrt(
             putJsonObject("values") {
                 view.entries.forEachIndexed { index, (name, values) ->
                     val sectionType = values[".type"]!!.jsonPrimitive.content
-                    val inConfig = if (config == "system") sectionType == "system" else sectionType != "system"
-                    if (!inConfig || (type != null && type != sectionType)) return@forEachIndexed
+                    if (values[".config"]?.jsonPrimitive?.content != config) return@forEachIndexed
+                    if (type != null && type != sectionType) return@forEachIndexed
                     putJsonObject(name) {
                         put(".name", name)
                         put(".index", index)
-                        values.forEach { (k, v) -> put(k, v) }
+                        values.forEach { (k, v) -> if (k != ".config") put(k, v) }
                     }
                 }
             }
@@ -186,12 +243,13 @@ class FakeOpenWrt(
                 }
             }
             for ((_, values) in committed) {
-                if (values[".type"]?.jsonPrimitive?.content != "rule") continue
+                val type = values[".type"]?.jsonPrimitive?.content
+                if (type != "rule" && type != "redirect") continue
                 addJsonObject {
                     putJsonObject("rule") {
                         put("family", "inet")
                         put("table", "fw4")
-                        put("chain", "mangle_forward")
+                        put("chain", if (type == "rule") "mangle_forward" else "dstnat_lan")
                         put("handle", ++handles)
                         values["name"]?.let { put("comment", "!fw4: ${it.jsonPrimitive.content}") }
                         put("expr", buildJsonArray { })

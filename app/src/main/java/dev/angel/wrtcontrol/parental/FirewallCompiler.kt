@@ -20,7 +20,13 @@ import java.time.LocalTime
  *    La cadena va en /etc/luci-uploads (el ACL de LuCI deja escribir ahí) y se incluye con una
  *    sección `include` de tipo nftables.
  *
- * Todo lo variable va en UCI, así que `uci apply` con reversión cubre cualquier cambio.
+ * 3. Filtro de contenido (DNS): cada perfil con filtro tiene su propia instancia de dnsmasq en un
+ *    puerto 53xx con su lista de bloqueo, y una redirección de fw4 por MAC le manda todo el DNS
+ *    de sus dispositivos, por IPv4 e IPv6 y vaya al servidor que vaya. dnsmasq no admite
+ *    políticas por cliente, y el paquete básico no trae nftset; esto funciona sin instalar nada.
+ *
+ * Todo lo variable va en UCI (`firewall` y `dhcp`), así que `uci apply` con reversión cubre
+ * cualquier cambio.
  */
 
 /** Bit de marca que usa WrtControl (mwan3 usa 0x3F00 y pbr 0x00FF0000 por defecto). */
@@ -48,10 +54,39 @@ val BLOCK_CHAIN_NFT: String = """
 /** Bytes del nombre del perfil dentro del nombre de la regla (el resto ocupa < 60). */
 private const val MAX_LABEL_BYTES = 40
 
-/** Lo que debe quedar en el firewall: todas las secciones "wrtc_" y los nombres de las reglas MARK. */
-data class FirewallPlan(val sections: List<UciSection>, val ruleLabels: List<String>) {
-    val usesBlockChain: Boolean get() = sections.any { it.name == INCLUDE_SECTION }
+/**
+ * Lo que debe quedar en el router: todas las secciones "wrtc_" de `firewall` y de `dhcp`, los
+ * nombres de las reglas que fw4 debe cargar y los servidores DNS de los perfiles con filtro.
+ */
+data class RouterPlan(
+    val firewall: List<UciSection>,
+    val ruleLabels: List<String>,
+    val dhcp: List<UciSection> = emptyList(),
+    /** Instancia de dnsmasq → puerto. */
+    val dnsInstances: Map<String, Int> = emptyMap(),
+    /** Perfiles ya normalizados (pausas vencidas fuera, puertos DNS asignados). */
+    val profiles: List<Profile> = emptyList(),
+) {
+    val usesBlockChain: Boolean get() = firewall.any { it.name == INCLUDE_SECTION }
 }
+
+/** Lo que el compilador necesita saber del router además de los perfiles. */
+data class RouterEnv(
+    /** Zonas de la LAN (las que no hacen NAT hacia fuera): ahí se redirige el DNS de los perfiles. */
+    val lanZones: List<String> = listOf("lan"),
+    /** Interfaces con secciones `dhcp` que se aplican a todas las instancias de dnsmasq. */
+    val dhcpInterfaces: List<String> = listOf("lan"),
+    /** Dominio local (`option domain` de dnsmasq), para que sigan resolviendo los nombres de la LAN. */
+    val localDomain: String = "lan",
+)
+
+fun routerEnv(firewall: List<UciSection>, dhcp: List<UciSection>): RouterEnv = RouterEnv(
+    lanZones = firewall.filter { it.type == "zone" && it.text("masq") != "1" }.mapNotNull { it.text("name") }.distinct(),
+    dhcpInterfaces = dhcp
+        .filter { it.type == "dhcp" && it.text("instance") == null && !it.name.startsWith(SECTION_PREFIX) }
+        .mapNotNull { it.text("interface") }.distinct(),
+    localDomain = dhcp.firstOrNull { it.type == "dnsmasq" && !it.name.startsWith(SECTION_PREFIX) }?.text("domain") ?: "lan",
+)
 
 /** Franja de una regla: días y horas (inclusivas, en segundos); sin horas = el día entero. */
 internal data class RuleWindow(val days: Set<DayOfWeek>, val start: LocalTime?, val stop: LocalTime?)
@@ -69,11 +104,85 @@ internal fun Schedule.windows(): List<RuleWindow> = when {
     }
 }
 
-fun compileFirewall(profiles: List<Profile>, now: LocalDateTime): FirewallPlan {
-    val current = profiles.map { it.withoutExpiredPause(now) }
-    val rules = current.flatMap(::profileRules)
-    val sections = profileSections(current) + rules + if (current.isEmpty()) emptyList() else listOf(includeSection())
-    return FirewallPlan(sections, rules.map { it.text("name")!! })
+fun compileRouter(profiles: List<Profile>, now: LocalDateTime, env: RouterEnv = RouterEnv()): RouterPlan {
+    val current = assignDnsPorts(profiles.map { it.withoutExpiredPause(now) })
+    require(current.none { it.needsDns } || env.lanZones.isNotEmpty()) {
+        "No se encontró la zona LAN del firewall, así que no se puede aplicar el filtro de contenido"
+    }
+    val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) }
+    val firewall = profileSections(current) + rules + if (current.isEmpty()) emptyList() else listOf(includeSection())
+    return RouterPlan(
+        firewall = firewall,
+        ruleLabels = rules.map { it.text("name")!! },
+        dhcp = current.flatMap { dnsServer(it, env) },
+        dnsInstances = current.filter { it.needsDns }.associate { dnsInstance(it) to it.dnsPort!! },
+        profiles = current,
+    )
+}
+
+internal fun dnsInstance(p: Profile) = "wrtc_dns_${p.id}"
+
+/**
+ * Servidor DNS propio del perfil: una instancia más de dnsmasq en [Profile.dnsPort] con su lista
+ * de bloqueo, que sube las consultas al DNS para familias del nivel elegido o, sin nivel, a la
+ * instancia principal del router. Las secciones `dhcp` con `ignore` evitan que sirva DHCP: las
+ * secciones `dhcp` sin `instance` se aplican a todas las instancias, y si al arrancar no detectara
+ * a tiempo el DHCP de la principal habría dos servidores DHCP en la LAN.
+ */
+private fun dnsServer(p: Profile, env: RouterEnv): List<UciSection> {
+    if (!p.needsDns) return emptyList()
+    val name = dnsInstance(p)
+    val familyDns = p.filter.level != FilterLevel.None
+    val blocked = (
+        p.filter.domains +
+            p.filter.services.sorted().flatMap { id -> SERVICES.firstOrNull { it.id == id }?.domains.orEmpty() } +
+            BYPASS_DOMAINS
+        ).distinct()
+    val instance = uciSection(
+        name, "dnsmasq",
+        "port" to p.dnsPort!!.toString(),
+        "noresolv" to "1",
+        // Sin esto, dnsmasq apuntaría /tmp/resolv.conf del propio router a esta instancia.
+        "localuse" to "0",
+        "localservice" to "1",
+        "domainneeded" to "1",
+        "boguspriv" to "1",
+        "cachesize" to "1000",
+        "server" to if (familyDns) p.filter.level.upstreams() + "/${env.localDomain}/127.0.0.1#53" else listOf("127.0.0.1#53"),
+        // Sin nivel, todo pasa por la instancia principal, que ya protege del DNS rebinding;
+        // con DNS para familias, se protege aquí y se permiten los nombres de la LAN.
+        "rebind_protection" to if (familyDns) "1" else "0",
+        "rebind_domain" to if (familyDns) listOf(env.localDomain) else null,
+        "address" to blocked.map { "/$it/" },
+    )
+    val noDhcp = env.dhcpInterfaces.mapIndexed { i, iface ->
+        uciSection("wrtc_nodhcp_${p.id}_$i", "dhcp", "instance" to name, "interface" to iface, "ignore" to "1")
+    }
+    return listOf(instance) + noDhcp
+}
+
+/**
+ * Redirige todo el DNS de los dispositivos del perfil (al router o a cualquier servidor, por IPv4
+ * e IPv6) a su servidor, y corta el DNS sobre TLS/QUIC (853) para que no se lo salten.
+ */
+private fun dnsFirewall(p: Profile, env: RouterEnv): List<UciSection> {
+    if (!p.needsDns) return emptyList()
+    val label = RULE_LABEL_PREFIX + labelName(p.name)
+    val redirects = env.lanZones.mapIndexed { i, zone ->
+        uciSection(
+            "wrtc_d_${p.id}_$i", "redirect",
+            "name" to "$label · DNS" + if (env.lanZones.size > 1) " ($zone)" else "",
+            "src" to zone,
+            "src_dport" to "53",
+            "dest_port" to p.dnsPort!!.toString(),
+            "proto" to "tcp udp",
+            "family" to "any",
+            "src_mac" to p.macs,
+            "target" to "DNAT",
+        )
+    }
+    val dot = markRule("wrtc_r_${p.id}_dot", "$label · DNS cifrado", p.macs, proto = "tcp udp", destPort = "853")
+    return redirects + dot
 }
 
 private fun includeSection() = uciSection(
@@ -111,14 +220,17 @@ private fun markRule(
     macs: List<String>,
     window: RuleWindow? = null,
     stopDate: LocalDateTime? = null,
+    // fw4 usa "tcp udp" si no se indica: con "all" también se marca ICMP, QUIC, etc.
+    proto: String = "all",
+    destPort: String? = null,
 ) = uciSection(
     name, "rule",
     "name" to label,
     "src" to "*",
     "dest" to "*",
-    // fw4 usa "tcp udp" si no se indica: con "all" también se marca ICMP, QUIC, etc.
-    "proto" to "all",
+    "proto" to proto,
     "src_mac" to macs,
+    "dest_port" to destPort,
     "target" to "MARK",
     "set_xmark" to MARK_OPTION,
     "weekdays" to window?.days?.sorted()?.joinToString(" ") { it.uciName },

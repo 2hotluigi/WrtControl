@@ -1,7 +1,10 @@
 package dev.angel.wrtcontrol.ui.parental
 
 import dev.angel.wrtcontrol.parental.Access
+import dev.angel.wrtcontrol.parental.ContentFilter
+import dev.angel.wrtcontrol.parental.FilterLevel
 import dev.angel.wrtcontrol.parental.Profile
+import dev.angel.wrtcontrol.parental.SERVICES
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.parental.access
 import dev.angel.wrtcontrol.parental.nextBlock
@@ -85,6 +88,35 @@ fun formatWhen(target: LocalDateTime, now: LocalDateTime): String {
 /** Para "hasta …": "las 19:30" si es hoy; si no, como [formatWhen]. */
 fun formatUntil(target: LocalDateTime, now: LocalDateTime): String =
     if (target.toLocalDate() == now.toLocalDate()) "las ${formatHour(target.toLocalTime())}" else formatWhen(target, now)
+
+fun FilterLevel.title(): String = when (this) {
+    FilterLevel.None -> "Sin filtro"
+    FilterLevel.Adult -> "Contenido para adultos"
+    FilterLevel.Strict -> "Estricto"
+}
+
+fun FilterLevel.description(): String = when (this) {
+    FilterLevel.None -> "Solo se bloquean los servicios y sitios que elijas abajo."
+    FilterLevel.Adult -> "Bloquea sitios para adultos y de malware. Usa el DNS para familias de Cloudflare."
+    FilterLevel.Strict ->
+        "Además fuerza la búsqueda segura de Google y Bing y el modo restringido de YouTube, y bloquea VPN y proxys. Usa CleanBrowsing."
+}
+
+/** "Filtro: contenido para adultos · TikTok, Roblox · 2 sitios", o null sin filtro. */
+fun formatFilter(filter: ContentFilter): String? {
+    if (!filter.active) return null
+    val parts = buildList {
+        if (filter.level != FilterLevel.None) add(filter.level.title().lowercase(Locale.ROOT))
+        val names = SERVICES.filter { it.id in filter.services }.map { it.name }
+        if (names.isNotEmpty()) add(names.joinToString(", "))
+        when (val n = filter.domains.size) {
+            0 -> {}
+            1 -> add("1 sitio")
+            else -> add("$n sitios")
+        }
+    }
+    return "Filtro: " + parts.joinToString(" · ")
+}
 
 /** Etiqueta corta, si bloquea (null: no aplica) y frase con el detalle. */
 data class AccessText(val pill: String, val blocked: Boolean?, val detail: String?)

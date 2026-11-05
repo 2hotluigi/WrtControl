@@ -162,6 +162,58 @@ class VmIntegrationTest {
         assertEquals("UTC", api.load().routerZone)
     }
 
+    /** Respuesta de nslookup desde el cliente: "NXDOMAIN", la IP o el error. */
+    private fun resolveFromClient(domain: String, server: String): String {
+        val out = ssh("$IP_FULL netns exec wrtc_client nslookup -type=a $domain $server 2>&1")
+        return when {
+            "NXDOMAIN" in out -> "NXDOMAIN"
+            out.lines().any { it.startsWith("Name:") } -> out.lines().last { it.startsWith("Address") }.substringAfter(":").trim()
+            else -> "ERROR: ${out.lines().lastOrNull { it.isNotBlank() }}"
+        }
+    }
+
+    @Test
+    fun `filtro de contenido por perfil`() = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
+        client.login(Credentials("root", ""))
+        val api = ParentalApi(client, log = { if ("recargado=false" !in it) log(it) })
+        api.update { _, _ -> emptyList() }
+        val routers = listOf("192.168.56.2", "8.8.8.8", "fd27:71c3:f0a8::1") // IPv4, DNS externo e IPv6
+
+        try {
+            assertTrue("sin filtro resuelve", resolveFromClient("tiktok.com", "192.168.56.2").first().isDigit())
+
+            val filter = ContentFilter(FilterLevel.Adult, setOf("tiktok"), listOf("wikipedia.org"))
+            var t0 = System.currentTimeMillis()
+            api.update { _, _ -> listOf(Profile("vmtest", "Prueba VM", listOf(CLIENT_MAC), filter = filter)) }
+            log("filtro aplicado y comprobado en ${System.currentTimeMillis() - t0} ms")
+
+            for (server in routers) {
+                for (domain in listOf("tiktok.com", "www.tiktok.com", "es.wikipedia.org", CANARY_DOMAIN)) {
+                    assertEquals("$domain vía $server", "NXDOMAIN", resolveFromClient(domain, server))
+                }
+                val allowed = resolveFromClient("openwrt.org", server)
+                assertTrue("openwrt.org vía $server debe resolver: $allowed", allowed.first().isDigit())
+            }
+            log("bloqueados por IPv4, por 8.8.8.8 y por IPv6; openwrt.org resuelve")
+            val snapshot = api.load()
+            assertEquals(true, snapshot.filterRunning(snapshot.profiles.single()))
+            // El propio router y los demás equipos no se filtran.
+            assertTrue(ssh("nslookup -type=a tiktok.com 127.0.0.1").lines().any { it.startsWith("Name:") })
+
+            t0 = System.currentTimeMillis()
+            api.update { profiles, _ -> profiles.map { it.copy(filter = ContentFilter()) } }
+            log("filtro quitado en ${System.currentTimeMillis() - t0} ms")
+            assertTrue("sin filtro vuelve a resolver", resolveFromClient("tiktok.com", "8.8.8.8").first().isDigit())
+        } finally {
+            api.update { _, _ -> emptyList() }
+        }
+        val running = ssh("ubus call service list '{\"name\":\"dnsmasq\"}' | grep -c wrtc_dns_ || true").lines().last()
+        assertEquals("sin servidores DNS de WrtControl al terminar", "0", running)
+    }
+
     private companion object {
         const val CLIENT_MAC = "02:00:00:00:00:99"
 

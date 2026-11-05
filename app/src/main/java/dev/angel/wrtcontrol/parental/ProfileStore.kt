@@ -19,6 +19,10 @@ import kotlin.random.Random
  *       list mac 'AA:BB:CC:DD:EE:FF'
  *       option pause '1'
  *       option pause_until '2026-11-05T19:30:00'   # opcional, hora local del router
+ *       option filter 'adult'                      # opcional: adult | strict
+ *       list block_service 'tiktok'
+ *       list block_domain 'ejemplo.com'
+ *       option dns_port '5301'                     # lo asigna la app con el filtro activo
  *
  *   config wrtcontrol_schedule 'wrtc_s_8m2c1a'
  *       option profile 'k3x9q2'
@@ -91,6 +95,12 @@ fun readProfiles(sections: List<UciSection>): List<Profile> {
                 macs = s.items("mac").mapNotNull(::normalizeMac).distinct().sorted(),
                 pause = parsePause(s),
                 schedules = schedules[id].orEmpty().sortedWith(scheduleOrder),
+                filter = ContentFilter(
+                    level = FilterLevel.entries.firstOrNull { it.uciValue != null && it.uciValue == s.text("filter") } ?: FilterLevel.None,
+                    services = s.items("block_service").toSet(),
+                    domains = s.items("block_domain").mapNotNull(::normalizeDomain).distinct().sorted(),
+                ),
+                dnsPort = s.text("dns_port")?.toIntOrNull()?.takeIf { it in DNS_PORTS },
             )
         }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -128,6 +138,10 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
         "mac" to p.macs.ifEmpty { null },
         "pause" to p.pause?.let { "1" },
         "pause_until" to (p.pause as? Pause.Until)?.end?.format(STAMP),
+        "filter" to p.filter.level.uciValue,
+        "block_service" to p.filter.services.sorted().ifEmpty { null },
+        "block_domain" to p.filter.domains.ifEmpty { null },
+        "dns_port" to p.dnsPort?.toString(),
     )
     listOf(profile) + p.schedules.map { s ->
         uciSection(
@@ -160,5 +174,38 @@ fun validateProfiles(profiles: List<Profile>) {
             require(s.days.isNotEmpty()) { "Cada horario necesita al menos un día" }
             require(s.start.second == 0 && s.end.second == 0) { "Los horarios van en minutos exactos" }
         }
+        for (d in p.filter.domains) require(normalizeDomain(d) == d) { "Sitio no válido: $d" }
+        require(p.filter.domains.size <= MAX_BLOCKED_DOMAINS) { "Como máximo $MAX_BLOCKED_DOMAINS sitios bloqueados por perfil" }
+    }
+    val ports = profiles.mapNotNull { it.dnsPort }
+    require(ports.toSet().size == ports.size) { "Dos perfiles comparten el puerto DNS" }
+}
+
+/** Puertos para los servidores DNS de los perfiles (uno por perfil con filtro). */
+val DNS_PORTS = 5301..5399
+
+/** ¿Necesita este perfil su propio servidor DNS en el router? */
+internal val Profile.needsDns: Boolean get() = macs.isNotEmpty() && filter.active
+
+/**
+ * Da puerto a los perfiles que necesitan servidor DNS y se lo quita a los que no. Conserva el
+ * que ya tenían para no reiniciar su servidor sin necesidad.
+ */
+fun assignDnsPorts(profiles: List<Profile>): List<Profile> {
+    val kept = mutableSetOf<Int>()
+    val first = profiles.map { p ->
+        val port = p.dnsPort
+        when {
+            !p.needsDns -> p.copy(dnsPort = null)
+            port != null && port in DNS_PORTS && kept.add(port) -> p
+            else -> p.copy(dnsPort = null)
+        }
+    }
+    return first.map { p ->
+        if (!p.needsDns || p.dnsPort != null) return@map p
+        val free = DNS_PORTS.firstOrNull { it !in kept }
+            ?: throw IllegalArgumentException("Hay demasiados perfiles con filtro (máximo ${DNS_PORTS.count()})")
+        kept += free
+        p.copy(dnsPort = free)
     }
 }
