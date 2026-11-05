@@ -128,11 +128,45 @@ suspend fun UbusCaller.uciRollback() {
     call("uci", "rollback")
 }
 
-suspend fun UbusCaller.fileWrite(path: String, data: String) {
+/** Escribe [data] en [path]. [mode] (p. ej. 0600): rpcd de 22.03 crea con 0666 si no se indica. */
+suspend fun UbusCaller.fileWrite(path: String, data: String, mode: Int? = null) {
     call("file", "write", buildJsonObject {
         put("path", path)
         put("data", data)
+        if (mode != null) put("mode", mode)
     })
+}
+
+/** Nombres de los ficheros de [dir], o null si el ACL no deja listarlo. */
+suspend fun UbusCaller.fileList(dir: String): List<String>? {
+    val response = try {
+        callAs<JsonObject>("file", "list", buildJsonObject { put("path", dir) })
+    } catch (_: UbusException.AccessDenied) {
+        return null
+    } catch (e: UbusException.Status) {
+        if (e.code == 6 || e.code == 4) return null // sin permiso o sin directorio
+        throw e
+    }
+    return (response["entries"] as? JsonArray).orEmpty().mapNotNull {
+        ((it as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
+    }
+}
+
+/** Interfaces lógicas (lan, guest...) → dispositivos de red que tienen ahora (br-lan, phy0-ap1...). */
+suspend fun UbusCaller.networkDevices(): Map<String, List<String>> =
+    callAs<InterfaceDump>("network.interface", "dump").interfaces.associate { i ->
+        i.name to listOfNotNull(i.l3Device, i.device).filter { it.isNotBlank() }.distinct()
+    }
+
+/** Cambia la contraseña de un usuario del router (luci.setPassword, el mismo que usa LuCI). */
+suspend fun UbusCaller.setPassword(username: String, password: String) {
+    val result = callAs<JsonObject>("luci", "setPassword", buildJsonObject {
+        put("username", username)
+        put("password", password)
+    })
+    if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
+        throw UbusException.Protocol("El router no aceptó la contraseña nueva")
+    }
 }
 
 suspend fun UbusCaller.fileRemove(path: String) {
@@ -182,23 +216,41 @@ suspend fun UbusCaller.serviceInstances(service: String): Map<String, Boolean>? 
 
 enum class Lookup { Resolved, NxDomain, Failed, Unavailable }
 
+/** Respuesta de [resolve]: el resultado, las direcciones (tras seguir los CNAME) y los CNAME por el camino. */
+data class Resolution(val status: Lookup, val addresses: List<String> = emptyList(), val cnames: List<String> = emptyList())
+
 /**
  * Pregunta [domain] al DNS del router en [port] con el nslookup de BusyBox, el mismo que usa la
  * página de diagnóstico de LuCI (su ACL lo permite). [Lookup.Unavailable] si no hay permiso.
  */
-suspend fun UbusCaller.lookup(domain: String, port: Int = 53): Lookup {
+suspend fun UbusCaller.lookup(domain: String, port: Int = 53): Lookup = resolve(domain, port).status
+
+/** Como [lookup], con las direcciones de la respuesta. [ipv6]: pregunta AAAA en vez de A. */
+suspend fun UbusCaller.resolve(domain: String, port: Int = 53, ipv6: Boolean = false): Resolution {
+    val type = if (ipv6) "-type=aaaa" else "-type=a"
     val result = try {
-        exec("/usr/bin/nslookup", listOf("-type=a", "-timeout=2", "-retry=1", "-port=$port", domain, "127.0.0.1"))
+        exec("/usr/bin/nslookup", listOf(type, "-timeout=2", "-retry=1", "-port=$port", domain, "127.0.0.1"))
     } catch (_: UbusException.AccessDenied) {
-        return Lookup.Unavailable
+        return Resolution(Lookup.Unavailable)
     } catch (e: UbusException.Status) {
-        if (e.code == 6) return Lookup.Unavailable
+        if (e.code == 6) return Resolution(Lookup.Unavailable)
         throw e
     }
-    val out = result.stdout + "\n" + result.stderr
-    return when {
-        "NXDOMAIN" in out -> Lookup.NxDomain
-        out.lines().any { it.startsWith("Name:") } -> Lookup.Resolved
-        else -> Lookup.Failed
-    }
+    return parseNslookup(result.stdout + "\n" + result.stderr)
+}
+
+/**
+ * Salida del nslookup de BusyBox: antes del primer "Name:" va la dirección del servidor; después,
+ * una línea "Address: x" por cada dirección de la respuesta.
+ */
+internal fun parseNslookup(out: String): Resolution {
+    if ("NXDOMAIN" in out) return Resolution(Lookup.NxDomain)
+    val lines = out.lines()
+    val first = lines.indexOfFirst { it.startsWith("Name:") }
+    if (first < 0) return Resolution(Lookup.Failed)
+    val addresses = lines.drop(first).filter { it.startsWith("Address:") }
+        .map { it.removePrefix("Address:").trim().substringBefore(' ') }
+        .filter { it.isNotEmpty() }
+    val cnames = lines.mapNotNull { line -> line.substringAfter("canonical name =", "").trim().takeIf { it.isNotEmpty() } }
+    return Resolution(Lookup.Resolved, addresses.distinct(), cnames.distinct())
 }

@@ -17,9 +17,13 @@ data class LoadedFirewall(
     val maxRuleHandle: Long,
     val comments: List<String>,
     val chains: Set<String>,
-    /** Reglas dentro de [BLOCK_CHAIN]. */
-    val blockRules: Int = 0,
+    /** Paquetes que contó cada regla propia, sumados por etiqueta ("doh k3x9q2", "cuarentena"...). */
+    val ownCounters: Map<String, Long> = emptyMap(),
 ) {
+    /** Versión del fichero de reglas propio que está cargado (ver [NftInclude.marker]), o null. */
+    val includeVersion: String?
+        get() = comments.firstOrNull { it.startsWith("${OWN_COMMENT}v=") }?.removePrefix("${OWN_COMMENT}v=")
+
     /** Nombres de las reglas de WrtControl cargadas (fw4 pone "!fw4: <nombre>" como comentario). */
     val wrtcontrolRules: List<String>
         get() = comments.filter { it.startsWith(FW4_COMMENT + RULE_LABEL_PREFIX) }.map { it.removePrefix(FW4_COMMENT) }
@@ -31,12 +35,12 @@ data class LoadedFirewall(
      * Se comparan conjuntos de nombres: una sección con `proto 'tcp udp'` da dos reglas de
      * nftables con el mismo comentario, y cuántas exactamente depende de la versión de fw4.
      *
-     * fw4 recarga con `flush table`, que vacía las cadenas pero no las borra: al quitar el
-     * include, [BLOCK_CHAIN] sigue ahí, vacía y con política accept, hasta reiniciar el
-     * firewall. Por eso se mira si tiene reglas y no si existe.
+     * Las reglas propias se reconocen por la versión que lleva su primera regla. fw4 recarga con
+     * `flush table`, que vacía las cadenas pero no las borra: sin el include, las cadenas siguen
+     * ahí, vacías y con política accept, hasta reiniciar el firewall.
      */
     fun matches(plan: RouterPlan): Boolean =
-        wrtcontrolRules.toSet() == plan.ruleLabels.toSet() && (blockRules > 0) == plan.usesBlockChain
+        wrtcontrolRules.toSet() == plan.ruleLabels.toSet() && includeVersion == plan.include?.version
 
     private companion object {
         const val FW4_COMMENT = "!fw4: "
@@ -49,7 +53,7 @@ fun parseLoadedFirewall(json: String): LoadedFirewall {
         ?: throw UbusException.Protocol("El listado del firewall no tiene el formato esperado")
     var tableHandle: Long? = null
     var maxHandle = 0L
-    var blockRules = 0
+    val counters = mutableMapOf<String, Long>()
     val comments = mutableListOf<String>()
     val chains = mutableSetOf<String>()
 
@@ -67,11 +71,18 @@ fun parseLoadedFirewall(json: String): LoadedFirewall {
         (obj["rule"] as? JsonObject)?.let { r ->
             if (!r.isFw4("table")) return@let
             (r["handle"] as? JsonPrimitive)?.longOrNull?.let { if (it > maxHandle) maxHandle = it }
-            r.str("comment")?.let(comments::add)
-            if (r.str("chain") == BLOCK_CHAIN) blockRules++
+            val comment = r.str("comment")
+            comment?.let(comments::add)
+            if (comment != null && comment.startsWith(OWN_COMMENT)) {
+                val packets = (r["expr"] as? JsonArray).orEmpty().sumOf { e ->
+                    (((e as? JsonObject)?.get("counter") as? JsonObject)?.get("packets") as? JsonPrimitive)?.longOrNull ?: 0L
+                }
+                val tag = comment.removePrefix(OWN_COMMENT)
+                counters[tag] = (counters[tag] ?: 0L) + packets
+            }
         }
     }
-    return LoadedFirewall(tableHandle, maxHandle, comments, chains, blockRules)
+    return LoadedFirewall(tableHandle, maxHandle, comments, chains, counters)
 }
 
 /**

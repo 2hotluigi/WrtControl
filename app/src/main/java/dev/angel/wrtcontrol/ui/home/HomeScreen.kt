@@ -81,7 +81,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
             when (Tab.entries[tab]) {
                 Tab.Status -> StatusScreen(status)
                 Tab.Devices -> DevicesScreen(connection.address)
-                Tab.Parental -> ParentalScreen(connection.address)
+                Tab.Parental -> ParentalScreen(connection)
             }
         }
     }

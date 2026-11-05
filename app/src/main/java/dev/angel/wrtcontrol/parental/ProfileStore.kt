@@ -23,6 +23,13 @@ import kotlin.random.Random
  *       list block_service 'tiktok'
  *       list block_domain 'ejemplo.com'
  *       option dns_port '5301'                     # lo asigna la app con el filtro activo
+ *       option safe_search '1'                     # opcional
+ *       option youtube 'moderate'                  # opcional: moderate | strict
+ *       option extra_until '2026-11-05T21:30:00'   # opcional: tiempo extra sobre los horarios
+ *       option protect_router '1'                  # opcional: sin acceso a LuCI ni SSH
+ *       option cut_epoch '2'                       # la gestiona la app (corte de conexiones)
+ *       option cut_window '3'                      # y el segundo corte: marca y hora
+ *       option cut_until '2026-11-05T21:31:30'
  *
  *   config wrtcontrol_schedule 'wrtc_s_8m2c1a'
  *       option profile 'k3x9q2'
@@ -31,12 +38,20 @@ import kotlin.random.Random
  *       option stop '07:00'
  *       option enabled '1'
  *
+ *   config wrtcontrol_settings 'wrtc_settings'
+ *       option quarantine '1'                      # dispositivos nuevos sin internet
+ *       list approved 'AA:BB:CC:DD:EE:01'          # aprobados fuera de los perfiles
+ *       list admin 'AA:BB:CC:DD:EE:02'             # teléfonos desde los que se usó la app
+ *       option time_offset '-21600'                # desfase con el que se escribieron las horas
+ *
  * Cualquier sección cuyo nombre empiece por "wrtc_" es de la app y se regenera al guardar.
  */
 
 const val SECTION_PREFIX = "wrtc_"
 internal const val PROFILE_TYPE = "wrtcontrol_profile"
 internal const val SCHEDULE_TYPE = "wrtcontrol_schedule"
+internal const val SETTINGS_TYPE = "wrtcontrol_settings"
+internal const val SETTINGS_SECTION = "wrtc_settings"
 private const val PROFILE_PREFIX = "wrtc_p_"
 private const val SCHEDULE_PREFIX = "wrtc_s_"
 
@@ -78,6 +93,19 @@ fun cleanProfileName(text: String): String =
 
 private val scheduleOrder = compareBy<Schedule>({ it.start }, { it.days.minOrNull() }, { it.id })
 
+/** Lee perfiles y ajustes de las secciones del firewall. */
+fun readConfig(sections: List<UciSection>): ParentalConfig = ParentalConfig(readProfiles(sections), readSettings(sections))
+
+fun readSettings(sections: List<UciSection>): ParentalSettings {
+    val s = sections.firstOrNull { it.type == SETTINGS_TYPE && it.name == SETTINGS_SECTION } ?: return ParentalSettings()
+    return ParentalSettings(
+        quarantine = s.text("quarantine") == "1",
+        approved = s.items("approved").mapNotNull(::normalizeMac).distinct().sorted(),
+        admins = s.items("admin").mapNotNull(::normalizeMac).distinct().sorted(),
+        timeOffset = s.text("time_offset")?.toIntOrNull(),
+    )
+}
+
 /** Lee los perfiles de las secciones del firewall. Las secciones mal formadas se ignoran. */
 fun readProfiles(sections: List<UciSection>): List<Profile> {
     val schedules = sections.asSequence()
@@ -99,8 +127,14 @@ fun readProfiles(sections: List<UciSection>): List<Profile> {
                     level = FilterLevel.entries.firstOrNull { it.uciValue != null && it.uciValue == s.text("filter") } ?: FilterLevel.None,
                     services = s.items("block_service").toSet(),
                     domains = s.items("block_domain").mapNotNull(::normalizeDomain).distinct().sorted(),
+                    safeSearch = s.text("safe_search") == "1",
+                    youtube = YoutubeMode.entries.firstOrNull { it.uciValue != null && it.uciValue == s.text("youtube") } ?: YoutubeMode.Off,
                 ),
                 dnsPort = s.text("dns_port")?.toIntOrNull()?.takeIf { it in DNS_PORTS },
+                extraUntil = s.text("extra_until")?.let(::parseStamp),
+                protectRouter = s.text("protect_router") == "1",
+                cutEpoch = s.text("cut_epoch")?.toIntOrNull()?.takeIf { it in CUT_EPOCHS } ?: 0,
+                cutWindow = parseCutWindow(s),
             )
         }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -123,11 +157,41 @@ private fun parseTime(text: String): LocalTime? = try {
 private fun parsePause(s: UciSection): Pause? {
     if (s.text("pause") != "1") return null
     val until = s.text("pause_until") ?: return Pause.Indefinite
-    return try {
-        Pause.Until(LocalDateTime.parse(until, STAMP))
-    } catch (_: DateTimeParseException) {
-        Pause.Indefinite
+    return parseStamp(until)?.let { Pause.Until(it) } ?: Pause.Indefinite
+}
+
+private fun parseCutWindow(s: UciSection): CutWindow? {
+    val value = s.text("cut_window")?.toIntOrNull()?.takeIf { it in CUT_EPOCHS } ?: return null
+    val until = s.text("cut_until")?.let(::parseStamp) ?: return null
+    return CutWindow(value, until)
+}
+
+private fun parseStamp(text: String): LocalDateTime? = try {
+    LocalDateTime.parse(text, STAMP)
+} catch (_: DateTimeParseException) {
+    null
+}
+
+/** Secciones de datos de [config]: ajustes (si no son los de por defecto), perfiles y horarios. */
+internal fun configSections(config: ParentalConfig): List<UciSection> {
+    // El desfase solo hace falta si hay horas guardadas: sin ellas, un router sin nada que
+    // guardar no lleva sección de ajustes.
+    val times = config.profiles.any { it.pause is Pause.Until || it.extraUntil != null || it.cutWindow != null }
+    val s = if (times) config.settings else config.settings.copy(timeOffset = null)
+    val settings = if (s == ParentalSettings()) {
+        emptyList()
+    } else {
+        listOf(
+            uciSection(
+                SETTINGS_SECTION, SETTINGS_TYPE,
+                "quarantine" to if (s.quarantine) "1" else null,
+                "approved" to s.approved.ifEmpty { null },
+                "admin" to s.admins.ifEmpty { null },
+                "time_offset" to s.timeOffset?.toString(),
+            ),
+        )
     }
+    return settings + profileSections(config.profiles)
 }
 
 /** Secciones de datos (perfiles y horarios) que representan a [profiles]. */
@@ -142,6 +206,13 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
         "block_service" to p.filter.services.sorted().ifEmpty { null },
         "block_domain" to p.filter.domains.ifEmpty { null },
         "dns_port" to p.dnsPort?.toString(),
+        "safe_search" to if (p.filter.safeSearch) "1" else null,
+        "youtube" to p.filter.youtube.uciValue,
+        "extra_until" to p.extraUntil?.format(STAMP),
+        "protect_router" to if (p.protectRouter) "1" else null,
+        "cut_epoch" to p.cutEpoch.takeIf { it in CUT_EPOCHS }?.toString(),
+        "cut_window" to p.cutWindow?.value?.toString(),
+        "cut_until" to p.cutWindow?.until?.format(STAMP),
     )
     listOf(profile) + p.schedules.map { s ->
         uciSection(
@@ -153,6 +224,12 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
             "enabled" to if (s.enabled) "1" else "0",
         )
     }
+}
+
+/** Como [validateProfiles], más los ajustes. */
+fun validateConfig(config: ParentalConfig) {
+    validateProfiles(config.profiles)
+    for (mac in config.settings.approved + config.settings.admins) require(normalizeMac(mac) == mac) { "MAC no válida: $mac" }
 }
 
 /** Comprueba lo que la interfaz ya debería impedir; lanza [IllegalArgumentException] con el motivo. */
@@ -174,6 +251,11 @@ fun validateProfiles(profiles: List<Profile>) {
             require(s.days.isNotEmpty()) { "Cada horario necesita al menos un día" }
             require(s.start.second == 0 && s.end.second == 0) { "Los horarios van en minutos exactos" }
         }
+        require(p.cutEpoch == 0 || p.cutEpoch in CUT_EPOCHS) { "Época de corte no válida" }
+        require(p.cutWindow == null || (p.cutWindow.value in CUT_EPOCHS && p.cutWindow.value != p.cutEpoch && p.cutWindow.until.nano == 0)) {
+            "Ventana de corte no válida"
+        }
+        require(p.extraUntil == null || p.extraUntil.nano == 0) { "El tiempo extra va en segundos exactos" }
         for (d in p.filter.domains) require(normalizeDomain(d) == d) { "Sitio no válido: $d" }
         require(p.filter.domains.size <= MAX_BLOCKED_DOMAINS) { "Como máximo $MAX_BLOCKED_DOMAINS sitios bloqueados por perfil" }
     }

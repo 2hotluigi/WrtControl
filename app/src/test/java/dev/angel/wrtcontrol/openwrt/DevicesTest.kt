@@ -92,6 +92,46 @@ class DevicesTest {
     }
 
     @Test
+    fun `redes de casa - lan y las interfaces sin ruta por defecto que no son wan`() {
+        val ifaces = listOf(
+            NetInterface("lan", ipv4 = listOf(IpAddress("192.168.1.1", 24))),
+            NetInterface("guest", ipv4 = listOf(IpAddress("192.168.2.1", 24))), // invitados
+            NetInterface("iot", ipv4 = listOf(IpAddress("192.168.3.1", 24)), routes = listOf(Route("10.8.0.0", 24))), // ruta, pero no la de defecto
+            NetInterface("wan", ipv4 = listOf(IpAddress("10.0.3.15", 24)), routes = listOf(Route("0.0.0.0", 0))),
+            NetInterface("wanb", ipv4 = listOf(IpAddress("10.0.4.15", 24))), // segunda WAN, ahora sin ruta
+            NetInterface("wwan", ipv4 = listOf(IpAddress("172.20.10.2", 28)), routes = listOf(Route("0.0.0.0", 0))), // Wi-Fi cliente
+            NetInterface("vpn", ipv4 = listOf(IpAddress("10.9.0.2", 24)), routes = listOf(Route("::", 0))), // salida por IPv6
+        )
+        val hints = mapOf(
+            "AA:BB:CC:DD:EE:01" to HostHint(ipaddrs = listOf("192.168.1.10")),
+            "AA:BB:CC:DD:EE:02" to HostHint(name = "tele", ipaddrs = listOf("192.168.2.20")), // IP fija en invitados
+            "AA:BB:CC:DD:EE:03" to HostHint(ipaddrs = listOf("192.168.3.30")),
+            "AA:BB:CC:DD:EE:04" to HostHint(ipaddrs = listOf("10.0.3.2")), // pasarela del proveedor
+            "AA:BB:CC:DD:EE:05" to HostHint(ipaddrs = listOf("10.0.4.2")),
+            "AA:BB:CC:DD:EE:06" to HostHint(ipaddrs = listOf("172.20.10.1")), // el teléfono que da internet
+            "AA:BB:CC:DD:EE:07" to HostHint(ipaddrs = listOf("10.9.0.1")),
+            "AA:BB:CC:DD:EE:08" to HostHint(ipaddrs = listOf("192.168.2.1")), // el propio router
+        )
+        val devices = buildDeviceList(hints, DhcpLeases(), ifaces)
+        assertEquals(listOf("AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02", "AA:BB:CC:DD:EE:03"), devices.map { it.mac })
+        assertEquals("tele", devices[1].name)
+    }
+
+    @Test
+    fun `ruta por defecto en IPv4 o IPv6`() {
+        assertTrue(NetInterface("wan", routes = listOf(Route("0.0.0.0", 0))).hasDefaultRoute)
+        assertTrue(NetInterface("wan6", routes = listOf(Route("::", 0))).hasDefaultRoute)
+        assertFalse(NetInterface("lan", routes = listOf(Route("192.168.1.0", 24))).hasDefaultRoute)
+        assertFalse(NetInterface("lan").hasDefaultRoute)
+        // Como llega de `network.interface dump`.
+        val json = """{"interface":[{"interface":"wan","up":true,"ipv4-address":[{"address":"10.0.3.15","mask":24}],
+            "route":[{"target":"0.0.0.0","mask":0,"nexthop":"10.0.3.2","source":"10.0.3.15/32"}]},
+            {"interface":"lan","up":true,"route":[]}]}"""
+        val dump = UbusJson.decodeFromString(InterfaceDump.serializer(), json)
+        assertEquals(listOf(true, false), dump.interfaces.map { it.hasDefaultRoute })
+    }
+
+    @Test
     fun `lista vacia sin datos`() {
         assertTrue(buildDeviceList(emptyMap(), DhcpLeases(), interfaces).isEmpty())
     }

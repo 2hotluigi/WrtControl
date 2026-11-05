@@ -50,15 +50,18 @@ class ParentalApiTest {
     fun `crear un perfil en pausa - aplica, verifica en el firewall y confirma`() = runTest {
         val fake = FakeOpenWrt().base()
 
-        api(fake).update { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+        api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
 
         assertTrue(fake.committed.keys.containsAll(listOf("wrtc_p_j1", "wrtc_r_j1_pausa", INCLUDE_SECTION, "cfg02")))
-        assertEquals(BLOCK_CHAIN_NFT, fake.files[INCLUDE_PATH])
+        val path = fake.option(INCLUDE_SECTION, "path")!!
+        assertTrue(path.startsWith("$INCLUDE_DIR/wrtcontrol-") && path.endsWith(".nft"))
+        assertTrue(fake.files.getValue(path).contains("chain $BLOCK_CHAIN {"))
+        assertEquals("solo el fichero en uso", listOf(path), fake.files.keys.filter(::isIncludeFile))
         assertNull("el cambio quedó confirmado", fake.pendingApply)
         val calls = fake.calls
         // Sondeo (sin nada preparado) antes de tocar nada, y confirmación al final.
         assertEquals("uci.apply", calls[calls.indexOf("session.login") + 1])
-        assertEquals("uci.confirm", calls.last())
+        assertEquals("tras confirmar solo se limpian ficheros viejos", "uci.confirm", calls.last { it != "file.list" && it != "file.remove" })
         assertFalse(calls.contains("uci.rollback"))
         // Todo en la misma sesión propia.
         val tx = fake.router.calls.first { it.name == "uci.add" }.sid
@@ -72,7 +75,7 @@ class ParentalApiTest {
         val before = fake.committed.toMap()
 
         expect<PendingChangeException> {
-            api(fake).update { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+            api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
         }
 
         // El login devolvió la sesión de LuCI: confirmar habría validado un cambio ajeno.
@@ -89,7 +92,7 @@ class ParentalApiTest {
         val before = fake.committed.keys.toList()
 
         val e = expect<ChangeRevertedException> {
-            api(fake).update { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+            api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
         }
 
         assertTrue(e.message!!.contains("firewall"))
@@ -106,7 +109,7 @@ class ParentalApiTest {
         fake.snapshotLost = true
 
         expect<ChangeUncertainException> {
-            api(fake).update { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+            api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
         }
 
         assertTrue(fake.calls.contains("uci.rollback"))
@@ -117,7 +120,7 @@ class ParentalApiTest {
     fun `filtro de contenido - servidor DNS y redireccion, comprobados antes de confirmar`() = runTest {
         val fake = FakeOpenWrt().base()
 
-        api(fake).update { profiles, _ ->
+        api(fake).updateProfiles { profiles, _ ->
             profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult, setOf("tiktok"), listOf("ejemplo.com")))
         }
 
@@ -131,7 +134,7 @@ class ParentalApiTest {
         val lookups = fake.router.calls.filter { it.name == "file.exec" && it.args.toString().contains("nslookup") }
         assertTrue(lookups.any { it.args.toString().contains(CANARY_DOMAIN) })
         assertTrue(lookups.any { it.args.toString().contains("openwrt.org") })
-        assertEquals("uci.confirm", fake.calls.last())
+        assertEquals("uci.confirm", fake.calls.last { it != "file.list" && it != "file.remove" })
         assertNull(fake.pendingApply)
     }
 
@@ -141,7 +144,7 @@ class ParentalApiTest {
         fake.familyDnsDown = true
 
         val e = expect<ChangeRevertedException> {
-            api(fake).update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult)) }
+            api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult)) }
         }
 
         assertTrue(e.message!!.contains("DNS para familias"))
@@ -154,10 +157,10 @@ class ParentalApiTest {
     fun `quitar el filtro borra su servidor DNS y la redireccion`() = runTest {
         val fake = FakeOpenWrt().base()
         val api = api(fake)
-        api.update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(domains = listOf("ejemplo.com"))) }
+        api.updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(domains = listOf("ejemplo.com"))) }
         assertTrue(fake.committed.containsKey("wrtc_dns_j1"))
 
-        api.update { profiles, _ -> profiles.map { it.copy(filter = ContentFilter()) } }
+        api.updateProfiles { profiles, _ -> profiles.map { it.copy(filter = ContentFilter()) } }
 
         assertTrue(fake.committed.keys.none { it.startsWith("wrtc_dns_") || it.startsWith("wrtc_nodhcp_") || it.startsWith("wrtc_d_") })
         assertNull(fake.option("wrtc_p_j1", "dns_port"))
@@ -169,7 +172,7 @@ class ParentalApiTest {
     fun `load informa si el filtro esta en marcha`() = runTest {
         val fake = FakeOpenWrt().base()
         val api = api(fake)
-        api.update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Strict)) }
+        api.updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Strict)) }
 
         val snapshot = api.load()
 
@@ -180,10 +183,10 @@ class ParentalApiTest {
     fun `sin cambios no se aplica nada`() = runTest {
         val fake = FakeOpenWrt().base()
         val api = api(fake)
-        api.update { profiles, _ -> profiles + juan }
+        api.updateProfiles { profiles, _ -> profiles + juan }
         val applies = fake.calls.count { it == "uci.apply" }
 
-        api.update { profiles, _ -> profiles }
+        api.updateProfiles { profiles, _ -> profiles }
 
         assertEquals("solo el sondeo", applies + 1, fake.calls.count { it == "uci.apply" })
     }
@@ -192,7 +195,7 @@ class ParentalApiTest {
     fun `la pausa con fin usa la hora del router`() = runTest {
         val fake = FakeOpenWrt().base()
 
-        api(fake).update { profiles, now -> profiles + juan.copy(pause = Pause.Until(now.plusHours(1))) }
+        api(fake).updateProfiles { profiles, now -> profiles + juan.copy(pause = Pause.Until(now.plusHours(1))) }
 
         val until = fake.committed["wrtc_r_j1_pausa"]!!["stop_date"]!!.jsonPrimitive.content
         assertEquals("2026-11-04T23:20:00", until)
@@ -202,17 +205,17 @@ class ParentalApiTest {
     fun `borrar el ultimo perfil quita reglas, include y fichero`() = runTest {
         val fake = FakeOpenWrt().base()
         val api = api(fake)
-        api.update { profiles, _ ->
+        api.updateProfiles { profiles, _ ->
             profiles + juan.copy(
                 schedules = listOf(Schedule("n1", setOf(DayOfWeek.MONDAY), LocalTime.of(21, 0), LocalTime.of(7, 0))),
             )
         }
         assertTrue(fake.committed.containsKey("wrtc_r_n1_2"))
 
-        api.update { _, _ -> emptyList() }
+        api.updateProfiles { _, _ -> emptyList() }
 
         assertTrue(fake.committed.keys.none { it.startsWith("wrtc_") })
-        assertFalse(fake.files.containsKey(INCLUDE_PATH))
+        assertTrue(fake.files.keys.none(::isIncludeFile))
         assertTrue(fake.calls.indexOf("file.remove") > fake.calls.lastIndexOf("uci.confirm"))
     }
 
@@ -222,7 +225,7 @@ class ParentalApiTest {
             section("cfg03", "system", "hostname" to "OpenWrt", "timezone" to "GMT0", "zonename" to "UTC")
         }
         val api = api(fake)
-        api.update { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+        api.updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
         val confirmsBefore = fake.calls.count { it == "uci.confirm" }
 
         api.setTimezone("America/Mexico_City", expectedOffsetSeconds = -21_600)
@@ -269,7 +272,7 @@ class ParentalApiTest {
     fun `load lee perfiles, hora y desfase del router`() = runTest {
         val fake = FakeOpenWrt().base()
         val api = api(fake)
-        api.update { profiles, _ -> profiles + juan }
+        api.updateProfiles { profiles, _ -> profiles + juan }
 
         val snapshot = api.load() // con la sesión compartida, que inicia sesión en la primera llamada
 

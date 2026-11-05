@@ -65,6 +65,7 @@ import dev.angel.wrtcontrol.parental.MAX_PROFILE_NAME
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.SERVICES
 import dev.angel.wrtcontrol.parental.Schedule
+import dev.angel.wrtcontrol.parental.YoutubeMode
 import dev.angel.wrtcontrol.parental.cleanProfileName
 import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.normalizeDomain
@@ -83,6 +84,8 @@ fun ProfileEditor(
     isNew: Boolean,
     devices: List<Device>,
     others: List<Profile>,
+    /** Teléfonos con la app: nunca se les bloquea la configuración del router. */
+    admins: Set<String>,
     phoneIps: Set<String>,
     busy: String?,
     error: String?,
@@ -94,6 +97,7 @@ fun ProfileEditor(
     var macs by remember { mutableStateOf(initial.macs.toSet()) }
     var schedules by remember { mutableStateOf(initial.schedules) }
     var filter by remember { mutableStateOf(initial.filter) }
+    var protectRouter by remember { mutableStateOf(initial.protectRouter) }
     var newDomain by remember { mutableStateOf("") }
     var domainError by remember { mutableStateOf<String?>(null) }
     var manualMac by remember { mutableStateOf("") }
@@ -103,7 +107,7 @@ fun ProfileEditor(
 
     val cleanName = cleanProfileName(name)
     val owner = others.flatMap { p -> p.macs.map { it to p.name } }.toMap()
-    val options = remember(devices, macs, others, phoneIps) {
+    val options = remember(devices, macs, others, phoneIps, admins) {
         val online = devices.map { d ->
             DeviceOption(
                 mac = d.mac,
@@ -111,13 +115,14 @@ fun ProfileEditor(
                 detail = listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
                 note = when {
                     d.ipv4.any { it in phoneIps } -> "Este teléfono: si lo pausas, también se queda sin internet"
+                    d.mac in admins -> "Tiene WrtControl: nunca se le bloquea la configuración del router"
                     d.mac !in macs && d.mac in owner -> "Ahora en «${owner[d.mac]}»: pasará a este perfil"
                     else -> null
                 },
             )
         }
         val offline = macs.filter { mac -> devices.none { it.mac == mac } }.sorted()
-            .map { DeviceOption(it, "Desconectado", it, null) }
+            .map { DeviceOption(it, "Desconectado", it, if (it in admins) "Tiene WrtControl: nunca se le bloquea la configuración del router" else null) }
         online + offline
     }
     val takenScheduleIds = (others.flatMap { p -> p.schedules.map { it.id } } + schedules.map { it.id }).toSet()
@@ -153,7 +158,15 @@ fun ProfileEditor(
                         actions = {
                             TextButton(
                                 onClick = {
-                                    onSave(initial.copy(name = cleanName, macs = macs.sorted(), schedules = schedules, filter = filter))
+                                    onSave(
+                                        initial.copy(
+                                            name = cleanName,
+                                            macs = macs.sorted(),
+                                            schedules = schedules,
+                                            filter = filter,
+                                            protectRouter = protectRouter,
+                                        ),
+                                    )
                                 },
                                 enabled = cleanName.isNotEmpty() && !locked,
                                 modifier = Modifier.testTag("save-profile"),
@@ -329,6 +342,48 @@ fun ProfileEditor(
                             }
                         }
                     }
+                    item {
+                        val included = filter.level != FilterLevel.None
+                        SwitchRow(
+                            title = "Búsqueda segura",
+                            help = if (included) {
+                                "Incluida en este nivel."
+                            } else {
+                                "Google, Bing y DuckDuckGo solo muestran resultados aptos, aunque cambien la configuración del buscador."
+                            },
+                            checked = filter.safeSearch || included,
+                            enabled = !locked && !included,
+                            onChange = { filter = filter.copy(safeSearch = it) },
+                            modifier = Modifier.padding(top = 8.dp).testTag("safe-search"),
+                        )
+                    }
+                    item {
+                        val blocked = "youtube" in filter.services
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
+                            Text("Modo restringido de YouTube", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                when {
+                                    blocked -> "YouTube está bloqueado del todo (abajo, en servicios)."
+                                    filter.level == FilterLevel.Strict && filter.youtube == YoutubeMode.Off ->
+                                        "El nivel estricto ya usa el modo moderado. Elige «Estricto» para ocultar más."
+                                    else -> "Oculta vídeos para adultos en la web y en la app de YouTube, también en la TV."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                YoutubeMode.entries.forEach { mode ->
+                                    FilterChip(
+                                        selected = filter.youtube == mode,
+                                        onClick = { filter = filter.copy(youtube = mode) },
+                                        label = { Text(mode.title()) },
+                                        enabled = !locked && !blocked,
+                                        modifier = Modifier.testTag("youtube-${mode.name}"),
+                                    )
+                                }
+                            }
+                        }
+                    }
                     item { Text("Bloquear servicios", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp)) }
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -398,6 +453,19 @@ fun ProfileEditor(
                             "El filtro se aplicará cuando el perfil tenga dispositivos.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+
+                    item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
+                    item {
+                        SwitchRow(
+                            title = "Impedir que cambien la configuración del router",
+                            help = "Sus dispositivos no podrán abrir LuCI, entrar por SSH ni usar WrtControl. Los teléfonos con " +
+                                "WrtControl (los ves en Protección) nunca se bloquean.",
+                            checked = protectRouter,
+                            enabled = !locked,
+                            onChange = { protectRouter = it },
+                            modifier = Modifier.testTag("protect-router"),
                         )
                     }
 

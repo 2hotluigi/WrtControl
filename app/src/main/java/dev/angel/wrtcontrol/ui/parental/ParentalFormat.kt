@@ -6,7 +6,9 @@ import dev.angel.wrtcontrol.parental.FilterLevel
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.SERVICES
 import dev.angel.wrtcontrol.parental.Schedule
+import dev.angel.wrtcontrol.parental.YoutubeMode
 import dev.angel.wrtcontrol.parental.access
+import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.nextBlock
 import java.time.DayOfWeek
 import java.time.DayOfWeek.FRIDAY
@@ -97,9 +99,10 @@ fun FilterLevel.title(): String = when (this) {
 
 fun FilterLevel.description(): String = when (this) {
     FilterLevel.None -> "Solo se bloquean los servicios y sitios que elijas abajo."
-    FilterLevel.Adult -> "Bloquea sitios para adultos y de malware. Usa el DNS para familias de Cloudflare."
+    FilterLevel.Adult ->
+        "Bloquea sitios para adultos y de malware, y fuerza la búsqueda segura de Google, Bing y DuckDuckGo. Usa el DNS para familias de Cloudflare."
     FilterLevel.Strict ->
-        "Además fuerza la búsqueda segura de Google y Bing y el modo restringido de YouTube, y bloquea VPN y proxys. Usa CleanBrowsing."
+        "Además fuerza el modo restringido de YouTube y bloquea VPN y proxys. Usa CleanBrowsing."
 }
 
 /** "Filtro: contenido para adultos · TikTok, Roblox · 2 sitios", o null sin filtro. */
@@ -107,6 +110,8 @@ fun formatFilter(filter: ContentFilter): String? {
     if (!filter.active) return null
     val parts = buildList {
         if (filter.level != FilterLevel.None) add(filter.level.title().lowercase(Locale.ROOT))
+        if (filter.safeSearch && filter.level == FilterLevel.None) add("búsqueda segura")
+        if (filter.youtube != YoutubeMode.Off && "youtube" !in filter.services) add("YouTube restringido")
         val names = SERVICES.filter { it.id in filter.services }.map { it.name }
         if (names.isNotEmpty()) add(names.joinToString(", "))
         when (val n = filter.domains.size) {
@@ -128,5 +133,35 @@ fun accessText(profile: Profile, now: LocalDateTime): AccessText = when (val a =
         a.until?.let { "Sin internet hasta ${formatUntil(it, now)}." } ?: "Sin internet hasta que lo reanudes.",
     )
     is Access.Blocked -> AccessText("Fuera de horario", true, "Sin internet hasta ${formatUntil(a.until, now)}.")
+    is Access.ExtraTime -> AccessText("Tiempo extra", false, "Con internet hasta ${formatUntil(a.until, now)}; después vuelve su horario.")
     Access.Allowed -> AccessText("Con internet", false, profile.nextBlock(now)?.let { "Próximo bloqueo: ${formatWhen(it, now)}." })
+}
+
+fun YoutubeMode.title(): String = when (this) {
+    YoutubeMode.Off -> "Sin restricción"
+    YoutubeMode.Moderate -> "Moderado"
+    YoutubeMode.Strict -> "Estricto"
+}
+
+/**
+ * Opción del diálogo de tiempo extra: hasta cuándo (hora del router, para mostrar), [minutes]
+ * desde ahora o, si es null, hasta el final del horario en curso. Al aplicar se recalcula con la
+ * hora del router en ese momento.
+ */
+data class ExtraOption(val until: LocalDateTime, val label: String, val minutes: Long? = null)
+
+/**
+ * Tiempo extra que se puede dar ahora: 30 min, 1 h o 2 h (si caben antes de que acabe el
+ * horario en curso) o hasta el final del horario. Vacío si ahora no hay ningún horario.
+ */
+fun extraTimeOptions(profile: Profile, now: LocalDateTime): List<ExtraOption> {
+    val end = profile.blockedIntervals(now.toLocalDate()).firstOrNull { !now.isBefore(it.start) && now.isBefore(it.end) }?.end
+        ?: return emptyList()
+    val short = listOf(30L to "30 minutos más", 60L to "1 hora más", 120L to "2 horas más")
+        .map { (minutes, label) -> ExtraOption(now.plusMinutes(minutes).withNano(0), label, minutes) }
+        .filter { it.until.isBefore(end) }
+    // Un horario que no acaba (todos los días, todo el día) "termina" en el límite de lo que se
+    // calcula: ofrecerlo daría días de internet presentados como el fin del horario.
+    val untilEnd = if (end.isAfter(now.plusDays(1))) emptyList() else listOf(ExtraOption(end, "Hasta ${formatUntil(end, now)}, fin del horario"))
+    return short + untilEnd
 }

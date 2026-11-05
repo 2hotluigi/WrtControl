@@ -7,6 +7,7 @@ import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 
 sealed interface Connection {
@@ -19,7 +20,8 @@ sealed interface Connection {
         val lastUsername: String? = null,
     ) : Connection
 
-    data class SignedIn(val address: String, val username: String) : Connection
+    /** [emptyPassword]: el router acepta entrar sin contraseña, así que cualquiera en la red puede cambiarlo. */
+    data class SignedIn(val address: String, val username: String, val emptyPassword: Boolean = false) : Connection
 }
 
 /** Punto único de acceso al router: conexión, credenciales guardadas y API. */
@@ -45,7 +47,7 @@ class RouterRepository(
         }
         // El login real se hace en la primera llamada (UbusClient renueva la sesión solo).
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
-        _state.value = Connection.SignedIn(saved.address, saved.username)
+        _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
     }
 
     /** Prueba las credenciales contra el router y, si funcionan, las guarda. */
@@ -55,7 +57,7 @@ class RouterRepository(
         newClient.login(Credentials(username, password))
         store.save(SavedRouter(address.trim(), username, password))
         open(newClient)
-        _state.value = Connection.SignedIn(address.trim(), username)
+        _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty())
     }
 
     suspend fun signOut(notice: String? = null) {
@@ -82,6 +84,43 @@ class RouterRepository(
             signOut("La sesión terminó. Vuelve a conectar.")
             throw e
         }
+    }
+
+    /**
+     * Pone [newPassword] al usuario conectado (luci.setPassword, como LuCI) y la guarda. La
+     * sesión sigue abierta; los inicios de sesión siguientes usan la nueva.
+     */
+    suspend fun changePassword(newPassword: String) {
+        val signed = _state.value as? Connection.SignedIn ?: throw UbusException.SessionExpired()
+        val current = client ?: throw UbusException.SessionExpired()
+        use { it.setPassword(signed.username, newPassword) }
+        // En cuanto el router la acepta, se usa y se guarda: si lo siguiente falla, la app ya tiene la buena.
+        current.updateCredentials(Credentials(signed.username, newPassword))
+        store.save(SavedRouter(signed.address, signed.username, newPassword))
+        _state.value = signed.copy(emptyPassword = newPassword.isEmpty())
+        try {
+            current.login(Credentials(signed.username, newPassword))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // La sesión actual sigue valiendo; el siguiente inicio de sesión ya usa la nueva.
+        }
+    }
+
+    /** Copia de los perfiles de este router; [router] distingue routers con la misma dirección (el modelo). */
+    suspend fun loadBackup(router: String): String? =
+        (_state.value as? Connection.SignedIn)?.let { store.loadBackup(it.address + "|" + router) }
+
+    suspend fun saveBackup(router: String, json: String?) {
+        (_state.value as? Connection.SignedIn)?.let { store.saveBackup(it.address + "|" + router, json) }
+    }
+
+    /** ¿Hay una copia pendiente de restaurar o descartar? Mientras tanto no se sustituye. */
+    suspend fun backupPending(router: String): Boolean =
+        (_state.value as? Connection.SignedIn)?.let { store.backupPending(it.address + "|" + router) } ?: false
+
+    suspend fun setBackupPending(router: String, pending: Boolean) {
+        (_state.value as? Connection.SignedIn)?.let { store.setBackupPending(it.address + "|" + router, pending) }
     }
 
     private fun open(newClient: UbusClient) {

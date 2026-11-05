@@ -136,6 +136,11 @@ class UbusClient(
      * consultas periódicas. Ojo: si hay un `uci apply` pendiente de confirmar del mismo
      * usuario, rpcd devuelve esa sesión en vez de una nueva (para poder confirmarlo).
      */
+    /** Cambia las credenciales para los próximos inicios de sesión (p. ej. tras cambiar la contraseña). */
+    fun updateCredentials(credentials: Credentials) {
+        this.credentials = credentials
+    }
+
     suspend fun openSession(): UbusSession {
         val creds = credentials ?: throw UbusException.SessionExpired()
         return UbusSession(this, newSession(creds).id)

@@ -1,6 +1,7 @@
 package dev.angel.wrtcontrol
 
 import android.app.Application
+import dev.angel.wrtcontrol.data.AppSettings
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.data.RouterStore
 import dev.angel.wrtcontrol.data.SecretBox
@@ -19,6 +20,9 @@ class WrtApp : Application() {
     lateinit var repository: RouterRepository
         private set
 
+    lateinit var settings: AppSettings
+        private set
+
     override fun onCreate() {
         super.onCreate()
         val http = OkHttpClient.Builder()
@@ -27,6 +31,7 @@ class WrtApp : Application() {
             .callTimeout(20, TimeUnit.SECONDS)
             .build()
         repository = RouterRepository(RouterStore(this, SecretBox()), http)
+        settings = AppSettings(this)
         appScope.launch { repository.restore() }
     }
 }
