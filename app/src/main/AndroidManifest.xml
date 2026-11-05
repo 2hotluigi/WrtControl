@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        usesCleartextTraffic: los routers OpenWrt sirven /ubus por HTTP en la LAN (HTTPS requiere
+        un certificado autofirmado). Fuera de casa el tráfico irá dentro del túnel WireGuard.
+        allowBackup=false: la contraseña cifrada no sirve en otro teléfono (la clave está en su Keystore).
+    -->
+    <application
+        android:name=".WrtApp"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
