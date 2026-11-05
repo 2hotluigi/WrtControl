@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.ubus
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -65,5 +67,6 @@ class FakeRouter(private val handler: (RecordedCall) -> Reply) {
             .build()
     }).build()
 
-    fun client(credentials: Credentials? = null) = UbusClient("http://router.test/ubus".toHttpUrl(), http, credentials)
+    fun client(credentials: Credentials? = null, io: CoroutineDispatcher = Dispatchers.IO) =
+        UbusClient("http://router.test/ubus".toHttpUrl(), http, credentials, io = io)
 }

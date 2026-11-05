@@ -52,14 +52,22 @@ fun InfoRow(label: String, value: String) {
     }
 }
 
-/** Etiqueta de estado: verde si [ok], roja si no. */
+/** Etiqueta de estado: verde si [ok], roja si es false, neutra si es null. */
 @Composable
-fun StatusPill(text: String, ok: Boolean) {
+fun StatusPill(text: String, ok: Boolean?) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(50),
-        color = if (ok) colors.primaryContainer else colors.errorContainer,
-        contentColor = if (ok) colors.onPrimaryContainer else colors.onErrorContainer,
+        color = when (ok) {
+            true -> colors.primaryContainer
+            false -> colors.errorContainer
+            null -> colors.surfaceVariant
+        },
+        contentColor = when (ok) {
+            true -> colors.onPrimaryContainer
+            false -> colors.onErrorContainer
+            null -> colors.onSurfaceVariant
+        },
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
     }
@@ -74,6 +82,23 @@ fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp))
+    }
+}
+
+/** Aviso informativo (no es un error): título, explicación y una acción opcional debajo. */
+@Composable
+fun NoticeCard(title: String, text: String, modifier: Modifier = Modifier, action: @Composable (() -> Unit)? = null) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+            action?.invoke()
+        }
     }
 }
 

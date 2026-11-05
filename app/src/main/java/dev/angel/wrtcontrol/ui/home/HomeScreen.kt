@@ -25,11 +25,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.ui.LocalRepository
+import dev.angel.wrtcontrol.ui.parental.ParentalScreen
 import kotlinx.coroutines.launch
 
 private enum class Tab(val label: String, val icon: Int) {
     Status("Estado", R.drawable.ic_dashboard),
     Devices("Dispositivos", R.drawable.ic_devices),
+    Parental("Control", R.drawable.ic_shield),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +81,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
             when (Tab.entries[tab]) {
                 Tab.Status -> StatusScreen(status)
                 Tab.Devices -> DevicesScreen(connection.address)
+                Tab.Parental -> ParentalScreen(connection.address)
             }
         }
     }

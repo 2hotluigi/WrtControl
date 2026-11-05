@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ubus
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +58,44 @@ val UbusJson = Json {
     coerceInputValues = true
 }
 
+/** Algo que puede hacer llamadas ubus: el cliente compartido o una [UbusSession] propia. */
+interface UbusCaller {
+    suspend fun call(target: String, method: String, args: JsonObject = JsonObject(emptyMap())): JsonElement?
+}
+
+/** Igual que [UbusCaller.call], pero decodifica la respuesta al tipo pedido. */
+suspend inline fun <reified T> UbusCaller.callAs(
+    target: String,
+    method: String,
+    args: JsonObject = JsonObject(emptyMap()),
+): T = decodeUbus(UbusJson, serializer<T>(), call(target, method, args), "$target.$method")
+
+@PublishedApi
+internal fun <T> decodeUbus(
+    json: Json,
+    deserializer: kotlinx.serialization.DeserializationStrategy<T>,
+    data: JsonElement?,
+    what: String,
+): T = try {
+    // ubus puede responder solo `[0]` (sin datos): se trata como un objeto vacío.
+    json.decodeFromJsonElement(deserializer, data?.takeUnless { it is JsonNull } ?: JsonObject(emptyMap()))
+} catch (e: SerializationException) {
+    throw UbusException.Protocol("Respuesta inesperada de $what: ${e.message}", e)
+} catch (e: IllegalArgumentException) {
+    throw UbusException.Protocol("Respuesta inesperada de $what: ${e.message}", e)
+}
+
+/**
+ * Sesión propia para una serie de cambios (ver `parental.SafeApply`). rpcd guarda los cambios
+ * UCI pendientes por sesión: si algo falla a medias basta con abandonarla, porque el ACL de
+ * LuCI no permite `uci revert`. No se renueva sola: si caduca, los cambios pendientes se pierden
+ * y se lanza [UbusException.SessionLost].
+ */
+class UbusSession internal constructor(private val client: UbusClient, val id: String) : UbusCaller {
+    override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? =
+        client.callInSession(id, target, method, args)
+}
+
 /**
  * Cliente JSON-RPC para ubus: el endpoint `/ubus` de uhttpd-mod-ubus, el mismo que usa LuCI.
  *
@@ -71,7 +110,9 @@ class UbusClient(
     private val http: OkHttpClient,
     credentials: Credentials? = null,
     @PublishedApi internal val json: Json = UbusJson,
-) {
+    /** Donde se hacen las peticiones HTTP; las pruebas pasan el de `runTest`. */
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : UbusCaller {
     @Volatile
     var session: String? = null
         private set
@@ -84,6 +125,23 @@ class UbusClient(
 
     /** Inicia sesión y, si funciona, guarda las credenciales para renovarla más adelante. */
     suspend fun login(credentials: Credentials): SessionInfo {
+        val info = newSession(credentials)
+        this.credentials = credentials
+        session = info.id
+        return info
+    }
+
+    /**
+     * Abre una sesión aparte con las credenciales guardadas, sin tocar la que usan las
+     * consultas periódicas. Ojo: si hay un `uci apply` pendiente de confirmar del mismo
+     * usuario, rpcd devuelve esa sesión en vez de una nueva (para poder confirmarlo).
+     */
+    suspend fun openSession(): UbusSession {
+        val creds = credentials ?: throw UbusException.SessionExpired()
+        return UbusSession(this, newSession(creds).id)
+    }
+
+    private suspend fun newSession(credentials: Credentials): SessionInfo {
         val args = buildJsonObject {
             put("username", credentials.username)
             put("password", credentials.password)
@@ -95,11 +153,16 @@ class UbusClient(
         } catch (_: UbusException.AccessDenied) {
             throw UbusException.AuthFailed()
         }
-        val info = decode(serializer<SessionInfo>(), data, "session.login")
-        this.credentials = credentials
-        session = info.id
-        return info
+        return decode(serializer<SessionInfo>(), data, "session.login")
     }
+
+    internal suspend fun callInSession(sid: String, target: String, method: String, args: JsonObject): JsonElement? =
+        try {
+            rawCall(sid, target, method, args)
+        } catch (e: UbusException.AccessDenied) {
+            if (isSessionAlive(sid)) throw e
+            throw UbusException.SessionLost()
+        }
 
     /**
      * Olvida la sesión y las credenciales. No se llama a session.destroy porque el ACL
@@ -111,7 +174,7 @@ class UbusClient(
     }
 
     /** Llama a `objeto.método` con la sesión actual y devuelve los datos crudos. */
-    suspend fun call(target: String, method: String, args: JsonObject = JsonObject(emptyMap())): JsonElement? {
+    override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? {
         val sid = session ?: renewSession(expired = null)
         return try {
             rawCall(sid, target, method, args)
@@ -134,14 +197,7 @@ class UbusClient(
         deserializer: kotlinx.serialization.DeserializationStrategy<T>,
         data: JsonElement?,
         what: String,
-    ): T = try {
-        // ubus puede responder solo `[0]` (sin datos): se trata como un objeto vacío.
-        json.decodeFromJsonElement(deserializer, data?.takeUnless { it is JsonNull } ?: JsonObject(emptyMap()))
-    } catch (e: SerializationException) {
-        throw UbusException.Protocol("Respuesta inesperada de $what: ${e.message}", e)
-    } catch (e: IllegalArgumentException) {
-        throw UbusException.Protocol("Respuesta inesperada de $what: ${e.message}", e)
-    }
+    ): T = decodeUbus(json, deserializer, data, what)
 
     /**
      * Obtiene una sesión válida. Si [expired] ya no es la sesión actual, otra corrutina la
@@ -184,7 +240,7 @@ class UbusClient(
 
         val request = Request.Builder().url(endpoint).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
 
-        val text = withContext(Dispatchers.IO) {
+        val text = withContext(io) {
             try {
                 http.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
