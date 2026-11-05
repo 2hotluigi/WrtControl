@@ -169,6 +169,20 @@ suspend fun UbusCaller.setPassword(username: String, password: String) {
     }
 }
 
+/** Arranca, para, reinicia o habilita un servicio de /etc/init.d (luci.setInitAction, como LuCI). */
+suspend fun UbusCaller.initAction(service: String, action: String) {
+    val result = callAs<JsonObject>("luci", "setInitAction", buildJsonObject {
+        put("name", service)
+        put("action", action)
+    })
+    if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
+        throw UbusException.Protocol("El router no pudo hacer \"$action\" con $service")
+    }
+}
+
+/** Protocolos que conoce netifd ahora mismo (dhcp, pppoe, wireguard...). Uno recién instalado no sale hasta reiniciar la red. */
+suspend fun UbusCaller.protoHandlers(): Set<String> = callAs<JsonObject>("network", "get_proto_handlers").keys
+
 suspend fun UbusCaller.fileRemove(path: String) {
     call("file", "remove", buildJsonObject { put("path", path) })
 }

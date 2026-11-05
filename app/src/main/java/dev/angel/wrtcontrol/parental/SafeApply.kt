@@ -8,6 +8,7 @@ import dev.angel.wrtcontrol.ubus.UbusSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.TimeSource
 
 /*
  * Cómo se aplica un cambio sin arriesgar el acceso al router (rpcd, uci.c):
@@ -21,12 +22,17 @@ import kotlinx.coroutines.withTimeoutOrNull
  * 3. `uci apply` con reversión: si no llega `uci confirm` en [ROLLBACK_SECONDS], rpcd restaura
  *    los ficheros y recarga los servicios. Cubre también que la app se cierre o pierda la red.
  * 4. Se comprueba en el router que el cambio funciona (p. ej. que fw4 cargó las reglas) y solo
- *    entonces se confirma. Si no, `uci rollback` lo deshace al momento.
+ *    entonces se confirma. Si no, se deja de confirmar y el router lo deshace al vencer el plazo.
+ *    El ACL de LuCI no incluye `uci rollback` (solo `apply` y `confirm`, ver luci-base.json): se
+ *    intenta por si el ACL lo permite, pero lo normal es esperar, como hace LuCI.
  */
 
 internal const val ROLLBACK_SECONDS = 60
 internal const val VERIFY_TIMEOUT_MS = 40_000L
 internal const val VERIFY_INTERVAL_MS = 1_000L
+
+/** Lo que se espera, además del plazo, a que rpcd restaure los ficheros y recargue los servicios. */
+internal const val REVERT_GRACE_MS = 15_000L
 
 private const val UBUS_NO_DATA = 5
 private const val UBUS_PERMISSION_DENIED = 6
@@ -86,6 +92,7 @@ internal suspend fun UbusSession.applySafely(
         if (e.code == UBUS_PERMISSION_DENIED) throw PendingChangeException()
         throw e
     }
+    val applied = TimeSource.Monotonic.markNow()
 
     var reason = failure
     val live = withTimeoutOrNull(VERIFY_TIMEOUT_MS) {
@@ -108,16 +115,23 @@ internal suspend fun UbusSession.applySafely(
 
     if (!live) {
         runCatchingNonCancel { uciRollback() }
-        val reverted = try {
-            isReverted()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            false
-        }
+        // Sin permiso para `uci rollback`, el router lo deshace al vencer el plazo: se mira hasta entonces.
+        val budget = ROLLBACK_SECONDS * 1000L + REVERT_GRACE_MS - applied.elapsedNow().inWholeMilliseconds
+        val reverted = withTimeoutOrNull(budget.coerceAtLeast(VERIFY_INTERVAL_MS)) {
+            while (!checkReverted(isReverted)) delay(VERIFY_INTERVAL_MS * 2)
+            true
+        } ?: false
         throw if (reverted) ChangeRevertedException(reason) else ChangeUncertainException()
     }
     uciConfirm()
+}
+
+private suspend fun checkReverted(isReverted: suspend () -> Boolean): Boolean = try {
+    isReverted()
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    false // el router aún está recargando: se vuelve a mirar
 }
 
 private suspend fun runCatchingNonCancel(block: suspend () -> Unit) {
@@ -126,6 +140,6 @@ private suspend fun runCatchingNonCancel(block: suspend () -> Unit) {
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
-        // Si tampoco se puede deshacer a mano, el router lo hará solo al vencer el plazo.
+        // Sin permiso (lo normal) o sin respuesta: el router lo deshará solo al vencer el plazo.
     }
 }

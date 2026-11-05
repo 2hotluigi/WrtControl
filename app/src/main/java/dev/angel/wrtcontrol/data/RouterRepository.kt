@@ -28,6 +28,8 @@ sealed interface Connection {
 class RouterRepository(
     private val store: RouterStore,
     private val http: OkHttpClient,
+    /** Camino hasta el router: directo en casa, por el acceso remoto fuera. */
+    val transport: RouterTransport? = null,
 ) {
     private val _state = MutableStateFlow<Connection>(Connection.Loading)
     val state: StateFlow<Connection> = _state.asStateFlow()
@@ -46,6 +48,7 @@ class RouterRepository(
             return
         }
         // El login real se hace en la primera llamada (UbusClient renueva la sesión solo).
+        transport?.config = parseTunnel(store.loadTunnel(saved.address))
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
         _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
     }
@@ -53,6 +56,7 @@ class RouterRepository(
     /** Prueba las credenciales contra el router y, si funcionan, las guarda. */
     suspend fun connect(address: String, username: String, password: String) {
         val endpoint = RouterAddress.endpoint(address)
+        transport?.config = parseTunnel(store.loadTunnel(address.trim()))
         val newClient = UbusClient(endpoint, http)
         newClient.login(Credentials(username, password))
         store.save(SavedRouter(address.trim(), username, password))
@@ -61,6 +65,7 @@ class RouterRepository(
     }
 
     suspend fun signOut(notice: String? = null) {
+        transport?.config = null
         client?.forget()
         client = null
         api = null
@@ -121,6 +126,17 @@ class RouterRepository(
 
     suspend fun setBackupPending(router: String, pending: Boolean) {
         (_state.value as? Connection.SignedIn)?.let { store.setBackupPending(it.address + "|" + router, pending) }
+    }
+
+    /** Acceso remoto de este teléfono al router conectado (ver [TunnelConfig]). */
+    suspend fun loadTunnel(): TunnelConfig? =
+        (_state.value as? Connection.SignedIn)?.let { parseTunnel(store.loadTunnel(it.address)) }
+
+    suspend fun saveTunnel(config: TunnelConfig?) {
+        (_state.value as? Connection.SignedIn)?.let {
+            store.saveTunnel(it.address, config?.toJson())
+            transport?.config = config
+        }
     }
 
     private fun open(newClient: UbusClient) {

@@ -1,7 +1,9 @@
 package dev.angel.wrtcontrol.openwrt
 
 import android.util.Log
+import dev.angel.wrtcontrol.addons.AddonsApi
 import dev.angel.wrtcontrol.parental.ParentalApi
+import kotlinx.coroutines.sync.Mutex
 import dev.angel.wrtcontrol.ubus.UbusClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -16,8 +18,14 @@ import kotlinx.coroutines.coroutineScope
  */
 class OpenWrtApi(private val ubus: UbusClient) {
 
+    /** Un cambio a la vez: rpcd solo admite un `uci apply` pendiente de confirmar. */
+    private val writeLock = Mutex()
+
     /** Perfiles, pausas y horarios (escribe en el firewall con reversión automática). */
-    val parental = ParentalApi(ubus, log = { Log.d("WrtControl", it) })
+    val parental = ParentalApi(ubus, log = { Log.d("WrtControl", it) }, writeLock = writeLock)
+
+    /** Paquetes opcionales: WireGuard, DNS dinámico, SQM y UPnP. */
+    val addons = AddonsApi(ubus, writeLock)
 
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 

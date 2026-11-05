@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.androidx.biometric)
+    // Acceso remoto: WireGuard en espacio de usuario (tunnel/, compilado con tools/build-tunnel.sh).
+    implementation(files("libs/wrtcvpn.aar"))
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

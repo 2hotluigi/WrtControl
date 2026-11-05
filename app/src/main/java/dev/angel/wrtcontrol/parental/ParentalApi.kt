@@ -84,9 +84,9 @@ class ParentalApi(
     private val phoneClockSeconds: () -> Long = { System.currentTimeMillis() / 1000 },
     /** Diagnóstico de la verificación (logcat en la app, stdout en las pruebas). */
     private val log: (String) -> Unit = {},
+    /** Compartido con los demás cambios de la app (ver OpenWrtApi): dos `uci apply` a la vez se pisarían. */
+    private val writeLock: Mutex = Mutex(),
 ) {
-    private val writeLock = Mutex()
-
     suspend fun load(): ParentalSnapshot = coroutineScope {
         val firewall = async { ubus.uciSections("firewall") }
         val local = async { ubus.routerLocalTime() }

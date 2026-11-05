@@ -46,6 +46,17 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         context.routerDataStore.edit { prefs -> if (pending) prefs[pendingKey(key)] = true else prefs.remove(pendingKey(key)) }
     }
 
+    /** Configuración del acceso remoto para el router de [address] (cifrada, lleva una clave privada). */
+    suspend fun loadTunnel(address: String): String? =
+        context.routerDataStore.data.first()[tunnelKey(address)]?.let(box::decrypt)
+
+    suspend fun saveTunnel(address: String, json: String?) {
+        val encrypted = json?.let(box::encrypt)
+        context.routerDataStore.edit { prefs ->
+            if (encrypted == null) prefs.remove(tunnelKey(address)) else prefs[tunnelKey(address)] = encrypted
+        }
+    }
+
     /** Olvida la contraseña pero conserva dirección y usuario para rellenar el formulario. */
     suspend fun forgetPassword() {
         context.routerDataStore.edit { it.remove(PASSWORD) }
@@ -54,6 +65,7 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
     private companion object {
         fun backupKey(key: String) = stringPreferencesKey("parental_backup:" + key.trim().lowercase())
         fun pendingKey(key: String) = booleanPreferencesKey("parental_backup_pending:" + key.trim().lowercase())
+        fun tunnelKey(address: String) = stringPreferencesKey("tunnel:" + address.trim().lowercase())
         val ADDRESS = stringPreferencesKey("address")
         val USERNAME = stringPreferencesKey("username")
         val PASSWORD = stringPreferencesKey("password_encrypted")
