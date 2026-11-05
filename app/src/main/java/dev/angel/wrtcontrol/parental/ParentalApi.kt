@@ -1,11 +1,14 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.openwrt.Lookup
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.fileRemove
 import dev.angel.wrtcontrol.openwrt.fileWrite
+import dev.angel.wrtcontrol.openwrt.lookup
 import dev.angel.wrtcontrol.openwrt.routerLocalTime
 import dev.angel.wrtcontrol.openwrt.routerTimezones
 import dev.angel.wrtcontrol.openwrt.routerUnixTime
+import dev.angel.wrtcontrol.openwrt.serviceInstances
 import dev.angel.wrtcontrol.openwrt.systemSection
 import dev.angel.wrtcontrol.openwrt.uciAdd
 import dev.angel.wrtcontrol.openwrt.uciDelete
@@ -36,10 +39,16 @@ data class ParentalSnapshot(
     val flowOffloading: Boolean,
     /** Reglas ajenas que usan la misma marca que WrtControl. */
     val markConflicts: List<String>,
-)
+    /** Instancias de dnsmasq en marcha (null si este usuario no puede verlas). */
+    val dnsRunning: Map<String, Boolean>? = null,
+) {
+    /** ¿El filtro de este perfil está funcionando en el router? null si no se sabe. */
+    fun filterRunning(p: Profile): Boolean? =
+        if (!p.needsDns) null else dnsRunning?.let { it[dnsInstance(p)] == true }
+}
 
 /**
- * Control parental sobre el firewall del router. Las lecturas usan la sesión compartida;
+ * Control parental sobre el firewall y el DNS del router. Las lecturas usan la sesión compartida;
  * cada escritura abre la suya y se aplica con reversión automática (ver SafeApply.kt).
  */
 class ParentalApi(
@@ -55,6 +64,7 @@ class ParentalApi(
         val local = async { ubus.routerLocalTime() }
         val unix = async { ubus.routerUnixTime() }
         val system = async { ubus.systemSection() }
+        val dns = async { ubus.serviceInstances("dnsmasq") }
         val sections = firewall.await()
         val localSeconds = local.await()
         ParentalSnapshot(
@@ -64,28 +74,29 @@ class ParentalApi(
             routerZone = system.await()?.text("zonename"),
             flowOffloading = sections.firstOrNull { it.type == "defaults" }?.text("flow_offloading") == "1",
             markConflicts = markConflicts(sections),
+            dnsRunning = dns.await(),
         )
     }
 
     /**
      * Lee los perfiles actuales del router, les aplica [change] (con la hora local del router)
-     * y deja el firewall como corresponde. Leer dentro de la transacción evita pisar cambios
-     * hechos desde otro teléfono entre medias.
+     * y deja el firewall y el DNS como corresponde. Leer dentro de la transacción evita pisar
+     * cambios hechos desde otro teléfono entre medias.
      */
     suspend fun update(change: (profiles: List<Profile>, now: LocalDateTime) -> List<Profile>) = writeLock.withLock {
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
-        val existing = tx.uciSections("firewall")
+        val state = tx.readState()
         val now = routerDateTime(tx.routerLocalTime())
-        val updated = change(readProfiles(existing), now)
-        validateProfiles(updated)
-        val plan = compileFirewall(updated, now)
-        val changes = diffSections(existing, plan.sections)
+        val updated = change(readProfiles(state.firewall), now)
+        val plan = compileRouter(updated, now, state.env)
+        validateProfiles(plan.profiles)
+        val changes = state.changesTo(plan)
         if (changes.isEmpty()) return@withLock
 
         if (plan.usesBlockChain) writeBlockChain(tx)
         tx.stage(changes)
-        applyFirewall(tx, plan, existing)
+        applyAndVerify(tx, plan, state)
         if (!plan.usesBlockChain) removeBlockChain(tx)
     }
 
@@ -116,37 +127,40 @@ class ParentalApi(
             isLive = { tx.offsetSeconds() == expectedOffsetSeconds },
         )
 
-        val existing = tx.uciSections("firewall")
-        val include = existing.firstOrNull { it.name == INCLUDE_SECTION } ?: return@withLock
+        val state = tx.readState()
+        val include = state.firewall.firstOrNull { it.name == INCLUDE_SECTION } ?: return@withLock
         // Borrar y volver a crear la misma sección basta para que procd recargue fw4.
-        tx.stage(listOf(UciChange.Delete(include.name), UciChange.Add(include)))
-        applyFirewall(tx, compileFirewall(readProfiles(existing), routerDateTime(tx.routerLocalTime())), existing)
+        tx.stage(listOf(Staged("firewall", UciChange.Delete(include.name)), Staged("firewall", UciChange.Add(include))))
+        val plan = compileRouter(readProfiles(state.firewall), routerDateTime(tx.routerLocalTime()), state.env)
+        applyAndVerify(tx, plan, state)
     }
 
     /**
-     * Aplica los cambios del firewall y espera a que fw4 los cargue tal cual: que se haya
-     * recargado y que estén exactamente las reglas de [plan]. Si fw4 rechaza la configuración,
-     * la tabla queda como estaba y no se confirma.
+     * Aplica lo preparado y espera a que el router lo cargue tal cual: que fw4 se haya recargado
+     * con exactamente las reglas de [plan] y que cada perfil con filtro tenga su servidor DNS en
+     * marcha y bloqueando. Si algo no carga, no se confirma y se deshace.
      */
-    private suspend fun applyFirewall(tx: UbusSession, plan: FirewallPlan, existing: List<UciSection>) {
-        val before = tx.loadedFirewall()
-        log("firewall antes: tabla=${before?.tableHandle} max=${before?.maxRuleHandle} reglas=${before?.wrtcontrolRules}")
+    private suspend fun applyAndVerify(tx: UbusSession, plan: RouterPlan, before: RouterState) {
+        val firewallBefore = tx.loadedFirewall()
+        log("firewall antes: tabla=${firewallBefore?.tableHandle} max=${firewallBefore?.maxRuleHandle} reglas=${firewallBefore?.wrtcontrolRules}")
+        val dns = DnsCheck(tx, plan, log)
         var waited = 0
         tx.applySafely(
-            failure = "El firewall del router no cargó las reglas nuevas, así que se restauró la configuración anterior.",
-            isReverted = { ownSections(ubus.openSession().uciSections("firewall")) == ownSections(existing) },
+            failure = "El router no cargó los cambios (firewall o DNS), así que se restauró la configuración anterior.",
+            isReverted = { ubus.openSession().readState().ownSections() == before.ownSections() },
         ) {
-            if (before == null) {
+            val firewallOk = if (firewallBefore == null) {
                 // Sin permiso para listar el firewall: solo se puede comprobar que el router sigue respondiendo.
                 tx.routerLocalTime()
                 ++waited >= 3
             } else {
                 val now = tx.loadedFirewall() ?: return@applySafely false
-                val reloaded = now.reloadedSince(before)
+                val reloaded = now.reloadedSince(firewallBefore)
                 val matches = now.matches(plan)
-                log("firewall: recargado=$reloaded coincide=$matches max=${now.maxRuleHandle} reglas=${now.wrtcontrolRules} esperadas=${plan.ruleLabels}")
+                log("firewall: recargado=$reloaded coincide=$matches reglas=${now.wrtcontrolRules.toSet()} esperadas=${plan.ruleLabels.toSet()}")
                 reloaded && matches
             }
+            firewallOk && dns.ready()
         }
     }
 
@@ -179,15 +193,82 @@ class ParentalApi(
     }
 }
 
-private suspend fun UbusSession.stage(changes: List<UciChange>) {
-    for (change in changes) when (change) {
-        is UciChange.Delete -> uciDelete("firewall", change.section)
-        is UciChange.Add -> uciAdd("firewall", change.section)
+/**
+ * Comprueba los servidores DNS de los perfiles: que estén en marcha, que respondan con su lista de
+ * bloqueo (el canario da NXDOMAIN) y que su DNS para familias conteste. Si el router no deja
+ * mirar algo (ACL), esa parte no se comprueba.
+ */
+private class DnsCheck(private val tx: UbusSession, private val plan: RouterPlan, private val log: (String) -> Unit) {
+    private var upstreamFailures = 0
+
+    suspend fun ready(): Boolean {
+        val running = tx.serviceInstances("dnsmasq")
+        if (running != null) {
+            val ours = running.filterKeys { it.startsWith("wrtc_dns_") }
+            if (ours.filterValues { it }.keys != plan.dnsInstances.keys) {
+                log("dns: en marcha=${ours.filterValues { it }.keys} esperadas=${plan.dnsInstances.keys}")
+                return false
+            }
+        }
+        for (profile in plan.profiles.filter { it.needsDns }) {
+            val port = profile.dnsPort!!
+            when (tx.lookup(CANARY_DOMAIN, port)) {
+                Lookup.Unavailable -> return true // sin permiso para nslookup: basta con que estén en marcha
+                Lookup.NxDomain -> {}
+                else -> {
+                    log("dns: ${dnsInstance(profile)} aún no bloquea el canario")
+                    return false
+                }
+            }
+            if (profile.filter.level != FilterLevel.None && tx.lookup(UPSTREAM_PROBE, port) != Lookup.Resolved) {
+                // Si el router tampoco resuelve por su DNS normal, no tiene internet ahora: no es culpa del filtro.
+                if (tx.lookup(UPSTREAM_PROBE) != Lookup.Resolved) continue
+                if (++upstreamFailures >= 3) {
+                    throw VerificationFailed(
+                        "El DNS para familias (${profile.filter.level.upstreams().first()}) no responde desde el router, " +
+                            "así que no se activó el filtro. Prueba otro nivel o revisa si tu proveedor lo bloquea.",
+                    )
+                }
+                return false
+            }
+        }
+        return true
+    }
+
+    private companion object {
+        /** Dominio estable para comprobar que el DNS para familias contesta. */
+        const val UPSTREAM_PROBE = "openwrt.org"
+    }
+}
+
+/** Configuración del router que toca la app, leída en una sesión. */
+private data class RouterState(val firewall: List<UciSection>, val dhcp: List<UciSection>) {
+    val env: RouterEnv get() = routerEnv(firewall, dhcp)
+
+    fun changesTo(plan: RouterPlan): List<Staged> =
+        diffSections(firewall, plan.firewall).map { Staged("firewall", it) } +
+            diffSections(dhcp, plan.dhcp).map { Staged("dhcp", it) }
+
+    /** Secciones de WrtControl por configuración y nombre (para comparar sin importar el orden). */
+    fun ownSections(): Map<String, Map<String, UciSection>> = mapOf(
+        "firewall" to firewall.filter { it.name.startsWith(SECTION_PREFIX) }.associateBy { it.name },
+        "dhcp" to dhcp.filter { it.name.startsWith(SECTION_PREFIX) }.associateBy { it.name },
+    )
+}
+
+private data class Staged(val config: String, val change: UciChange)
+
+private suspend fun UbusCaller.readState(): RouterState = coroutineScope {
+    val firewall = async { uciSections("firewall") }
+    val dhcp = async { uciSections("dhcp") }
+    RouterState(firewall.await(), dhcp.await())
+}
+
+private suspend fun UbusSession.stage(changes: List<Staged>) {
+    for ((config, change) in changes) when (change) {
+        is UciChange.Delete -> uciDelete(config, change.section)
+        is UciChange.Add -> uciAdd(config, change.section)
     }
 }
 
 private val UTC_ALIASES = setOf("UTC", "Etc/UTC", "GMT", "Etc/GMT", "Z", "Etc/Universal", "Universal", "Etc/Zulu", "Zulu")
-
-/** Secciones de WrtControl por nombre (para comparar estados sin importar el orden). */
-private fun ownSections(sections: List<UciSection>): Map<String, UciSection> =
-    sections.filter { it.name.startsWith(SECTION_PREFIX) }.associateBy { it.name }

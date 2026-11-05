@@ -29,6 +29,10 @@ class ParentalApiTest {
         section("cfg01", "defaults", "input" to "REJECT")
         section("cfg02", "rule", "name" to "Allow-Ping", "target" to "ACCEPT")
         section("cfg03", "system", "hostname" to "OpenWrt", "timezone" to "CST6", "zonename" to "America/Mexico_City")
+        section("cfg04", "zone", "name" to "lan")
+        section("cfg05", "zone", "name" to "wan", "masq" to "1")
+        section("cfg06", "dnsmasq", "domain" to "lan")
+        section("lan", "dhcp", "interface" to "lan")
     }
 
     private suspend inline fun <reified E : Throwable> expect(block: () -> Unit): E {
@@ -107,6 +111,69 @@ class ParentalApiTest {
 
         assertTrue(fake.calls.contains("uci.rollback"))
         assertTrue("el cambio se quedó en el router", fake.committed.containsKey("wrtc_r_j1_pausa"))
+    }
+
+    @Test
+    fun `filtro de contenido - servidor DNS y redireccion, comprobados antes de confirmar`() = runTest {
+        val fake = FakeOpenWrt().base()
+
+        api(fake).update { profiles, _ ->
+            profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult, setOf("tiktok"), listOf("ejemplo.com")))
+        }
+
+        assertEquals("5301", fake.option("wrtc_dns_j1", "port"))
+        assertEquals("dhcp", fake.committed["wrtc_dns_j1"]!![".config"]!!.jsonPrimitive.content)
+        assertEquals("1", fake.option("wrtc_nodhcp_j1_0", "ignore"))
+        assertEquals("5301", fake.option("wrtc_d_j1_0", "dest_port"))
+        assertEquals("853", fake.option("wrtc_r_j1_dot", "dest_port"))
+        assertEquals("5301", fake.option("wrtc_p_j1", "dns_port"))
+        // Se comprobó que la instancia bloquea (canario) y que el DNS para familias contesta.
+        val lookups = fake.router.calls.filter { it.name == "file.exec" && it.args.toString().contains("nslookup") }
+        assertTrue(lookups.any { it.args.toString().contains(CANARY_DOMAIN) })
+        assertTrue(lookups.any { it.args.toString().contains("openwrt.org") })
+        assertEquals("uci.confirm", fake.calls.last())
+        assertNull(fake.pendingApply)
+    }
+
+    @Test
+    fun `si el DNS para familias no responde se deshace y se explica`() = runTest {
+        val fake = FakeOpenWrt().base()
+        fake.familyDnsDown = true
+
+        val e = expect<ChangeRevertedException> {
+            api(fake).update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult)) }
+        }
+
+        assertTrue(e.message!!.contains("DNS para familias"))
+        assertFalse(fake.committed.containsKey("wrtc_dns_j1"))
+        assertFalse(fake.committed.containsKey("wrtc_p_j1"))
+        assertNull(fake.pendingApply)
+    }
+
+    @Test
+    fun `quitar el filtro borra su servidor DNS y la redireccion`() = runTest {
+        val fake = FakeOpenWrt().base()
+        val api = api(fake)
+        api.update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(domains = listOf("ejemplo.com"))) }
+        assertTrue(fake.committed.containsKey("wrtc_dns_j1"))
+
+        api.update { profiles, _ -> profiles.map { it.copy(filter = ContentFilter()) } }
+
+        assertTrue(fake.committed.keys.none { it.startsWith("wrtc_dns_") || it.startsWith("wrtc_nodhcp_") || it.startsWith("wrtc_d_") })
+        assertNull(fake.option("wrtc_p_j1", "dns_port"))
+        val snapshot = api.load()
+        assertNull("sin filtro no aplica", snapshot.filterRunning(snapshot.profiles.single()))
+    }
+
+    @Test
+    fun `load informa si el filtro esta en marcha`() = runTest {
+        val fake = FakeOpenWrt().base()
+        val api = api(fake)
+        api.update { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Strict)) }
+
+        val snapshot = api.load()
+
+        assertEquals(true, snapshot.filterRunning(snapshot.profiles.single()))
     }
 
     @Test

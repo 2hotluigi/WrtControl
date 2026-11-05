@@ -168,3 +168,37 @@ suspend fun UbusCaller.routerTimezones(): Map<String, String> =
 
 /** Opciones de la primera sección `system` (hostname, zonename, timezone...). */
 suspend fun UbusCaller.systemSection(): UciSection? = uciSections("system", "system").firstOrNull()
+
+/** Instancias de un servicio de procd (nombre → en marcha), o null si el ACL no lo permite. */
+suspend fun UbusCaller.serviceInstances(service: String): Map<String, Boolean>? {
+    val response = try {
+        callAs<JsonObject>("service", "list", buildJsonObject { put("name", service) })
+    } catch (_: UbusException.AccessDenied) {
+        return null
+    }
+    val instances = (response[service] as? JsonObject)?.get("instances") as? JsonObject ?: return emptyMap()
+    return instances.mapValues { (_, v) -> ((v as? JsonObject)?.get("running") as? JsonPrimitive)?.content == "true" }
+}
+
+enum class Lookup { Resolved, NxDomain, Failed, Unavailable }
+
+/**
+ * Pregunta [domain] al DNS del router en [port] con el nslookup de BusyBox, el mismo que usa la
+ * página de diagnóstico de LuCI (su ACL lo permite). [Lookup.Unavailable] si no hay permiso.
+ */
+suspend fun UbusCaller.lookup(domain: String, port: Int = 53): Lookup {
+    val result = try {
+        exec("/usr/bin/nslookup", listOf("-type=a", "-timeout=2", "-retry=1", "-port=$port", domain, "127.0.0.1"))
+    } catch (_: UbusException.AccessDenied) {
+        return Lookup.Unavailable
+    } catch (e: UbusException.Status) {
+        if (e.code == 6) return Lookup.Unavailable
+        throw e
+    }
+    val out = result.stdout + "\n" + result.stderr
+    return when {
+        "NXDOMAIN" in out -> Lookup.NxDomain
+        out.lines().any { it.startsWith("Name:") } -> Lookup.Resolved
+        else -> Lookup.Failed
+    }
+}

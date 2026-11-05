@@ -13,7 +13,32 @@ data class Profile(
     val macs: List<String>,
     val pause: Pause? = null,
     val schedules: List<Schedule> = emptyList(),
+    val filter: ContentFilter = ContentFilter(),
+    /** Puerto de su servidor DNS en el router; lo asigna la app al activar el filtro. */
+    val dnsPort: Int? = null,
 )
+
+/** Qué sitios se bloquean a un perfil, a través del DNS. */
+data class ContentFilter(
+    val level: FilterLevel = FilterLevel.None,
+    /** Identificadores del catálogo [SERVICES]. */
+    val services: Set<String> = emptySet(),
+    /** Dominios propios, normalizados con [normalizeDomain]. */
+    val domains: List<String> = emptyList(),
+) {
+    val active: Boolean get() = level != FilterLevel.None || services.isNotEmpty() || domains.isNotEmpty()
+}
+
+/** Nivel de filtrado por categorías, delegado a un DNS para familias. */
+enum class FilterLevel(val uciValue: String?) {
+    None(null),
+
+    /** Cloudflare for Families: contenido para adultos y malware. */
+    Adult("adult"),
+
+    /** CleanBrowsing Family: además búsqueda segura, YouTube restringido y VPN/proxys. */
+    Strict("strict"),
+}
 
 sealed interface Pause {
     /** Hasta que se reanude a mano. */

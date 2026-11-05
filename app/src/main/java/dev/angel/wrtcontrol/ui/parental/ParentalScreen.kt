@@ -210,6 +210,14 @@ private fun ProfileCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             status.detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            formatFilter(profile.filter)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            if (data.snapshot.filterRunning(profile) == false) {
+                Text(
+                    "El filtro no está funcionando en el router. Vuelve a guardar el perfil para reactivarlo.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             profile.schedules.forEach { s ->
                 Text(
                     formatSchedule(s) + if (s.enabled) "" else " (desactivado)",

@@ -40,6 +40,9 @@ class PendingChangeException : Exception(
 /** El cambio se aplicó pero no funcionó como se esperaba, y se deshizo. */
 class ChangeRevertedException(message: String) : Exception(message)
 
+/** Lo lanza la comprobación cuando el fallo es definitivo y no vale la pena seguir esperando. */
+class VerificationFailed(message: String) : Exception(message)
+
 /** No se pudo comprobar el cambio y tampoco que se deshiciera: hay que mirar cómo quedó el router. */
 class ChangeUncertainException : Exception(
     "No se pudo comprobar que el cambio funcionara y el router no confirmó que lo deshiciera. " +
@@ -84,6 +87,7 @@ internal suspend fun UbusSession.applySafely(
         throw e
     }
 
+    var reason = failure
     val live = withTimeoutOrNull(VERIFY_TIMEOUT_MS) {
         do {
             delay(VERIFY_INTERVAL_MS)
@@ -92,6 +96,9 @@ internal suspend fun UbusSession.applySafely(
                 isLive()
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: VerificationFailed) {
+                reason = e.message ?: failure
+                return@withTimeoutOrNull false
             } catch (_: Exception) {
                 false
             }
@@ -108,7 +115,7 @@ internal suspend fun UbusSession.applySafely(
         } catch (_: Exception) {
             false
         }
-        throw if (reverted) ChangeRevertedException(failure) else ChangeUncertainException()
+        throw if (reverted) ChangeRevertedException(reason) else ChangeUncertainException()
     }
     uciConfirm()
 }

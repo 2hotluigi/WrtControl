@@ -18,26 +18,26 @@ class FirewallCompilerTest {
     private val macs = listOf("AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02")
     private val juan = Profile("j1", "Juan", macs)
 
-    private fun FirewallPlan.rule(name: String) = sections.single { it.name == name }
+    private fun RouterPlan.rule(name: String) = (firewall + dhcp).single { it.name == name }
 
     @Test
     fun `sin perfiles no queda nada de WrtControl`() {
-        val plan = compileFirewall(emptyList(), now)
-        assertTrue(plan.sections.isEmpty())
+        val plan = compileRouter(emptyList(), now)
+        assertTrue(plan.firewall.isEmpty())
         assertFalse(plan.usesBlockChain)
     }
 
     @Test
     fun `perfil sin dispositivos - datos e include, pero ninguna regla`() {
-        val plan = compileFirewall(listOf(juan.copy(macs = emptyList(), pause = Pause.Indefinite)), now)
+        val plan = compileRouter(listOf(juan.copy(macs = emptyList(), pause = Pause.Indefinite)), now)
         assertTrue(plan.ruleLabels.isEmpty())
-        assertTrue(plan.sections.none { it.type == "rule" })
+        assertTrue(plan.firewall.none { it.type == "rule" })
         assertTrue(plan.usesBlockChain)
     }
 
     @Test
     fun `pausa indefinida - regla MARK por MAC para todo el trafico reenviado`() {
-        val plan = compileFirewall(listOf(juan.copy(pause = Pause.Indefinite)), now)
+        val plan = compileRouter(listOf(juan.copy(pause = Pause.Indefinite)), now)
         val rule = plan.rule("wrtc_r_j1_pausa")
         assertEquals(
             uciSection(
@@ -61,14 +61,14 @@ class FirewallCompilerTest {
 
     @Test
     fun `pausa con fin - stop_date en hora local`() {
-        val plan = compileFirewall(listOf(juan.copy(pause = Pause.Until(now.plusMinutes(90)))), now)
+        val plan = compileRouter(listOf(juan.copy(pause = Pause.Until(now.plusMinutes(90)))), now)
         assertEquals("2026-11-04T23:30:00", plan.rule("wrtc_r_j1_pausa").text("stop_date"))
     }
 
     @Test
     fun `pausa vencida - desaparece de la regla y de los datos`() {
-        val plan = compileFirewall(listOf(juan.copy(pause = Pause.Until(now))), now)
-        assertTrue(plan.sections.none { it.type == "rule" })
+        val plan = compileRouter(listOf(juan.copy(pause = Pause.Until(now))), now)
+        assertTrue(plan.firewall.none { it.type == "rule" })
         val data = plan.rule("wrtc_p_j1")
         assertEquals(null, data.text("pause"))
         assertEquals(null, data.text("pause_until"))
@@ -82,7 +82,7 @@ class FirewallCompilerTest {
                 Schedule("noche1", setOf(SUNDAY, MONDAY, THURSDAY), LocalTime.of(21, 30), LocalTime.of(7, 0)),
             ),
         )
-        val plan = compileFirewall(listOf(profile), now)
+        val plan = compileRouter(listOf(profile), now)
 
         val night = plan.rule("wrtc_r_noche1_1")
         assertEquals("WrtControl · Juan · horario 2", night.text("name"))
@@ -97,14 +97,14 @@ class FirewallCompilerTest {
         assertEquals("06:59:59", dawn.text("stop_time"))
 
         // El horario desactivado se guarda, pero no genera reglas.
-        assertTrue(plan.sections.any { it.name == "wrtc_s_tarde1" })
-        assertTrue(plan.sections.none { it.name.startsWith("wrtc_r_tarde1") })
+        assertTrue(plan.firewall.any { it.name == "wrtc_s_tarde1" })
+        assertTrue(plan.firewall.none { it.name.startsWith("wrtc_r_tarde1") })
         assertEquals(2, plan.ruleLabels.size)
     }
 
     @Test
     fun `todo el dia - solo dias`() {
-        val plan = compileFirewall(
+        val plan = compileRouter(
             listOf(juan.copy(schedules = listOf(Schedule("dom", setOf(SUNDAY), LocalTime.MIDNIGHT, LocalTime.MIDNIGHT)))),
             now,
         )
@@ -136,16 +136,16 @@ class FirewallCompilerTest {
 
     @Test
     fun `diff - sin cambios no toca nada`() {
-        val plan = compileFirewall(listOf(juan.copy(pause = Pause.Indefinite)), now)
+        val plan = compileRouter(listOf(juan.copy(pause = Pause.Indefinite)), now)
         val foreign = uciSection("cfg0abc", "rule", "name" to "Allow-Ping")
-        assertTrue(diffSections(plan.sections + foreign, plan.sections).isEmpty())
+        assertTrue(diffSections(plan.firewall + foreign, plan.firewall).isEmpty())
     }
 
     @Test
     fun `diff - borra lo sobrante y recrea lo cambiado, sin tocar lo ajeno`() {
-        val before = compileFirewall(listOf(juan.copy(pause = Pause.Indefinite)), now).sections +
+        val before = compileRouter(listOf(juan.copy(pause = Pause.Indefinite)), now).firewall +
             uciSection("cfg0abc", "rule", "name" to "Allow-Ping")
-        val after = compileFirewall(listOf(juan.copy(name = "Juanito")), now).sections
+        val after = compileRouter(listOf(juan.copy(name = "Juanito")), now).firewall
 
         val changes = diffSections(before, after)
 

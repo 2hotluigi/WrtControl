@@ -28,12 +28,15 @@ data class LoadedFirewall(
         tableHandle != before.tableHandle || maxRuleHandle > before.maxRuleHandle
 
     /**
+     * Se comparan conjuntos de nombres: una sección con `proto 'tcp udp'` da dos reglas de
+     * nftables con el mismo comentario, y cuántas exactamente depende de la versión de fw4.
+     *
      * fw4 recarga con `flush table`, que vacía las cadenas pero no las borra: al quitar el
      * include, [BLOCK_CHAIN] sigue ahí, vacía y con política accept, hasta reiniciar el
      * firewall. Por eso se mira si tiene reglas y no si existe.
      */
-    fun matches(plan: FirewallPlan): Boolean =
-        wrtcontrolRules.sorted() == plan.ruleLabels.sorted() && (blockRules > 0) == plan.usesBlockChain
+    fun matches(plan: RouterPlan): Boolean =
+        wrtcontrolRules.toSet() == plan.ruleLabels.toSet() && (blockRules > 0) == plan.usesBlockChain
 
     private companion object {
         const val FW4_COMMENT = "!fw4: "
