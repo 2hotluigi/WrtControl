@@ -66,7 +66,14 @@ data class NetInterface(
     @SerialName("ipv6-address") val ipv6: List<IpAddress> = emptyList(),
     @SerialName("ipv6-prefix-assignment") val ipv6Prefixes: List<IpAddress> = emptyList(),
     @SerialName("dns-server") val dns: List<String> = emptyList(),
-)
+    @SerialName("route") val routes: List<Route> = emptyList(),
+) {
+    /** ¿Lleva la ruta por defecto (0.0.0.0/0 o ::/0)? Es la salida a internet, no una red de casa. */
+    val hasDefaultRoute: Boolean get() = routes.any { it.mask == 0 }
+}
+
+@Serializable
+data class Route(val target: String = "", val mask: Int = -1)
 
 @Serializable
 internal data class InterfaceDump(@SerialName("interface") val interfaces: List<NetInterface> = emptyList())

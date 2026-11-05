@@ -4,6 +4,8 @@ import dev.angel.wrtcontrol.openwrt.UciValue
 import dev.angel.wrtcontrol.openwrt.uciSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek.MONDAY
@@ -24,7 +26,7 @@ class FirewallCompilerTest {
     fun `sin perfiles no queda nada de WrtControl`() {
         val plan = compileRouter(emptyList(), now)
         assertTrue(plan.firewall.isEmpty())
-        assertFalse(plan.usesBlockChain)
+        assertNull(plan.include)
     }
 
     @Test
@@ -32,7 +34,7 @@ class FirewallCompilerTest {
         val plan = compileRouter(listOf(juan.copy(macs = emptyList(), pause = Pause.Indefinite)), now)
         assertTrue(plan.ruleLabels.isEmpty())
         assertTrue(plan.firewall.none { it.type == "rule" })
-        assertTrue(plan.usesBlockChain)
+        assertNotNull(plan.include)
     }
 
     @Test
@@ -54,7 +56,7 @@ class FirewallCompilerTest {
         )
         assertEquals(listOf("WrtControl · Juan · pausa"), plan.ruleLabels)
         val include = plan.rule(INCLUDE_SECTION)
-        assertEquals(INCLUDE_PATH, include.text("path"))
+        assertEquals(plan.include!!.path, include.text("path"))
         assertEquals("nftables", include.text("type"))
         assertEquals("table-append", include.text("position"))
     }
@@ -126,11 +128,12 @@ class FirewallCompilerTest {
     }
 
     @Test
-    fun `la cadena fija es ASCII y usa la misma marca que las reglas`() {
-        assertTrue(BLOCK_CHAIN_NFT.all { it.code < 128 })
-        assertTrue(BLOCK_CHAIN_NFT.contains("chain $BLOCK_CHAIN {"))
-        assertTrue(BLOCK_CHAIN_NFT.contains("priority -1"))
-        assertTrue(BLOCK_CHAIN_NFT.contains("0x08000000 == 0x08000000"))
+    fun `las reglas propias son ASCII y usan la misma marca que las reglas`() {
+        val nft = compileRouter(listOf(juan.copy(name = "Júan ñ", pause = Pause.Indefinite)), now).include!!.content
+        assertTrue(nft.all { it.code < 128 })
+        assertTrue(nft.contains("chain $BLOCK_CHAIN {"))
+        assertTrue(nft.contains("priority -1"))
+        assertTrue(nft.contains("0x08000000 == 0x08000000"))
         assertEquals(0x08000000L, MARK_BIT)
     }
 
@@ -175,5 +178,26 @@ class FirewallCompilerTest {
         assertEquals(listOf("QoS", "Otra"), markConflicts(sections))
         assertTrue(markConflicts(listOf(uciSection("cfg5", "rule", "target" to "MARK", "set_mark" to "basura"))).isEmpty())
         assertEquals(listOf("cfg6"), markConflicts(listOf(uciSection("cfg6", "rule", "target" to "mark", "set_mark" to "134217728"))))
+    }
+
+    @Test
+    fun `conflictos con el bit de la cuarentena`() {
+        val sections = listOf(
+            uciSection("cfg1", "rule", "name" to "Pone el bit", "target" to "MARK", "set_xmark" to "0x04000000/0x04000000"),
+            uciSection("cfg2", "rule", "name" to "Lo quita", "target" to "MARK", "set_xmark" to "0x0/0x04000000"),
+            uciSection("cfg3", "rule", "name" to "Máscara ancha", "target" to "MARK", "set_xmark" to "0x1/0xff000000"),
+            uciSection("cfg4", "rule", "name" to "Decimal", "target" to "MARK", "set_mark" to "67108864/67108864"),
+            uciSection("cfg5", "rule", "name" to "Bits de al lado", "target" to "MARK", "set_xmark" to "0x01000000/0x01000000"),
+            uciSection("cfg8", "rule", "name" to "Marca de WAN", "target" to "MARK", "set_xmark" to "0x02000000/0x02000000"),
+            uciSection("cfg6", "rule", "name" to "mwan3", "target" to "MARK", "set_xmark" to "0x100/0x3f00"),
+            uciSection("cfg7", "rule", "name" to "pbr", "target" to "MARK", "set_xmark" to "0x00010000/0x00ff0000"),
+            // Las de la cuarentena de WrtControl no cuentan.
+            uciSection("wrtc_q_0", "rule", "name" to "WrtControl · cuarentena (lan)", "target" to "MARK", "set_xmark" to "0x04000000/0x04000000"),
+        )
+        assertEquals(listOf("Pone el bit", "Lo quita", "Máscara ancha", "Decimal", "Marca de WAN"), markConflicts(sections))
+        // Las propias de la cuarentena compiladas tampoco.
+        val plan = compileRouter(ParentalConfig(listOf(juan.copy(pause = Pause.Indefinite)), ParentalSettings(quarantine = true)), now)
+        assertTrue(plan.firewall.any { it.name == "wrtc_q_0" })
+        assertTrue(markConflicts(plan.firewall).isEmpty())
     }
 }

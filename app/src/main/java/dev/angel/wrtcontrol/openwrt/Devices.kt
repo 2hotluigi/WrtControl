@@ -68,7 +68,10 @@ fun buildDeviceList(
     interfaces: List<NetInterface>,
 ): List<Device> {
     val routerIps = interfaces.flatMap { i -> i.ipv4.map { it.address } }.toSet()
-    val lanNets = interfaces.filter { it.name == "lan" }.flatMap { it.ipv4 }
+    // Redes de casa: "lan" y las demás interfaces sin la ruta por defecto (invitados, IoT...).
+    // Sin las otras, un equipo con IP fija en el Wi-Fi de invitados no saldría en la lista y,
+    // con la cuarentena, no habría forma de aprobarlo.
+    val lanNets = interfaces.filter { it.name == "lan" || (!it.hasDefaultRoute && !it.name.startsWith("wan")) }.flatMap { it.ipv4 }
     fun inLan(ip: String) = ip !in routerIps && lanNets.any { ipv4InSubnet(ip, it) }
 
     val devices = LinkedHashMap<String, DeviceBuilder>()

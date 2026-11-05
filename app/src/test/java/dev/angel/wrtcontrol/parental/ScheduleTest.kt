@@ -81,7 +81,7 @@ class ScheduleTest {
         assertEquals(Access.Paused(at(2, 18)), paused.access(at(2, 17)))
         assertEquals(Access.Allowed, paused.access(at(2, 18)))
         assertEquals(Access.Paused(null), juan.copy(pause = Pause.Indefinite).access(at(2, 12)))
-        assertNull(paused.withoutExpiredPause(at(2, 18, 1)).pause)
+        assertNull(paused.withoutExpired(at(2, 18, 1)).pause)
     }
 
     @Test

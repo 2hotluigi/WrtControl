@@ -13,20 +13,20 @@ import java.time.LocalTime
  *    paquete reenviado de los dispositivos del perfil mientras dura la pausa o la franja horaria.
  *    fw4 convierte start_time/stop_time en `meta hour "21:00:00"-"23:59:59"` y nftables las pasa a
  *    UTC al cargar (también los rangos que cruzan la medianoche UTC); `meta day` usa la hora local.
+ *    El tiempo extra pone `start_date` a las reglas de los horarios: el router vuelve a aplicarlos
+ *    solo, a su hora, aunque la app esté cerrada.
  *
- * 2. Una cadena fija, [BLOCK_CHAIN], con prioridad -1 en el hook forward: rechaza los paquetes
- *    marcados *antes* de la cadena forward de fw4, que acepta primero las conexiones ya
- *    establecidas. Así una pausa corta también un vídeo o un juego que ya estaba en marcha.
- *    La cadena va en /etc/luci-uploads (el ACL de LuCI deja escribir ahí) y se incluye con una
- *    sección `include` de tipo nftables.
+ * 2. Reglas propias en un fichero que incluye fw4 (ver NftInclude.kt): rechazan lo marcado antes
+ *    de que fw4 acepte las conexiones ya establecidas, y además la cuarentena, el DNS cifrado por
+ *    IP, el corte de conexiones al endurecer el filtro y el acceso al router.
  *
  * 3. Filtro de contenido (DNS): cada perfil con filtro tiene su propia instancia de dnsmasq en un
  *    puerto 53xx con su lista de bloqueo, y una redirección de fw4 por MAC le manda todo el DNS
  *    de sus dispositivos, por IPv4 e IPv6 y vaya al servidor que vaya. dnsmasq no admite
  *    políticas por cliente, y el paquete básico no trae nftset; esto funciona sin instalar nada.
  *
- * Todo lo variable va en UCI (`firewall` y `dhcp`), así que `uci apply` con reversión cubre
- * cualquier cambio.
+ * Todo lo variable va en UCI (`firewall` y `dhcp`) o en el fichero de reglas, cuyo nombre cambia
+ * con su contenido; así `uci apply` con reversión cubre cualquier cambio.
  */
 
 /** Bit de marca que usa WrtControl (mwan3 usa 0x3F00 y pbr 0x00FF0000 por defecto). */
@@ -34,22 +34,8 @@ const val MARK_BIT = 0x08000000L
 private const val MARK_OPTION = "0x08000000/0x08000000"
 
 const val INCLUDE_SECTION = "wrtc_include"
-const val INCLUDE_PATH = "/etc/luci-uploads/wrtcontrol.nft"
 const val BLOCK_CHAIN = "wrtcontrol_forward"
 const val RULE_LABEL_PREFIX = "WrtControl · "
-
-/** Contenido fijo del include. Sintaxis compatible con nftables 1.0.2 (OpenWrt 22.03). Solo ASCII. */
-val BLOCK_CHAIN_NFT: String = """
-    |# WrtControl: rechaza el trafico reenviado que marcan las reglas "WrtControl" del firewall.
-    |# Prioridad -1: va antes de la cadena forward de fw4, asi corta tambien conexiones ya abiertas.
-    |# Lo escribe la app WrtControl. Sin esas reglas no hace nada.
-    |chain $BLOCK_CHAIN {
-    |	type filter hook forward priority -1; policy accept;
-    |	meta mark & 0x08000000 == 0x08000000 meta l4proto tcp counter reject with tcp reset comment "!wrtcontrol: bloqueo"
-    |	meta mark & 0x08000000 == 0x08000000 counter reject with icmpx type admin-prohibited comment "!wrtcontrol: bloqueo"
-    |}
-    |
-""".trimMargin()
 
 /** Bytes del nombre del perfil dentro del nombre de la regla (el resto ocupa < 60). */
 private const val MAX_LABEL_BYTES = 40
@@ -66,9 +52,10 @@ data class RouterPlan(
     val dnsInstances: Map<String, Int> = emptyMap(),
     /** Perfiles ya normalizados (pausas vencidas fuera, puertos DNS asignados). */
     val profiles: List<Profile> = emptyList(),
-) {
-    val usesBlockChain: Boolean get() = firewall.any { it.name == INCLUDE_SECTION }
-}
+    val settings: ParentalSettings = ParentalSettings(),
+    /** Reglas propias; null si no hacen falta (sin perfiles ni cuarentena). */
+    val include: NftInclude? = null,
+)
 
 /** Lo que el compilador necesita saber del router además de los perfiles. */
 data class RouterEnv(
@@ -78,15 +65,73 @@ data class RouterEnv(
     val dhcpInterfaces: List<String> = listOf("lan"),
     /** Dominio local (`option domain` de dnsmasq), para que sigan resolviendo los nombres de la LAN. */
     val localDomain: String = "lan",
+    /** Zonas de la red de casa, donde se aplica la cuarentena (ver [routerEnv]). */
+    val homeZones: List<String> = listOf("lan"),
+    /** Zonas con NAT (la WAN): lo que entra por ellas nunca se rechaza por la cuarentena. */
+    val wanZones: List<String> = listOf("wan"),
+    /** Puertos TCP de LuCI y SSH en el router. */
+    val adminPorts: List<Int> = DEFAULT_ADMIN_PORTS,
 )
 
-fun routerEnv(firewall: List<UciSection>, dhcp: List<UciSection>): RouterEnv = RouterEnv(
-    lanZones = firewall.filter { it.type == "zone" && it.text("masq") != "1" }.mapNotNull { it.text("name") }.distinct(),
-    dhcpInterfaces = dhcp
-        .filter { it.type == "dhcp" && it.text("instance") == null && !it.name.startsWith(SECTION_PREFIX) }
-        .mapNotNull { it.text("interface") }.distinct(),
-    localDomain = dhcp.firstOrNull { it.type == "dnsmasq" && !it.name.startsWith(SECTION_PREFIX) }?.text("domain") ?: "lan",
-)
+/**
+ * Lo que hace falta saber del router, leído de su configuración. [admin] son las secciones de
+ * uhttpd y dropbear, o null si no se pudieron leer. [devices]: interfaz lógica → dispositivos que
+ * tiene ahora (network.interface dump), o null si no se pudo leer.
+ */
+fun routerEnv(
+    firewall: List<UciSection>,
+    dhcp: List<UciSection>,
+    admin: List<UciSection>? = null,
+    devices: Map<String, List<String>>? = null,
+): RouterEnv {
+    // Como fw4: las zonas y los reenvíos desactivados no existen.
+    val zones = firewall.filter { it.type == "zone" && !uciFalse(it.text("enabled")) }
+    val lanZones = zones.filter { uciBool(it.text("masq")) != true }
+    // La cuarentena va en las redes de casa: las que reenvían hacia otra zona (lan → wan). Una WAN
+    // sin NAT no reenvía a ninguna (y aunque lo hiciera, las reglas solo miran las conexiones que
+    // se abren desde dentro).
+    val forwardingSources = firewall
+        .filter { it.type == "forwarding" && !uciFalse(it.text("enabled")) && it.text("src") != it.text("dest") }
+        .mapNotNull { it.text("src") }.toSet()
+    val names = lanZones.mapNotNull { it.text("name") }.distinct()
+    // Una zona sin ningún dispositivo ahora (p. ej. el Wi-Fi de invitados apagado) haría que fw4
+    // generara la regla MARK sin iifname, marcando todo lo que entra, también por la WAN: con la
+    // cuarentena se rechazarían las conexiones que llegan de internet (redirecciones de puertos).
+    // Esas zonas se dejan fuera hasta el siguiente cambio.
+    fun hasDevices(zone: UciSection): Boolean =
+        devices == null || zone.items("device").isNotEmpty() || zone.items("network").any { devices[it].orEmpty().isNotEmpty() }
+    val withDevices = lanZones.filter(::hasDevices).mapNotNull { it.text("name") }.toSet()
+    return RouterEnv(
+        lanZones = names,
+        dhcpInterfaces = dhcp
+            .filter { it.type == "dhcp" && it.text("instance") == null && !it.name.startsWith(SECTION_PREFIX) }
+            .mapNotNull { it.text("interface") }.distinct(),
+        localDomain = dhcp.firstOrNull { it.type == "dnsmasq" && !it.name.startsWith(SECTION_PREFIX) }?.text("domain") ?: "lan",
+        homeZones = names.filter { it in forwardingSources && it in withDevices },
+        wanZones = zones.filter { uciBool(it.text("masq")) == true }.mapNotNull { it.text("name") }.distinct(),
+        adminPorts = admin?.let(::adminPorts) ?: DEFAULT_ADMIN_PORTS,
+    )
+}
+
+/** Booleano de UCI como lo lee fw4 (parse_bool): true, false o null si no es ninguno. */
+private fun uciBool(text: String?): Boolean? = when (text) {
+    "1", "on", "true", "yes" -> true
+    "0", "off", "false", "no" -> false
+    else -> null
+}
+
+private fun uciFalse(text: String?): Boolean = uciBool(text) == false
+
+/** Puertos de uhttpd (listen_http/listen_https: "0.0.0.0:80", "[::]:443") y de dropbear (Port, 22 por defecto). */
+internal fun adminPorts(sections: List<UciSection>): List<Int> {
+    val web = sections.filter { it.type == "uhttpd" }
+        .flatMap { it.items("listen_http") + it.items("listen_https") }
+        .mapNotNull { it.substringAfterLast(':').toIntOrNull() }
+    val ssh = sections.filter { it.type == "dropbear" && it.text("enable") != "0" }
+        .map { it.text("Port")?.toIntOrNull() ?: 22 }
+    val ports = (web + ssh).filter { it in 1..65535 }.distinct().sorted()
+    return ports.ifEmpty { DEFAULT_ADMIN_PORTS }
+}
 
 /** Franja de una regla: días y horas (inclusivas, en segundos); sin horas = el día entero. */
 internal data class RuleWindow(val days: Set<DayOfWeek>, val start: LocalTime?, val stop: LocalTime?)
@@ -104,23 +149,70 @@ internal fun Schedule.windows(): List<RuleWindow> = when {
     }
 }
 
-fun compileRouter(profiles: List<Profile>, now: LocalDateTime, env: RouterEnv = RouterEnv()): RouterPlan {
-    val current = assignDnsPorts(profiles.map { it.withoutExpiredPause(now) })
+fun compileRouter(profiles: List<Profile>, now: LocalDateTime, env: RouterEnv = RouterEnv()): RouterPlan =
+    compileRouter(ParentalConfig(profiles), now, env)
+
+/** [appMacs]: dispositivos que ejecutan la app; nunca pierden el acceso al router. */
+fun compileRouter(config: ParentalConfig, now: LocalDateTime, env: RouterEnv = RouterEnv(), appMacs: Set<String> = emptySet()): RouterPlan {
+    val current = assignDnsPorts(config.profiles.map { it.withoutExpired(now) }).map { p ->
+        if (p.needsDns && p.cutEpoch !in CUT_EPOCHS) p.copy(cutEpoch = CUT_EPOCHS.first) else p
+    }
     require(current.none { it.needsDns } || env.lanZones.isNotEmpty()) {
         "No se encontró la zona LAN del firewall, así que no se puede aplicar el filtro de contenido"
     }
-    val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) }
-    val firewall = profileSections(current) + rules + if (current.isEmpty()) emptyList() else listOf(includeSection())
+    val settings = config.settings
+    require(!settings.quarantine || env.homeZones.isNotEmpty()) {
+        "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena"
+    }
+    val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) } + quarantineRules(settings, env)
+    val include = if (current.isEmpty() && !settings.quarantine) null else buildInclude(current, settings, env, appMacs)
+    val data = configSections(ParentalConfig(current, settings))
     return RouterPlan(
-        firewall = firewall,
+        firewall = data + rules + listOfNotNull(include?.let(::includeSection)),
         ruleLabels = rules.map { it.text("name")!! },
         dhcp = current.flatMap { dnsServer(it, env) },
         dnsInstances = current.filter { it.needsDns }.associate { dnsInstance(it) to it.dnsPort!! },
         profiles = current,
+        settings = settings,
+        include = include,
     )
 }
 
 internal fun dnsInstance(p: Profile) = "wrtc_dns_${p.id}"
+
+/**
+ * Con la cuarentena, una regla MARK por zona de casa marca lo que entra por ella con
+ * [QUARANTINE_MARK], y otra por zona con NAT marca lo que entra de internet con [WAN_MARK]. fw4
+ * las regenera con los dispositivos que tenga cada zona en cada recarga. Las reglas propias
+ * rechazan lo que lleva la marca de casa sin la de WAN y viene de una MAC no aprobada.
+ */
+private fun quarantineRules(settings: ParentalSettings, env: RouterEnv): List<UciSection> {
+    if (!settings.quarantine) return emptyList()
+    val wan = env.wanZones.mapIndexed { i, zone ->
+        uciSection(
+            "wrtc_qw_$i", "rule",
+            "name" to RULE_LABEL_PREFIX + "cuarentena, internet ($zone)",
+            "src" to zone,
+            "dest" to "*",
+            "proto" to "all",
+            "target" to "MARK",
+            "set_xmark" to "${hexMark(WAN_MARK)}/${hexMark(WAN_MARK)}",
+        )
+    }
+    return wan + env.homeZones.mapIndexed { i, zone ->
+        uciSection(
+            "wrtc_q_$i", "rule",
+            "name" to RULE_LABEL_PREFIX + "cuarentena ($zone)",
+            "src" to zone,
+            "dest" to "*",
+            "proto" to "all",
+            "target" to "MARK",
+            "set_xmark" to "${hexMark(QUARANTINE_MARK)}/${hexMark(QUARANTINE_MARK)}",
+        )
+    }
+}
+
+private fun hexMark(v: Long) = "0x" + v.toString(16).padStart(8, '0')
 
 /**
  * Servidor DNS propio del perfil: una instancia más de dnsmasq en [Profile.dnsPort] con su lista
@@ -138,6 +230,9 @@ private fun dnsServer(p: Profile, env: RouterEnv): List<UciSection> {
             p.filter.services.sorted().flatMap { id -> SERVICES.firstOrNull { it.id == id }?.domains.orEmpty() } +
             BYPASS_DOMAINS
         ).distinct()
+    val safeSearch = p.filter.safeSearch && !familyDns // los DNS para familias ya la fuerzan
+    val youtube = p.filter.youtube.takeIf { it != YoutubeMode.Off && "youtube" !in p.filter.services }
+    val forwards = if (safeSearch) SAFE_SEARCH_FORWARDS.flatMap { d -> FilterLevel.Adult.upstreams().map { "/$d/$it" } } else emptyList()
     val instance = uciSection(
         name, "dnsmasq",
         "port" to p.dnsPort!!.toString(),
@@ -148,7 +243,10 @@ private fun dnsServer(p: Profile, env: RouterEnv): List<UciSection> {
         "domainneeded" to "1",
         "boguspriv" to "1",
         "cachesize" to "1000",
-        "server" to if (familyDns) p.filter.level.upstreams() + "/${env.localDomain}/127.0.0.1#53" else listOf("127.0.0.1#53"),
+        // Las respuestas caducan pronto en los dispositivos: al endurecer el filtro, el segundo
+        // corte llega cuando ya no les queda nada en caché (ver NftInclude.kt).
+        "max_ttl" to DNS_MAX_TTL.toString(),
+        "server" to if (familyDns) p.filter.level.upstreams() + "/${env.localDomain}/127.0.0.1#53" else forwards + "127.0.0.1#53",
         // Sin nivel, todo pasa por la instancia principal, que ya protege del DNS rebinding;
         // con DNS para familias, se protege aquí y se permiten los nombres de la LAN.
         "rebind_protection" to if (familyDns) "1" else "0",
@@ -158,8 +256,35 @@ private fun dnsServer(p: Profile, env: RouterEnv): List<UciSection> {
     val noDhcp = env.dhcpInterfaces.mapIndexed { i, iface ->
         uciSection("wrtc_nodhcp_${p.id}_$i", "dhcp", "instance" to name, "interface" to iface, "ignore" to "1")
     }
-    return listOf(instance) + noDhcp
+    return listOf(instance) + noDhcp + safeSearchRecords(p.id, name, safeSearch, youtube)
 }
+
+/**
+ * Registros propios de la instancia (secciones `cname` y `hostrecord` con `instance`, que
+ * dnsmasq.init aplica solo a esa instancia): www.google.* → forcesafesearch.google.com y los
+ * nombres de YouTube → restrict(moderate).youtube.com. Líneas cortas: en 2.86 una línea `cname`
+ * de 5 KB no arranca.
+ */
+private fun safeSearchRecords(id: String, instance: String, safeSearch: Boolean, youtube: YoutubeMode?): List<UciSection> {
+    val out = mutableListOf<UciSection>()
+    fun host(suffix: String, host: String) {
+        out += uciSection("wrtc_hr_${id}_$suffix", "hostrecord", "instance" to instance, "name" to listOf(host), "ip" to SAFE_SEARCH_RECORDS.getValue(host))
+    }
+    if (safeSearch) {
+        host("g", GOOGLE_SAFE_HOST)
+        GOOGLE_SUFFIXES.map { "www.google.$it" }.chunked(CNAMES_PER_SECTION).forEachIndexed { i, names ->
+            out += uciSection("wrtc_cn_${id}_g$i", "cname", "instance" to instance, "cname" to names.joinToString(","), "target" to GOOGLE_SAFE_HOST)
+        }
+    }
+    if (youtube != null) {
+        val target = if (youtube == YoutubeMode.Strict) YOUTUBE_STRICT_HOST else YOUTUBE_MODERATE_HOST
+        host("yt", target)
+        out += uciSection("wrtc_cn_${id}_yt", "cname", "instance" to instance, "cname" to YOUTUBE_NAMES.joinToString(","), "target" to target)
+    }
+    return out
+}
+
+private const val CNAMES_PER_SECTION = 20
 
 /**
  * Redirige todo el DNS de los dispositivos del perfil (al router o a cualquier servidor, por IPv4
@@ -185,10 +310,10 @@ private fun dnsFirewall(p: Profile, env: RouterEnv): List<UciSection> {
     return redirects + dot
 }
 
-private fun includeSection() = uciSection(
+private fun includeSection(include: NftInclude) = uciSection(
     INCLUDE_SECTION, "include",
     "type" to "nftables",
-    "path" to INCLUDE_PATH,
+    "path" to include.path,
     "position" to "table-append",
 )
 
@@ -208,7 +333,7 @@ private fun profileRules(p: Profile): List<UciSection> {
         if (!schedule.enabled) return@forEachIndexed
         schedule.windows().forEachIndexed { part, window ->
             val suffix = if (part == 0) "" else " (día siguiente)"
-            rules += markRule("wrtc_r_${schedule.id}_${part + 1}", "$label · horario ${index + 1}$suffix", p.macs, window)
+            rules += markRule("wrtc_r_${schedule.id}_${part + 1}", "$label · horario ${index + 1}$suffix", p.macs, window, startDate = p.extraUntil)
         }
     }
     return rules
@@ -220,6 +345,7 @@ private fun markRule(
     macs: List<String>,
     window: RuleWindow? = null,
     stopDate: LocalDateTime? = null,
+    startDate: LocalDateTime? = null,
     // fw4 usa "tcp udp" si no se indica: con "all" también se marca ICMP, QUIC, etc.
     proto: String = "all",
     destPort: String? = null,
@@ -236,6 +362,7 @@ private fun markRule(
     "weekdays" to window?.days?.sorted()?.joinToString(" ") { it.uciName },
     "start_time" to window?.start?.format(HH_MM_SS),
     "stop_time" to window?.stop?.format(HH_MM_SS),
+    "start_date" to startDate?.format(STAMP),
     "stop_date" to stopDate?.format(STAMP),
 )
 
@@ -283,10 +410,12 @@ fun diffSections(existing: List<UciSection>, desired: List<UciSection>): List<Uc
 
 // ---------- conflictos ----------
 
-/** Reglas MARK de otros que tocan el bit de WrtControl: podrían quitar o poner la marca de bloqueo. */
+/** Reglas MARK de otros que tocan los bits de WrtControl: podrían quitar o poner la marca de bloqueo o de cuarentena. */
 fun markConflicts(sections: List<UciSection>): List<String> = sections
     .filter { !it.name.startsWith(SECTION_PREFIX) && it.type == "rule" && it.text("target").equals("MARK", ignoreCase = true) }
-    .filter { s -> listOf("set_mark", "set_xmark").any { key -> s.text(key)?.let(::markMask)?.and(MARK_BIT) == MARK_BIT } }
+    .filter { s ->
+        listOf("set_mark", "set_xmark").any { key -> s.text(key)?.let(::markMask)?.let { it and (MARK_BIT or QUARANTINE_MARK or WAN_MARK) != 0L } == true }
+    }
     .map { it.text("name") ?: it.name }
 
 /** Máscara efectiva de "valor[/máscara]": sin máscara, set_mark cambia los 32 bits. */

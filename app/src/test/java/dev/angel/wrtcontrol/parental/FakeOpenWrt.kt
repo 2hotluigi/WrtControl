@@ -45,10 +45,34 @@ class FakeOpenWrt(
     var pendingApply: String? = null
     var tzStrings = mapOf("America/Mexico_City" to "CST6", "UTC" to "GMT0")
 
+    /** Interfaces de `network.interface dump`: nombre → dispositivo. */
+    var interfaces = mapOf("lan" to "br-lan", "wan" to "eth1")
+
+    /** Paquetes que cuenta cada regla propia al recargar ("doh j1" → 3). */
+    var ownPackets = mapOf<String, Long>()
+
+    /**
+     * Tipos de registros propios de las instancias que dnsmasq no aplica ("cname", "hostrecord"),
+     * como un dnsmasq que no los admite por instancia: la búsqueda segura no queda forzada.
+     */
+    var ignoredRecords = setOf<String>()
+
+    /** El ACL no deja listar directorios (`file.list` da "permiso denegado"). */
+    var fileListDenied = false
+
+    /**
+     * Se llama con cada llamada antes de atenderla: si devuelve una respuesta, se da esa en vez de
+     * la normal. Sirve para simular fallos o cambios de otra sesión a mitad de una operación.
+     */
+    var intercept: ((RecordedCall) -> Reply?)? = null
+
     private val staged = mutableMapOf<String, MutableList<(MutableMap<String, MutableMap<String, JsonElement>>) -> Unit>>()
     private var snapshot: Map<String, Map<String, JsonElement>>? = null
     private var sessions = 0
     private var handles = 100L
+
+    /** fw4 recarga con `flush table`: una cadena que dejó de incluirse sigue existiendo, vacía. */
+    private val ownChains = linkedSetOf<String>()
     private var loaded: JsonObject = render()
 
     val router = FakeRouter(::handle)
@@ -71,11 +95,14 @@ class FakeOpenWrt(
 
     private fun configOf(type: String) = when (type) {
         "system" -> "system"
-        "dnsmasq", "dhcp", "host", "odhcpd" -> "dhcp"
+        "dnsmasq", "dhcp", "host", "odhcpd", "cname", "hostrecord" -> "dhcp"
+        "uhttpd" -> "uhttpd"
+        "dropbear" -> "dropbear"
         else -> "firewall"
     }
 
     private fun handle(call: RecordedCall): Reply = synchronized(this) {
+        intercept?.invoke(call)?.let { return@synchronized it }
         val a = call.args
         fun arg(key: String) = a[key]?.jsonPrimitive?.content
         when (call.name) {
@@ -109,6 +136,7 @@ class FakeOpenWrt(
                     }
                     pendingApply = null
                     snapshot = null
+                    applySystemTimezone()
                     reload()
                     ok()
                 }
@@ -120,6 +148,22 @@ class FakeOpenWrt(
             "service.list" -> ok(serviceList().toString())
             "file.write" -> { files[arg("path")!!] = arg("data")!!; ok() }
             "file.remove" -> { files.remove(arg("path")!!); ok() }
+            "file.list" -> if (fileListDenied) status(6) else {
+                val dir = arg("path")!!.trimEnd('/') + "/"
+                ok(buildJsonObject {
+                    putJsonArray("entries") {
+                        files.keys.filter { it.startsWith(dir) && '/' !in it.removePrefix(dir) }
+                            .forEach { addJsonObject { put("name", it.removePrefix(dir)); put("type", "file") } }
+                    }
+                }.toString())
+            }
+            "network.interface.dump" -> ok(buildJsonObject {
+                putJsonArray("interface") {
+                    interfaces.forEach { (name, dev) ->
+                        addJsonObject { put("interface", name); put("up", true); put("device", dev); put("l3_device", dev) }
+                    }
+                }
+            }.toString())
             "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })
             else -> status(3)
         }
@@ -145,10 +189,44 @@ class FakeOpenWrt(
             ?: return noServer
         val blocked = (instance["address"] as? JsonArray)?.map { it.jsonPrimitive.content.trim('/') }.orEmpty()
         if (blocked.any { domain == it || domain.endsWith(".$it") }) return "** server can't find $domain: NXDOMAIN\n"
+        // Registros propios de la instancia (búsqueda segura): cname → host-record.
+        val name = committed.entries.first { it.value === instance }.key
+        fun ofInstance(type: String) = if (type in ignoredRecords) emptyList() else committed.values.filter {
+            it[".type"]?.jsonPrimitive?.content == type && it["instance"]?.jsonPrimitive?.content == name
+        }
+        val target = ofInstance("cname").firstOrNull { domain in it["cname"]!!.jsonPrimitive.content.split(',') }
+            ?.get("target")?.jsonPrimitive?.content
+        if (target != null) {
+            val ips = ofInstance("hostrecord").firstOrNull { (it["name"] as JsonArray).any { n -> n.jsonPrimitive.content == target } }
+                ?.get("ip")?.let { (it as JsonArray).map { ip -> ip.jsonPrimitive.content } }.orEmpty()
+            val v4 = ips.firstOrNull { '.' in it } ?: return noServer
+            return "Server:\t\t127.0.0.1\nAddress:\t127.0.0.1:$port\n\n$domain\tcanonical name = $target\nName:\t$target\nAddress: $v4\n"
+        }
         val servers = (instance["server"] as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty()
-        val family = servers.any { it in setOf("1.1.1.3", "1.0.0.3", "185.228.168.168", "185.228.169.168") }
-        return if (family && familyDnsDown) noServer else resolved
+        val familyIps = setOf("1.1.1.3", "1.0.0.3", "185.228.168.168", "185.228.169.168")
+        val family = servers.any { it in familyIps }
+        // Reenvío por dominio (búsqueda segura sin nivel): "/bing.com/1.1.1.3".
+        val forwardedToFamily = servers.any { s ->
+            val parts = s.trim('/').split('/')
+            parts.size == 2 && parts[1] in familyIps && (domain == parts[0] || domain.endsWith("." + parts[0]))
+        }
+        if ((family || forwardedToFamily) && familyDnsDown) return noServer
+        // Como 1.1.1.3 y CleanBrowsing (salvo que el proveedor intercepte el DNS: [dnsIntercepted]).
+        if ((family || forwardedToFamily) && !dnsIntercepted) {
+            when (domain) {
+                "www.google.com" ->
+                    return "Server:\t\t127.0.0.1\nAddress:\t127.0.0.1:$port\n\n$domain\tcanonical name = forcesafesearch.google.com\n" +
+                        "Name:\tforcesafesearch.google.com\nAddress: 216.239.38.120\n"
+                "www.bing.com" ->
+                    return "Server:\t\t127.0.0.1\nAddress:\t127.0.0.1:$port\n\n$domain\tcanonical name = strict.bing.com\n" +
+                        "Name:\tstrict.bing.com\nAddress: 150.171.28.16\n"
+            }
+        }
+        return resolved
     }
+
+    /** El proveedor de internet intercepta el DNS: el DNS para familias responde, pero sin filtrar. */
+    var dnsIntercepted = false
 
     private fun serviceList(): JsonObject = buildJsonObject {
         putJsonObject("dnsmasq") {
@@ -179,11 +257,17 @@ class FakeOpenWrt(
         return ok()
     }
 
-    /** Como /etc/init.d/system reload: el desfase sigue a la zona configurada. */
+    /**
+     * Como /etc/init.d/system reload: el desfase sigue a la zona configurada. La hora UTC no
+     * cambia, así que la local se mueve lo mismo que el desfase.
+     */
     private fun applySystemTimezone() {
         val tz = committed.values.firstOrNull { it[".type"]?.jsonPrimitive?.content == "system" }?.get("timezone")
             ?.jsonPrimitive?.content ?: return
-        posixOffset(tz)?.let { offsetSeconds = it }
+        posixOffset(tz)?.let {
+            localTime += it - offsetSeconds
+            offsetSeconds = it
+        }
     }
 
     /** Desfase de una cadena TZ sin horario de verano ("CST6", "<-06>6", "GMT0"); con reglas, null. */
@@ -218,27 +302,39 @@ class FakeOpenWrt(
         if (fw4Accepts) loaded = render()
     }
 
-    /** fw4 recarga con `flush table`: una cadena que dejó de incluirse sigue existiendo, vacía. */
-    private var blockChainCreated = false
+    /** Como `/etc/init.d/firewall reload` fuera de la app (p. ej. al reiniciar el router). */
+    fun reloadFirewall() = reload()
+
+
+    /** Reglas del fichero incluido: (cadena, comentario). Solo mira los comentarios "!wrtcontrol: ". */
+    private fun includedRules(): List<Pair<String, String>> {
+        val include = committed["wrtc_include"] ?: return emptyList()
+        val content = files[include["path"]?.jsonPrimitive?.content] ?: return emptyList()
+        var chain = ""
+        return content.lines().mapNotNull { line ->
+            Regex("^chain (\\S+) \\{").find(line)?.let { chain = it.groupValues[1]; ownChains += chain }
+            Regex("comment \"(!wrtcontrol: [^\"]*)\"").find(line)?.let { chain to it.groupValues[1] }
+        }
+    }
 
     private fun render(): JsonObject = buildJsonObject {
         putJsonArray("nftables") {
             addJsonObject { putJsonObject("table") { put("family", "inet"); put("name", "fw4"); put("handle", 1) } }
             addJsonObject { putJsonObject("chain") { put("family", "inet"); put("table", "fw4"); put("name", "forward") } }
-            val include = committed["wrtc_include"]
-            val active = include != null && files.containsKey(include["path"]?.jsonPrimitive?.content)
-            if (active) blockChainCreated = true
-            if (blockChainCreated) {
-                addJsonObject { putJsonObject("chain") { put("family", "inet"); put("table", "fw4"); put("name", BLOCK_CHAIN) } }
+            val own = includedRules()
+            ownChains.forEach { c ->
+                addJsonObject { putJsonObject("chain") { put("family", "inet"); put("table", "fw4"); put("name", c) } }
             }
-            if (active) repeat(2) {
+            for ((chain, comment) in own) {
                 addJsonObject {
                     putJsonObject("rule") {
                         put("family", "inet")
                         put("table", "fw4")
-                        put("chain", BLOCK_CHAIN)
+                        put("chain", chain)
                         put("handle", ++handles)
-                        put("comment", "!wrtcontrol: bloqueo")
+                        put("comment", comment)
+                        val packets = ownPackets[comment.removePrefix(OWN_COMMENT)] ?: 0
+                        put("expr", buildJsonArray { addJsonObject { putJsonObject("counter") { put("packets", packets); put("bytes", packets * 60) } } })
                     }
                 }
             }

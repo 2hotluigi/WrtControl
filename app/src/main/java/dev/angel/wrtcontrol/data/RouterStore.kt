@@ -1,6 +1,7 @@
 package dev.angel.wrtcontrol.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -30,12 +31,29 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         }
     }
 
+    /** Copia de los perfiles de control parental de un router (ver parental/Backup.kt). */
+    suspend fun loadBackup(address: String): String? = context.routerDataStore.data.first()[backupKey(address)]
+
+    suspend fun saveBackup(address: String, json: String?) {
+        context.routerDataStore.edit { prefs ->
+            if (json == null) prefs.remove(backupKey(address)) else prefs[backupKey(address)] = json
+        }
+    }
+
+    suspend fun backupPending(key: String): Boolean = context.routerDataStore.data.first()[pendingKey(key)] == true
+
+    suspend fun setBackupPending(key: String, pending: Boolean) {
+        context.routerDataStore.edit { prefs -> if (pending) prefs[pendingKey(key)] = true else prefs.remove(pendingKey(key)) }
+    }
+
     /** Olvida la contraseña pero conserva dirección y usuario para rellenar el formulario. */
     suspend fun forgetPassword() {
         context.routerDataStore.edit { it.remove(PASSWORD) }
     }
 
     private companion object {
+        fun backupKey(key: String) = stringPreferencesKey("parental_backup:" + key.trim().lowercase())
+        fun pendingKey(key: String) = booleanPreferencesKey("parental_backup_pending:" + key.trim().lowercase())
         val ADDRESS = stringPreferencesKey("address")
         val USERNAME = stringPreferencesKey("username")
         val PASSWORD = stringPreferencesKey("password_encrypted")

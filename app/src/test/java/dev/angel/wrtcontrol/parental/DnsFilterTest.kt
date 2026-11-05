@@ -46,6 +46,8 @@ class DnsFilterTest {
         assertEquals(listOf("1.1.1.3", "1.0.0.3", "/lan/127.0.0.1#53"), dns.items("server"))
         assertEquals("1", dns.text("rebind_protection"))
         assertEquals(listOf("lan"), dns.items("rebind_domain"))
+        // TTL corto: al endurecer el filtro, la caché de los dispositivos caduca antes del segundo corte.
+        assertEquals("60", dns.text("max_ttl"))
         val blocked = dns.items("address")
         assertTrue(blocked.containsAll(listOf("/ejemplo.com/", "/tiktok.com/", "/tiktokcdn.com/", "/$CANARY_DOMAIN/", "/mask.icloud.com/")))
         assertEquals("sin duplicados", blocked.toSet().size, blocked.size)
@@ -72,7 +74,7 @@ class DnsFilterTest {
         assertEquals(listOf("tiktok"), data.items("block_service"))
         assertEquals(listOf("ejemplo.com"), data.items("block_domain"))
         assertEquals("5301", data.text("dns_port"))
-        assertEquals(profile.copy(dnsPort = 5301), readProfiles(plan.firewall).single())
+        assertEquals("con puerto y época de corte", profile.copy(dnsPort = 5301, cutEpoch = 1), readProfiles(plan.firewall).single())
     }
 
     @Test
@@ -82,6 +84,23 @@ class DnsFilterTest {
         assertEquals(listOf("127.0.0.1#53"), dns.items("server"))
         assertEquals("0", dns.text("rebind_protection"))
         assertNull(dns.text("rebind_domain"))
+    }
+
+    @Test
+    fun `todas las instancias de los perfiles limitan el TTL por debajo de la ventana del corte`() {
+        val filters = listOf(
+            ContentFilter(FilterLevel.Adult),
+            ContentFilter(FilterLevel.Strict),
+            ContentFilter(domains = listOf("ejemplo.com")),
+            ContentFilter(services = setOf("tiktok")),
+            ContentFilter(safeSearch = true),
+            ContentFilter(youtube = YoutubeMode.Strict),
+        )
+        for (f in filters) {
+            assertEquals("$f", DNS_MAX_TTL.toString(), compileRouter(listOf(juan.copy(filter = f)), now).section("wrtc_dns_j1").text("max_ttl"))
+        }
+        assertEquals(60, DNS_MAX_TTL)
+        assertTrue(DNS_MAX_TTL < CUT_WINDOW_SECONDS)
     }
 
     @Test

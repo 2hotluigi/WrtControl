@@ -3,7 +3,11 @@ package dev.angel.wrtcontrol.openwrt
 import android.util.Log
 import dev.angel.wrtcontrol.parental.ParentalApi
 import dev.angel.wrtcontrol.ubus.UbusClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.coroutineScope
 
 /**
@@ -17,6 +21,26 @@ class OpenWrtApi(private val ubus: UbusClient) {
 
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 
+    suspend fun setPassword(username: String, password: String) = ubus.setPassword(username, password)
+
+    /**
+     * Identifica el aparato (para no mezclar copias de routers distintos en la misma dirección):
+     * el modelo y la MAC de la red de casa, que no cambian al restablecerlo.
+     */
+    suspend fun routerId(): String = coroutineScope {
+        val board = async { board() }
+        val lanMac = try {
+            val lan = interfaces().firstOrNull { it.name == "lan" }
+            val device = lan?.device ?: lan?.l3Device
+            device?.let { ubus.callAs<DeviceStatus>("network.device", "status", buildJsonObject { put("name", it) }).macaddr }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        board.await().model + "|" + lanMac.orEmpty().uppercase()
+    }
+
     suspend fun systemInfo(): SystemInfo = ubus.callAs("system", "info")
 
     suspend fun interfaces(): List<NetInterface> =
@@ -29,3 +53,6 @@ class OpenWrtApi(private val ubus: UbusClient) {
         buildDeviceList(hints.await(), leases.await(), ifaces.await())
     }
 }
+
+@Serializable
+internal data class DeviceStatus(val macaddr: String? = null)

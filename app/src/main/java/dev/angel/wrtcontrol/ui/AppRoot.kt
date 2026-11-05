@@ -10,6 +10,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.angel.wrtcontrol.data.AppSettings
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.ui.home.HomeScreen
@@ -18,8 +19,8 @@ import dev.angel.wrtcontrol.ui.login.LoginScreen
 val LocalRepository = staticCompositionLocalOf<RouterRepository> { error("RouterRepository no proporcionado") }
 
 @Composable
-fun AppRoot(repository: RouterRepository) {
-    CompositionLocalProvider(LocalRepository provides repository) {
+fun AppRoot(repository: RouterRepository, settings: AppSettings) {
+    CompositionLocalProvider(LocalRepository provides repository, LocalAppSettings provides settings) {
         val connection by repository.state.collectAsStateWithLifecycle()
         when (val c = connection) {
             Connection.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
