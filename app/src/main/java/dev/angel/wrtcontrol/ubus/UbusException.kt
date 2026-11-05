@@ -22,6 +22,9 @@ sealed class UbusException(message: String, cause: Throwable? = null) : Exceptio
     /** La sesión caducó y no hay credenciales para renovarla. */
     class SessionExpired : UbusException("La sesión ha caducado")
 
+    /** Una [UbusSession] propia caducó a mitad de una serie de cambios: los pendientes se perdieron. */
+    class SessionLost : UbusException("Se perdió la sesión con el router a mitad del cambio")
+
     /** La sesión es válida, pero el ACL del usuario no permite esta llamada. */
     class AccessDenied(val target: String) : UbusException("Sin permiso para $target")
 

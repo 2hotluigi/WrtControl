@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Para reconocer "Este teléfono" en la lista de dispositivos por su IP en la red. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
         usesCleartextTraffic: los routers OpenWrt sirven /ubus por HTTP en la LAN (HTTPS requiere

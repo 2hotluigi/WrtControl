@@ -1,14 +1,19 @@
 package dev.angel.wrtcontrol.openwrt
 
+import android.util.Log
+import dev.angel.wrtcontrol.parental.ParentalApi
 import dev.angel.wrtcontrol.ubus.UbusClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 /**
  * Llamadas tipadas a OpenWrt (22.03+). Solo usan objetos ubus que trae LuCI:
- * no hace falta instalar nada en el router para esta parte.
+ * no hace falta instalar nada en el router.
  */
 class OpenWrtApi(private val ubus: UbusClient) {
+
+    /** Perfiles, pausas y horarios (escribe en el firewall con reversión automática). */
+    val parental = ParentalApi(ubus, log = { Log.d("WrtControl", it) })
 
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 
