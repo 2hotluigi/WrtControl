@@ -21,6 +21,7 @@ class ParentalApiTest {
     private val juan = Profile("j1", "Juan", macs)
 
     private fun TestScope.api(fake: FakeOpenWrt): ParentalApi {
+        fake.clock = { testScheduler.currentTime }
         val client = fake.router.client(Credentials("root", ""), io = StandardTestDispatcher(testScheduler))
         return ParentalApi(client, phoneClockSeconds = { error("debe usar luci.getUnixtime") })
     }

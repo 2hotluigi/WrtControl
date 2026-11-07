@@ -3,16 +3,27 @@
 App Android (Kotlin + Jetpack Compose) para administrar routers **OpenWrt 22.03 o superior**
 desde el celular: estado, dispositivos y control parental (perfiles, pausas, horarios con tiempo
 extra, filtro de contenido con búsqueda segura, dispositivos nuevos en cuarentena y protección
-contra los intentos de saltárselo). En la siguiente fase: acceso remoto por WireGuard.
+contra los intentos de saltárselo). También instala y configura paquetes opcionales (WireGuard,
+DNS dinámico, SQM y UPnP) y entra al router desde fuera de casa con su propio WireGuard, sin usar
+la VPN de Android.
 
-Habla con el router por **ubus JSON-RPC** (`/ubus`, el mismo endpoint que usa LuCI). No hay que
-instalar nada en el router: basta con LuCI.
+Habla con el router por **ubus JSON-RPC** (`/ubus`, el mismo endpoint que usa LuCI). Para lo
+básico no hay que instalar nada en el router: basta con LuCI.
 
 ## Compilar y probar
 
 ```sh
 gradlew testDebugUnitTest   # pruebas unitarias (JVM, sin emulador)
 gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
+```
+
+El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
+`app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar
+`tunnel/`, con Go, gomobile y el NDK de Android:
+
+```sh
+cd tunnel && go test ./...        # el túnel contra un "router" WireGuard en memoria
+sh tools/build-tunnel.sh          # vuelve a generar app/libs/wrtcvpn.aar (arm64, arm y x86_64)
 ```
 
 La versión debug sugiere `192.168.56.2`, que es la VM de OpenWrt en VirtualBox (red host-only).
@@ -38,8 +49,20 @@ set WRTCONTROL_VM=192.168.56.2
 gradlew testDebugUnitTest --tests "*VmIntegrationTest*"
 ```
 
-El cliente (MAC `02:00:00:00:00:99`) desaparece al reiniciar el router. La prueba deja el router
-sin reglas de WrtControl y en UTC.
+El cliente (MAC `02:00:00:00:00:99`) desaparece al reiniciar el router, y reiniciar la red lo
+saca de `br-lan` (las pruebas lo vuelven a meter). La prueba deja el router sin reglas de
+WrtControl y en UTC.
+
+`AddonsVmTest` prueba los paquetes contra la misma VM:
+- Desinstala WireGuard y lo instala la app (6–8 s, con el reinicio de la red).
+- Activa SQM en la WAN y comprueba con `tc` que `cake` queda puesto.
+- Abre un puerto por UPnP desde el cliente con `upnpc` (instala `miniupnpc` en la VM) y la app
+  lo ve y lo cierra. Comprueba también que, si miniupnpd no arranca, el router lo deshace solo.
+- Da acceso remoto y conecta con un WireGuard de verdad desde el cliente: llega a la web del
+  router por el túnel, pero no a SSH ni a internet. Comprueba que el control parental no toca
+  las secciones del acceso remoto.
+- DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
+  le envía el nombre, la IP y el token.
 
 Si en la VM está el `nft` de OpenWrt 22.03 en `/tmp/nft102` (paquetes `nftables-json`,
 `libnftnl11`, `libmnl0` y `jansson4` de 22.03.7 para x86_64), la prueba pasa también el fichero
@@ -53,7 +76,8 @@ bien: basta con que llegue al final del fichero sin errores.
 | `ubus` | Cliente JSON-RPC. Distingue sesión caducada de permiso denegado (`-32002` es ambiguo y se resuelve con `session.access`). Renueva la sesión automáticamente, con un solo login aunque haya llamadas concurrentes. Abre sesiones aparte para los cambios. |
 | `openwrt` | Modelos y llamadas tipadas (`system`, `network.interface`, `luci-rpc`, `uci`, `file`). `buildDeviceList` combina vecinos y concesiones DHCP, incluido el caso de Windows, que usa en DHCPv6 la MAC de otra tarjeta. |
 | `parental` | Perfiles, pausas, horarios y filtro de contenido: cómo se guardan, qué configuración de fw4 y dnsmasq generan y cómo se aplican sin arriesgar el acceso (ver abajo). |
-| `data` | Router guardado en DataStore. La contraseña se guarda cifrada con AES-GCM y una clave del Android Keystore. |
+| `addons` | Paquetes opcionales: instalarlos (como la página Software de LuCI), SQM, UPnP, DNS dinámico, el servidor WireGuard del acceso remoto y las claves (X25519 en Kotlin). |
+| `data` | Router guardado en DataStore. La contraseña y la clave del acceso remoto se guardan cifradas con AES-GCM y una clave del Android Keystore. `RouterTransport` decide si cada conexión va directa o por el túnel. |
 | `ui` | Compose + Material 3. Los datos se recargan periódicamente y la recarga se detiene cuando la app pasa a segundo plano. |
 
 ## Control parental: qué hace en el router
@@ -251,17 +275,103 @@ nftables 1.0.2) y probada en la VM con 25.12.
   - **Privacidad:** con nivel de adultos o estricto, las consultas DNS de ese perfil pasan por
     Cloudflare o CleanBrowsing.
 
+## Paquetes y acceso remoto: qué hace en el router
+
+**Instalar.** Igual que la página "Software" de LuCI: llama con `cgi-exec` (cgi-io) a
+`/usr/libexec/package-manager-call` (24.10 en adelante, apk u opkg) o a `opkg-call` (22.03 y
+23.05). `file.exec` no sirve: rpcd lo corta a los 30 s. El ACL de `opkg-call` solo deja
+`update *`, así que se le pasa el mismo argumento que pone LuCI. La app actualiza las listas,
+instala el paquete de LuCI (que arrastra el resto y trae los permisos con los que la app lo
+configura) y explica en castellano los fallos típicos: sin espacio, sin internet, kernel de
+otra versión, otro programa instalando. netifd solo carga protocolos nuevos al arrancar: tras
+instalar WireGuard se reinicia la red (`luci.setInitAction`).
+
+**Deshacer.** El ACL de LuCI no incluye `uci rollback` (solo `apply` y `confirm`). Si un cambio no
+funciona, la app deja de confirmarlo y espera, como LuCI, a que el router lo deshaga solo al vencer
+el plazo (60 s), y lo comprueba. Para comprobarlo abre una sesión nueva: mientras el cambio siga
+pendiente, rpcd devuelve la misma sesión del cambio, así que hasta que la sesión es otra no está
+deshecho aunque la configuración ya parezca la de antes. Esto vale también para el control parental:
+antes daba el cambio por "sin confirmar" aunque el router sí lo deshacía.
+
+rpcd da también la sesión de un cambio pendiente a la app si se cierra a mitad y vuelve a entrar.
+Cuando el router lo deshace, esa sesión se queda con los cambios como pendientes y la app los vería
+puestos. La sesión compartida nunca prepara cambios: si en los dos minutos siguientes a entrar
+tiene alguno (`uci changes`), la app la abandona.
+
+**SQM y UPnP.** Se leen y cambian en `/etc/config/sqm` y `/etc/config/upnpd`, con reversión.
+- SQM se da por bueno si el router sigue respondiendo unos 10 s después de aplicarlo: procd lo
+  recarga un segundo después y run.sh tarda unos segundos más. Una velocidad absurda podría dejar
+  fuera a la app si entra por el túnel. La cola puede ir en el dispositivo de la WAN o en el que
+  tiene debajo (eth1 bajo pppoe-wan).
+- UPnP se da por bueno cuando miniupnpd está en marcha o parado según toque. Si alguien paró el
+  servicio, no queda disparador de recarga, así que se arranca a mano. Hasta 24.10, el ACL de LuCI
+  no deja ver `service list`: se arranca o se para a mano y basta.
+- Los puertos abiertos salen de `luci.upnp` y se cierran con `delete_rule`. Si la IPv4 de la WAN es
+  privada o de CGNAT, se avisa de que UPnP no puede abrir nada hacia internet.
+
+**Servidor WireGuard.** Secciones que empiezan por `wrtcvpn` (no por `wrtc_`, que el control
+parental borra si no las reconoce):
+- `network`: la interfaz `wrtcvpn` (puerto UDP 51820 o el siguiente libre, una /24 privada que no
+  choque con las del router) y un par `wireguard_wrtcvpn` por teléfono, con su clave pública, una
+  precompartida y su dirección /32.
+- `firewall`: la zona `wrtcvpn`, que no reenvía a ningún sitio. Desde ella solo se llega a la web
+  del router (puertos de uhttpd). Además, reglas que dejan entrar el UDP del túnel por la WAN y por
+  las redes de casa (en casa, la app también entra por el túnel). Las reglas se llaman "WrtControl
+  acceso remoto · …" y no "WrtControl · …": esas las da por suyas el control parental.
+- netifd no vuelve a configurar una interfaz si solo cambian sus pares (que son secciones aparte):
+  al añadir o quitar un teléfono con el servidor ya puesto, la app la reinicia con `/sbin/ifup`,
+  como el botón "Reiniciar" de LuCI, y comprueba en `wg show` (o, en 22.03 sin `getWgInstances`,
+  que la interfaz se levantó después) que el kernel tiene los pares nuevos. Así un teléfono quitado
+  deja de entrar en el momento. Los pares añadidos desde LuCI se dejan y se cuentan aparte.
+- La web del túnel: si uhttpd escucha en todas las IPv4, la app va a la dirección del router en el
+  túnel; si solo escucha en una (la de la LAN, para no verse desde la WAN), va a esa. Si solo escucha
+  en IPv6 o en 127.0.0.1, no se activa y se explica por qué.
+- La clave privada del router la genera el propio router (`luci.wireguard generateKeyPair`). La
+  del teléfono se genera en el teléfono (X25519 de TweetNaCl en Kotlin, comprobado con el RFC 7748
+  y con `wg pubkey`) y no sale de él.
+
+**DNS dinámico.** Las secciones `wrtcontrol` (IPv4, si la de la WAN es pública) y `wrtcontrol6`
+(IPv6, si el router tiene una global) de `/etc/config/ddns`, con DuckDNS, dynv6, deSEC o una URL
+propia. Con las dos, el nombre tiene registro A y AAAA y se llega desde redes solo IPv4 y solo IPv6;
+con CGNAT solo queda la IPv6. Se publica la dirección de la interfaz que la tenga (la wan6 o, si solo
+hay prefijo delegado, la de la LAN, que netifd da en `ipv6-prefix-assignment`). Hasta 24.10 ddns no
+es un servicio de procd: aplicar no lo recarga, así que la app lo reinicia y mira el pid en
+`luci.ddns`. Del registro de ddns-scripts se sacan la última IP enviada y el último fallo posterior.
+
+**El túnel en la app.** `tunnel/` es wireguard-go con la pila TCP/IP de gVisor (netstack): no hay
+interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y solo la app pasa por
+él. Abre un puerto en 127.0.0.1 que lleva cada conexión TCP a la web del router por el túnel.
+`RouterTransport` (OkHttp: `socketFactory`, `dns` e interceptor):
+- Sin acceso remoto en el teléfono, todo va directo, como siempre.
+- Con acceso remoto, todo va por el túnel, también en casa. El saludo de WireGuard comprueba que al
+  otro lado está nuestro router. Una conexión directa solo comprueba que algo contesta en esa IP: en
+  una red ajena con la misma (192.168.1.1 en un hotel), la sesión y la contraseña irían sin cifrar a
+  otro aparato.
+- Busca el router de una dirección en una, cada una con un túnel nuevo, hasta que hay saludo. En
+  Wi-Fi o cable empieza por la dirección de casa (en casa responde enseguida); después prueba el
+  nombre del DNS dinámico (IPv6 antes) y las últimas direcciones públicas vistas, que la app apunta
+  cada vez que lee el router.
+- Si el túnel no sube (p. ej. tras actualizar el firmware, que borra WireGuard), va directo para no
+  dejar la app sin router en casa, y no lo reintenta durante 30 s.
+- La URL no cambia: solo cambia a dónde se conecta el socket.
+- Lo quita tras 90 s sin usarlo (nunca con peticiones en marcha) y si deja de haber saludos durante
+  más de 200 s (el router cambió de dirección): la siguiente petición lo vuelve a buscar.
+- Para quitar el acceso de este mismo teléfono, la app pasa a la conexión directa: al quitarlo, el
+  router corta el túnel por el que habría que comprobarlo. Por eso solo se puede desde casa.
+- El acceso remoto guardado va con el router para el que se creó (modelo y MAC de la LAN), no solo
+  con su dirección: otro router en 192.168.1.1 tiene su propia clave.
+
+Límites del acceso remoto:
+- Sin acceso remoto (o si el túnel no sube), la app habla con el router por HTTP sin cifrar, como
+  LuCI: en una red ajena con la misma IP, la contraseña iría a otro aparato.
+- Con CGNAT en IPv4 hace falta IPv6 en las dos puntas: el router y la red desde la que se entra.
+  Si no, haría falta un servidor intermedio.
+- Sin DNS dinámico, si la dirección del router cambia mientras se está fuera, la app no lo
+  encuentra hasta volver a casa.
+- La librería del túnel añade unos 6–7 MB por arquitectura al APK.
+- Una actualización del firmware borra los paquetes instalados (la configuración se queda): la app
+  los muestra como no instalados y se pueden volver a instalar.
+
 ## Hoja de ruta
 
-1. ~~Base: conexión, estado y dispositivos~~
-2. ~~Control parental~~
-   - ~~Perfiles por persona, pausar internet y horarios (con reversión automática)~~
-   - ~~Filtro de contenido por perfil: niveles, servicios y sitios propios~~
-   - ~~Protección: cuarentena de dispositivos nuevos, DNS cifrado por IP, corte de conexiones al
-     bloquear, búsqueda segura y YouTube restringido, acceso al router, tiempo extra, copia de
-     los perfiles y bloqueo de la app~~
-   - Siguiente: categorías, plantillas por edad, "permitir este sitio", diagnóstico de "¿por qué
-     no carga?", avisos en el teléfono, dificultar VPN, horarios por servicio y modo tareas
-   - Más adelante: un perfil "todos los dispositivos" para filtrar toda la red y reportes
-3. Acceso remoto: túnel WireGuard integrado en la app y configuración del router desde la app
-4. Seguridad: usuario rpcd con ACL limitado (no root) y emparejamiento por QR
+Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.

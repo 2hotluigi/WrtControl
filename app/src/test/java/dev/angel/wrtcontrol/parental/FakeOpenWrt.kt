@@ -3,6 +3,7 @@ package dev.angel.wrtcontrol.parental
 import dev.angel.wrtcontrol.ubus.FakeRouter
 import dev.angel.wrtcontrol.ubus.RecordedCall
 import dev.angel.wrtcontrol.ubus.Reply
+import dev.angel.wrtcontrol.ubus.accessDenied
 import dev.angel.wrtcontrol.ubus.ok
 import dev.angel.wrtcontrol.ubus.status
 import kotlinx.serialization.json.JsonArray
@@ -40,6 +41,16 @@ class FakeOpenWrt(
     /** rpcd sin copia que restaurar (otra sesión hizo `uci apply` sin reversión): rollback no cambia nada. */
     var snapshotLost = false
 
+    /**
+     * El ACL de LuCI no deja `uci rollback` (luci-base.json solo trae apply y confirm): da "acceso
+     * denegado" y el router lo deshace solo al vencer el plazo del apply. Con true, como un ACL que sí lo deja.
+     */
+    var rollbackAllowed = false
+
+    /** Hora de las pruebas en ms (el tiempo virtual de runTest) para que venza el plazo de un apply. */
+    var clock: () -> Long = { 0L }
+    private var applyDeadline: Long? = null
+
     /** El DNS para familias no contesta desde el router (p. ej. el proveedor lo bloquea). */
     var familyDnsDown = false
     var pendingApply: String? = null
@@ -67,6 +78,9 @@ class FakeOpenWrt(
     var intercept: ((RecordedCall) -> Reply?)? = null
 
     private val staged = mutableMapOf<String, MutableList<(MutableMap<String, MutableMap<String, JsonElement>>) -> Unit>>()
+
+    /** Lo que aplicó el apply pendiente: al deshacerlo, rpcd se lo devuelve a su sesión como pendiente. */
+    private var appliedOps: List<(MutableMap<String, MutableMap<String, JsonElement>>) -> Unit> = emptyList()
     private var snapshot: Map<String, Map<String, JsonElement>>? = null
     private var sessions = 0
     private var handles = 100L
@@ -78,8 +92,8 @@ class FakeOpenWrt(
     val router = FakeRouter(::handle)
     val calls get() = router.calls.map { it.name }
 
-    fun section(name: String, type: String, vararg options: Pair<String, Any>) {
-        committed[name] = linkedMapOf<String, JsonElement>(".type" to JsonPrimitive(type), ".config" to JsonPrimitive(configOf(type))).apply {
+    fun section(name: String, type: String, vararg options: Pair<String, Any>, config: String? = null) {
+        committed[name] = linkedMapOf<String, JsonElement>(".type" to JsonPrimitive(type), ".config" to JsonPrimitive(config ?: configOf(type))).apply {
             for ((k, v) in options) put(k, if (v is List<*>) JsonArray(v.map { JsonPrimitive(it.toString()) }) else JsonPrimitive(v.toString()))
         }
         reload()
@@ -98,10 +112,15 @@ class FakeOpenWrt(
         "dnsmasq", "dhcp", "host", "odhcpd", "cname", "hostrecord" -> "dhcp"
         "uhttpd" -> "uhttpd"
         "dropbear" -> "dropbear"
-        else -> "firewall"
+        "queue" -> "sqm"
+        "upnpd", "perm_rule" -> "upnpd"
+        "interface" -> "network"
+        "service" -> "ddns"
+        else -> if (type.startsWith("wireguard_")) "network" else "firewall"
     }
 
     private fun handle(call: RecordedCall): Reply = synchronized(this) {
+        expireApply()
         intercept?.invoke(call)?.let { return@synchronized it }
         val a = call.args
         fun arg(key: String) = a[key]?.jsonPrimitive?.content
@@ -120,26 +139,22 @@ class FakeOpenWrt(
                 ).apply { putAll(a["values"]!!.jsonObject) }
             }.let { ok("""{"section":"${arg("name")}"}""") }
             "uci.delete" -> stage(call.sid) { cfg -> cfg.remove(arg("section")!!) }.let { ok() }
+            "uci.changes" -> ok(buildJsonObject {
+                putJsonObject("changes") {
+                    if (staged[call.sid].orEmpty().isNotEmpty()) putJsonArray("pendiente") { }
+                }
+            }.toString())
             "uci.set" -> stage(call.sid) { cfg -> cfg[arg("section")!!]?.putAll(a["values"]!!.jsonObject) }.let { ok() }
-            "uci.apply" -> apply(call.sid, a["rollback"]?.jsonPrimitive?.content == "true")
+            "uci.apply" -> apply(call.sid, a["rollback"]?.jsonPrimitive?.content == "true", a["timeout"]?.jsonPrimitive?.content?.toLong() ?: 30)
             "uci.confirm" -> when (pendingApply) {
                 null -> status(5)
-                call.sid -> { pendingApply = null; snapshot = null; ok() }
+                call.sid -> { pendingApply = null; snapshot = null; applyDeadline = null; ok() }
                 else -> status(6)
             }
-            "uci.rollback" -> when (pendingApply) {
-                null -> status(5)
-                call.sid -> {
-                    if (!snapshotLost) {
-                        committed.clear()
-                        snapshot!!.forEach { (k, v) -> committed[k] = v.toMutableMap() }
-                    }
-                    pendingApply = null
-                    snapshot = null
-                    applySystemTimezone()
-                    reload()
-                    ok()
-                }
+            "uci.rollback" -> when {
+                !rollbackAllowed -> accessDenied
+                pendingApply == null -> status(5)
+                pendingApply == call.sid -> { revertApply(); ok() }
                 else -> status(6)
             }
             "system.info" -> ok("""{"localtime":$localTime,"uptime":100}""")
@@ -242,7 +257,28 @@ class FakeOpenWrt(
         staged.getOrPut(sid) { mutableListOf() } += op
     }
 
-    private fun apply(sid: String, rollback: Boolean): Reply {
+    /** Como rpcd al vencer el plazo sin `uci confirm`: restaura la copia y recarga. */
+    private fun expireApply() {
+        val deadline = applyDeadline ?: return
+        if (pendingApply != null && clock() >= deadline) revertApply()
+    }
+
+    private fun revertApply() {
+        if (!snapshotLost) {
+            committed.clear()
+            snapshot!!.forEach { (k, v) -> committed[k] = v.toMutableMap() }
+        }
+        // Como rpc_uci_do_rollback: los cambios deshechos vuelven a la sesión del apply como pendientes.
+        pendingApply?.let { sid -> staged.getOrPut(sid) { mutableListOf() }.addAll(0, appliedOps) }
+        appliedOps = emptyList()
+        pendingApply = null
+        snapshot = null
+        applyDeadline = null
+        applySystemTimezone()
+        reload()
+    }
+
+    private fun apply(sid: String, rollback: Boolean, timeoutSeconds: Long = 30): Reply {
         if (pendingApply != null && rollback) return status(6)
         val ops = staged.remove(sid).orEmpty()
         if (ops.isEmpty()) return status(5)
@@ -251,7 +287,11 @@ class FakeOpenWrt(
         ops.forEach { it(working) }
         committed.clear()
         committed.putAll(working)
-        if (rollback) pendingApply = sid
+        if (rollback) {
+            pendingApply = sid
+            applyDeadline = clock() + timeoutSeconds * 1000
+            appliedOps = ops
+        }
         applySystemTimezone()
         reload()
         return ok()

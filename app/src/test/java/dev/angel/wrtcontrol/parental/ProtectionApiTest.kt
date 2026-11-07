@@ -32,6 +32,7 @@ class ProtectionApiTest {
     private val juan = Profile("j1", "Juan", listOf(mac1))
 
     private fun TestScope.api(fake: FakeOpenWrt): ParentalApi {
+        fake.clock = { testScheduler.currentTime }
         val client = fake.router.client(Credentials("root", ""), io = StandardTestDispatcher(testScheduler))
         return ParentalApi(client, phoneClockSeconds = { error("debe usar luci.getUnixtime") })
     }
@@ -218,6 +219,25 @@ class ProtectionApiTest {
     }
 
     // ---------- reaplicar ----------
+
+    @Test
+    fun `volver a aplicar sin cambios que falla espera a que el router lo deshaga de verdad`() = runTest {
+        val fake = FakeOpenWrt().base()
+        val api = api(fake)
+        api.updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
+        fake.fw4Accepts = false
+        val start = testScheduler.currentTime
+
+        // Solo borra y vuelve a crear la sección include, igual: la configuración ya "parece" la de
+        // antes nada más aplicar, pero rpcd aún tiene el cambio pendiente.
+        expect<ChangeRevertedException> { api.update(force = true) { config, _ -> config } }
+
+        assertNull("el router ya lo deshizo cuando la app lo dice", fake.pendingApply)
+        assertTrue(testScheduler.currentTime - start >= ROLLBACK_SECONDS * 1000L)
+        // Y el siguiente cambio no choca con un apply pendiente.
+        fake.fw4Accepts = true
+        api.updateProfiles { profiles, _ -> profiles.map { it.copy(pause = null) } }
+    }
 
     @Test
     fun `force vuelve a escribir y cargar las reglas aunque la configuracion no cambie`() = runTest {

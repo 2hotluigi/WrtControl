@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ubus
 
+import dev.angel.wrtcontrol.openwrt.uciSections
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
@@ -12,6 +13,37 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class UbusClientTest {
+
+    @Test
+    fun `una sesion que era la de un cambio pendiente y le devolvieron los cambios deshechos se abandona`() = kotlinx.coroutines.test.runTest {
+        val fake = dev.angel.wrtcontrol.parental.FakeOpenWrt()
+        fake.clock = { testScheduler.currentTime }
+        fake.section("cfg03", "system", "hostname" to "OpenWrt", "timezone" to "CST6", "zonename" to "America/Mexico_City")
+        val io = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+        // Un cambio aplicado con reversión y sin confirmar (la app se cerró a mitad).
+        val dead = fake.router.client(Credentials("root", ""), io = io)
+        dead.login(Credentials("root", ""))
+        val tx = dead.openSession()
+        tx.call("uci", "set", kotlinx.serialization.json.buildJsonObject {
+            put("config", kotlinx.serialization.json.JsonPrimitive("system"))
+            put("section", kotlinx.serialization.json.JsonPrimitive("cfg03"))
+            put("values", kotlinx.serialization.json.buildJsonObject { put("hostname", kotlinx.serialization.json.JsonPrimitive("Cambiado")) })
+        })
+        tx.call("uci", "apply", kotlinx.serialization.json.buildJsonObject {
+            put("rollback", kotlinx.serialization.json.JsonPrimitive(true)); put("timeout", kotlinx.serialization.json.JsonPrimitive(60))
+        })
+        // La app vuelve a entrar: rpcd le da la sesión del cambio pendiente.
+        val client = fake.router.client(Credentials("root", ""), io = io)
+        client.login(Credentials("root", ""))
+        assertEquals(tx.id, client.session)
+        // Vence el plazo: el router lo deshace y devuelve el cambio a esa sesión como pendiente.
+        testScheduler.advanceTimeBy(61_000)
+
+        val hostname = client.uciSections("system").first().text("hostname")
+        assertEquals("no se ve el cambio deshecho", "OpenWrt", hostname)
+        assertTrue(client.session != tx.id)
+    }
+
 
     private val creds = Credentials("root", "secreto")
     private fun session(id: String) = ok("""{"ubus_rpc_session":"$id","timeout":300,"expires":300}""")

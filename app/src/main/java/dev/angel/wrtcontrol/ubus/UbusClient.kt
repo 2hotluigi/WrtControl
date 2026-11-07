@@ -28,6 +28,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /** Sesión "nula" de rpcd: solo permite session.login y session.access. */
@@ -40,6 +41,24 @@ private const val RPC_ACCESS_DENIED = -32002
 private const val UBUS_PERMISSION_DENIED = 6
 
 private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+private val FORM_MEDIA_TYPE = "application/x-www-form-urlencoded".toMediaType()
+
+/** Tras un login, cuánto se vigila si la sesión era la de un cambio pendiente (60 s de plazo y margen). */
+private const val RECLAIM_WINDOW_MS = 120_000L
+private const val CHANGES_CHECK_MS = 10_000L
+
+/** Lo que espera la app a un comando de cgi-exec: algo más que el `script_timeout` de uhttpd (60 s). */
+const val CGI_TIMEOUT_SECONDS = 75L
+
+/** Como encodeURIComponent de JavaScript (cgi-io no entiende una '/' sin codificar). */
+internal fun uriComponent(text: String): String =
+    java.net.URLEncoder.encode(text, "UTF-8") // la versión con Charset es de Android 13
+        .replace("+", "%20")
+        .replace("%21", "!")
+        .replace("%27", "'")
+        .replace("%28", "(")
+        .replace("%29", ")")
+        .replace("%7E", "~")
 
 data class Credentials(val username: String, val password: String) {
     override fun toString() = "Credentials(username=$username, password=***)"
@@ -94,6 +113,9 @@ internal fun <T> decodeUbus(
 class UbusSession internal constructor(private val client: UbusClient, val id: String) : UbusCaller {
     override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? =
         client.callInSession(id, target, method, args)
+
+    /** Otra sesión del mismo usuario (rpcd devuelve esta si sigue teniendo un apply pendiente). */
+    internal suspend fun reopen(): UbusSession = client.openSession()
 }
 
 /**
@@ -123,11 +145,20 @@ class UbusClient(
     private val loginMutex = Mutex()
     private val nextId = AtomicLong(1)
 
+    /** Cuándo se obtuvo la sesión compartida y cuándo se miró por última vez si tiene cambios. */
+    @Volatile
+    private var sessionSince = 0L
+
+    @Volatile
+    private var changesCheckedAt = 0L
+
     /** Inicia sesión y, si funciona, guarda las credenciales para renovarla más adelante. */
     suspend fun login(credentials: Credentials): SessionInfo {
         val info = newSession(credentials)
         this.credentials = credentials
         session = info.id
+        sessionSince = System.currentTimeMillis()
+        changesCheckedAt = 0L
         return info
     }
 
@@ -180,13 +211,59 @@ class UbusClient(
 
     /** Llama a `objeto.método` con la sesión actual y devuelve los datos crudos. */
     override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? {
-        val sid = session ?: renewSession(expired = null)
+        var sid = session ?: renewSession(expired = null)
+        if (target == "uci" && method == "get" && hasPhantomChanges(sid)) sid = renewSession(expired = sid)
         return try {
             rawCall(sid, target, method, args)
         } catch (e: UbusException.AccessDenied) {
             // -32002 es ambiguo: averiguamos si la sesión sigue viva.
             if (isSessionAlive(sid)) throw e
             rawCall(renewSession(expired = sid), target, method, args)
+        }
+    }
+
+    /**
+     * Ejecuta [command] con `cgi-exec` de cgi-io, como `fs.exec_direct` de LuCI (la página de
+     * software lo usa para instalar paquetes). A diferencia de `file.exec`, que rpcd corta a los
+     * 30 s, aquí manda el `script_timeout` de uhttpd (60 s por defecto). Devuelve la salida
+     * estándar del comando; el ACL (`cgi-io exec` y el comando exacto en `file`) decide si se
+     * permite.
+     */
+    suspend fun cgiExec(command: String, params: List<String>, timeoutSeconds: Long = CGI_TIMEOUT_SECONDS): String {
+        val sid = session ?: renewSession(expired = null)
+        return try {
+            rawCgiExec(sid, command, params, timeoutSeconds)
+        } catch (e: UbusException.AccessDenied) {
+            // Una sesión caducada también da 403 ("Exec permission denied"): se mira cuál es.
+            if (isSessionAlive(sid)) throw e
+            rawCgiExec(renewSession(expired = sid), command, params, timeoutSeconds)
+        }
+    }
+
+    private suspend fun rawCgiExec(sid: String, command: String, params: List<String>, timeoutSeconds: Long): String {
+        // Como LuCI: barras invertidas y espacios escapados con '\', y todo en encodeURIComponent.
+        val line = (listOf(command) + params).joinToString(" ") { it.replace("\\", "\\\\").replace(Regex("(\\s)"), "\\\\$1") }
+        val body = "sessionid=${uriComponent(sid)}&command=${uriComponent(line)}&stderr=0"
+        val url = endpoint.newBuilder().encodedPath("/cgi-bin/cgi-exec").query(null).build()
+        val request = Request.Builder().url(url).post(body.toRequestBody(FORM_MEDIA_TYPE)).build()
+        val client = http.newBuilder()
+            .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+            .callTimeout(timeoutSeconds + 10, TimeUnit.SECONDS)
+            .build()
+        return withContext(io) {
+            try {
+                client.newCall(request).execute().use { response ->
+                    val text = response.body.string()
+                    when (response.code) {
+                        200 -> text
+                        403 -> throw UbusException.AccessDenied(command)
+                        404 -> throw UbusException.Status(4, command)
+                        else -> throw UbusException.Network("El router respondió HTTP ${response.code} a $command", response.code)
+                    }
+                }
+            } catch (e: IOException) {
+                throw UbusException.Network("No se pudo contactar con el router (${e.message ?: e.javaClass.simpleName})", cause = e)
+            }
         }
     }
 
@@ -213,6 +290,26 @@ class UbusClient(
         session = null
         val creds = credentials ?: throw UbusException.SessionExpired()
         login(creds).id
+    }
+
+    /**
+     * rpcd da la sesión de un `uci apply` pendiente de confirmar a cualquier login del mismo usuario.
+     * Si la sesión compartida resulta ser una de esas (p. ej. la app se cerró a mitad de un cambio y
+     * volvió a entrar) y el router lo deshace al vencer el plazo, rpcd le devuelve esos cambios como
+     * pendientes, y `uci get` los mezclaría con la configuración: la app enseñaría puesto un cambio
+     * deshecho. La sesión compartida nunca prepara cambios: si tiene alguno, se abandona.
+     */
+    private suspend fun hasPhantomChanges(sid: String): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - sessionSince > RECLAIM_WINDOW_MS || now - changesCheckedAt < CHANGES_CHECK_MS) return false
+        changesCheckedAt = now
+        val changes = try {
+            rawCall(sid, "uci", "changes", JsonObject(emptyMap()))
+        } catch (_: UbusException) {
+            return false
+        }
+        val pending = ((changes as? JsonObject)?.get("changes") as? JsonObject)?.isNotEmpty() == true
+        return pending && session == sid
     }
 
     /** session.access está permitido para cualquier sesión válida (grupo "unauthenticated"). */

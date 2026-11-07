@@ -84,9 +84,9 @@ class ParentalApi(
     private val phoneClockSeconds: () -> Long = { System.currentTimeMillis() / 1000 },
     /** Diagnóstico de la verificación (logcat en la app, stdout en las pruebas). */
     private val log: (String) -> Unit = {},
+    /** Compartido con los demás cambios de la app (ver OpenWrtApi): dos `uci apply` a la vez se pisarían. */
+    private val writeLock: Mutex = Mutex(),
 ) {
-    private val writeLock = Mutex()
-
     suspend fun load(): ParentalSnapshot = coroutineScope {
         val firewall = async { ubus.uciSections("firewall") }
         val local = async { ubus.routerLocalTime() }
@@ -190,7 +190,7 @@ class ParentalApi(
         tx.uciSet("system", system.name, mapOf("zonename" to zone, "timezone" to tz))
         tx.applySafely(
             failure = "El router no tomó la hora de esa zona (${formatUtcOffset(expectedOffsetSeconds)}), así que se dejó como estaba.",
-            isReverted = { ubus.openSession().systemSection()?.text("zonename") == system.text("zonename") },
+            isReverted = { fresh -> fresh.systemSection()?.text("zonename") == system.text("zonename") },
             isLive = { tx.offsetSeconds() == expectedOffsetSeconds },
         )
 
@@ -262,7 +262,7 @@ class ParentalApi(
         var waited = 0
         tx.applySafely(
             failure = "El router no cargó los cambios (firewall o DNS), así que se restauró la configuración anterior.",
-            isReverted = { ubus.openSession().readState().ownSections() == before.ownSections() },
+            isReverted = { fresh -> fresh.readState().ownSections() == before.ownSections() },
         ) {
             val firewallOk = if (firewallBefore == null) {
                 // Sin permiso para listar el firewall: solo se puede comprobar que el router sigue respondiendo.

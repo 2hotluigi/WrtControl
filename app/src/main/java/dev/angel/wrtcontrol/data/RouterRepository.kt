@@ -28,6 +28,8 @@ sealed interface Connection {
 class RouterRepository(
     private val store: RouterStore,
     private val http: OkHttpClient,
+    /** Camino hasta el router: directo en casa, por el acceso remoto fuera. */
+    val transport: RouterTransport? = null,
 ) {
     private val _state = MutableStateFlow<Connection>(Connection.Loading)
     val state: StateFlow<Connection> = _state.asStateFlow()
@@ -38,6 +40,14 @@ class RouterRepository(
     @Volatile
     private var client: UbusClient? = null
 
+    /**
+     * Identificador del router conectado (modelo y MAC de la LAN), cuando se conoce. El acceso remoto
+     * guardado solo se usa con el router para el que se creó.
+     */
+    @Volatile
+    var routerId: String? = null
+        private set
+
     /** Al arrancar la app: si hay un router guardado con contraseña, se entra directamente. */
     suspend fun restore() {
         val saved = store.load()
@@ -46,6 +56,8 @@ class RouterRepository(
             return
         }
         // El login real se hace en la primera llamada (UbusClient renueva la sesión solo).
+        routerId = saved.routerId
+        transport?.config = tunnelFor(saved.address, saved.routerId)
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
         _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
     }
@@ -53,14 +65,28 @@ class RouterRepository(
     /** Prueba las credenciales contra el router y, si funcionan, las guarda. */
     suspend fun connect(address: String, username: String, password: String) {
         val endpoint = RouterAddress.endpoint(address)
+        // Si ya se conocía este router, se entra por su acceso remoto (que comprueba que es él).
+        val known = store.load()?.takeIf { it.address == address.trim() }?.routerId
+        transport?.config = tunnelFor(address.trim(), known)
         val newClient = UbusClient(endpoint, http)
         newClient.login(Credentials(username, password))
-        store.save(SavedRouter(address.trim(), username, password))
+        val id = try {
+            OpenWrtApi(newClient).routerId()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        store.save(SavedRouter(address.trim(), username, password, id ?: known))
+        routerId = id ?: known
+        if (id != null && id != known) transport?.config = tunnelFor(address.trim(), id)
         open(newClient)
         _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty())
     }
 
     suspend fun signOut(notice: String? = null) {
+        transport?.config = null
+        routerId = null
         client?.forget()
         client = null
         api = null
@@ -122,6 +148,49 @@ class RouterRepository(
     suspend fun setBackupPending(router: String, pending: Boolean) {
         (_state.value as? Connection.SignedIn)?.let { store.setBackupPending(it.address + "|" + router, pending) }
     }
+
+    /**
+     * Apunta el identificador del router conectado (lo averiguan las pantallas al leer el router).
+     * Si cambia, el acceso remoto que se use es el de este router.
+     */
+    suspend fun rememberRouterId(id: String) {
+        val signed = _state.value as? Connection.SignedIn ?: return
+        if (id == routerId) return
+        routerId = id
+        store.saveRouterId(id)
+        transport?.config = tunnelFor(signed.address, id)
+    }
+
+    /** Acceso remoto de este teléfono al router conectado (ver [TunnelConfig]), si se sabe cuál es. */
+    suspend fun loadTunnel(): TunnelConfig? {
+        val signed = _state.value as? Connection.SignedIn ?: return null
+        return tunnelFor(signed.address, routerId)
+    }
+
+    /** Guarda (o, con null, borra) el acceso remoto del router [routerId] conectado. */
+    suspend fun saveTunnel(routerId: String, config: TunnelConfig?) {
+        val signed = _state.value as? Connection.SignedIn ?: return
+        require(config == null || config.routerId == routerId)
+        store.saveTunnel(signed.address, routerId, config?.toJson())
+        if (routerId == this.routerId) transport?.config = config
+    }
+
+    /**
+     * Mantiene al día dónde buscar el router fuera de casa: [endpoints], sus direcciones públicas de
+     * ahora (vacío: no se cambian), y [hostname], el nombre del DNS dinámico (si [hostnameKnown]).
+     */
+    suspend fun refreshTunnelAddresses(endpoints: List<String>, hostname: String? = null, hostnameKnown: Boolean = false) {
+        val id = routerId ?: return
+        val tunnel = loadTunnel()?.takeIf { it.enabled } ?: return
+        val updated = tunnel.copy(
+            endpoints = endpoints.ifEmpty { tunnel.endpoints },
+            hostname = if (hostnameKnown) hostname else tunnel.hostname,
+        )
+        if (updated != tunnel) saveTunnel(id, updated)
+    }
+
+    private suspend fun tunnelFor(address: String, id: String?): TunnelConfig? =
+        id?.let { parseTunnel(store.loadTunnel(address, it))?.takeIf { t -> t.routerId == id } }
 
     private fun open(newClient: UbusClient) {
         client?.forget()

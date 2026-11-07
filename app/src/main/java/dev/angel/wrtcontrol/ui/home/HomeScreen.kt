@@ -24,7 +24,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
+import dev.angel.wrtcontrol.data.Link
+import androidx.compose.ui.platform.testTag
 import dev.angel.wrtcontrol.ui.LocalRepository
+import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 import dev.angel.wrtcontrol.ui.parental.ParentalScreen
 import kotlinx.coroutines.launch
 
@@ -32,6 +35,7 @@ private enum class Tab(val label: String, val icon: Int) {
     Status("Estado", R.drawable.ic_dashboard),
     Devices("Dispositivos", R.drawable.ic_devices),
     Parental("Control", R.drawable.ic_shield),
+    Addons("Paquetes", R.drawable.ic_extension),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +47,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
     val statusVm: StatusViewModel = viewModel(key = "status:${connection.address}") { StatusViewModel(repo) }
     val status by statusVm.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(Tab.Status.ordinal) }
+    val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
 
     Scaffold(
         topBar = {
@@ -51,9 +56,14 @@ fun HomeScreen(connection: Connection.SignedIn) {
                     Column {
                         Text(status.data?.board?.hostname ?: "Router")
                         Text(
-                            connection.address,
+                            connection.address + when (link) {
+                                Link.Direct -> ""
+                                Link.Connecting -> " · conectando por el acceso remoto…"
+                                Link.Tunnel -> " · por el acceso remoto"
+                            },
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (link == Link.Tunnel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("router-link"),
                         )
                     }
                 },
@@ -82,6 +92,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
                 Tab.Status -> StatusScreen(status)
                 Tab.Devices -> DevicesScreen(connection.address)
                 Tab.Parental -> ParentalScreen(connection)
+                Tab.Addons -> AddonsScreen(connection.address)
             }
         }
     }
