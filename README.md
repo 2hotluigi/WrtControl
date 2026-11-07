@@ -374,20 +374,4 @@ Límites del acceso remoto:
 
 ## Hoja de ruta
 
-1. ~~Base: conexión, estado y dispositivos~~
-2. ~~Control parental~~
-   - ~~Perfiles por persona, pausar internet y horarios (con reversión automática)~~
-   - ~~Filtro de contenido por perfil: niveles, servicios y sitios propios~~
-   - ~~Protección: cuarentena de dispositivos nuevos, DNS cifrado por IP, corte de conexiones al
-     bloquear, búsqueda segura y YouTube restringido, acceso al router, tiempo extra, copia de
-     los perfiles y bloqueo de la app~~
-   - Siguiente: categorías, plantillas por edad, "permitir este sitio", diagnóstico de "¿por qué
-     no carga?", avisos en el teléfono, dificultar VPN, horarios por servicio y modo tareas
-   - Más adelante: un perfil "todos los dispositivos" para filtrar toda la red y reportes
-3. ~~Paquetes y acceso remoto~~
-   - ~~Instalar y configurar paquetes desde la app: WireGuard, DNS dinámico, SQM y UPnP~~
-   - ~~Servidor WireGuard en el router, un par por teléfono~~
-   - ~~Túnel WireGuard dentro de la app (sin VPN de Android) que cambia solo entre casa y fuera~~
-   - Siguiente: probarlo con un teléfono de verdad en datos móviles con IPv6 y, si no basta, un
-     servidor intermedio
-4. Seguridad: usuario rpcd con ACL limitado (no root) y emparejamiento por QR
+Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.
