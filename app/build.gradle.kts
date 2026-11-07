@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -38,6 +40,39 @@ android {
         compose = true
         buildConfig = true
     }
+
+    lint {
+        // La CI falla con cualquier aviso nuevo; los que ya había quedan en la línea base
+        // (`gradlew updateLintBaseline` la regenera).
+        warningsAsErrors = true
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
+        // "Hay una versión más nueva": cambia sola con cada publicación y pondría la CI en rojo sin
+        // tocar nada. Las actualizaciones se hacen aparte.
+        disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable")
+    }
+}
+
+// Análisis estático + estilo (ktlint dentro de detekt). Lo que ya había queda en la línea base:
+// la CI solo falla por código nuevo. `gradlew detektBaseline` la regenera.
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+    parallel = true
+}
+
+// Cobertura de las pruebas unitarias: `gradlew koverHtmlReportDebug` / `koverXmlReportDebug`.
+kover {
+    reports {
+        filters {
+            excludes {
+                // Compose y el código generado distorsionan la cifra sin decir nada útil.
+                annotatedBy("androidx.compose.runtime.Composable")
+                classes("*.BuildConfig", "*ComposableSingletons*", "dev.angel.wrtcontrol.go.*")
+            }
+        }
+    }
 }
 
 dependencies {
@@ -60,4 +95,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    detektPlugins(libs.detekt.ktlint)
 }
