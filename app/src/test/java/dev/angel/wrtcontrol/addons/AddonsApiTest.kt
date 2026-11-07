@@ -220,6 +220,19 @@ class AddonsApiTest {
     }
 
     @Test
+    fun `hasta 24_10 sin service list UPnP se arranca o para a mano`() = runTest {
+        val f = FakeAddons()
+        f.install("luci-app-upnp")
+        f.oldRouter = true
+        val api = api(f)
+
+        api.setUpnp(enabled = true)
+        assertTrue(f.initActions.contains("miniupnpd restart"))
+        api.setUpnp(enabled = false)
+        assertTrue(f.initActions.contains("miniupnpd stop"))
+    }
+
+    @Test
     fun `si miniupnpd estaba parado a mano se arranca al activar UPnP`() = runTest {
         val f = FakeAddons()
         f.install("luci-app-upnp")

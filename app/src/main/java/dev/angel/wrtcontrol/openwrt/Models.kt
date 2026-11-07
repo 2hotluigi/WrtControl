@@ -64,13 +64,28 @@ data class NetInterface(
     val uptime: Long? = null,
     @SerialName("ipv4-address") val ipv4: List<IpAddress> = emptyList(),
     @SerialName("ipv6-address") val ipv6: List<IpAddress> = emptyList(),
-    @SerialName("ipv6-prefix-assignment") val ipv6Prefixes: List<IpAddress> = emptyList(),
+    @SerialName("ipv6-prefix-assignment") val ipv6Prefixes: List<PrefixAssignment> = emptyList(),
     @SerialName("dns-server") val dns: List<String> = emptyList(),
     @SerialName("route") val routes: List<Route> = emptyList(),
 ) {
     /** ¿Lleva la ruta por defecto (0.0.0.0/0 o ::/0)? Es la salida a internet, no una red de casa. */
     val hasDefaultRoute: Boolean get() = routes.any { it.mask == 0 }
+
+    /**
+     * IPv6 del router en esta interfaz, también la que toma de cada prefijo delegado (con solo
+     * prefijo, la wan6 no tiene dirección propia y la del router está en la LAN). Es lo que da
+     * network_get_ipaddr6, que usan ddns-scripts y LuCI.
+     */
+    val routerIpv6: List<IpAddress> get() = ipv6 + ipv6Prefixes.mapNotNull { it.localAddress }
 }
+
+/** Prefijo IPv6 asignado a una interfaz y la dirección que se queda el router dentro de él. */
+@Serializable
+data class PrefixAssignment(
+    val address: String,
+    val mask: Int,
+    @SerialName("local-address") val localAddress: IpAddress? = null,
+)
 
 @Serializable
 data class Route(val target: String = "", val mask: Int = -1)

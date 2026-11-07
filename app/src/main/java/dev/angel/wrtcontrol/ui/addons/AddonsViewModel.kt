@@ -27,6 +27,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
@@ -42,6 +43,9 @@ data class AddonsData(val state: AddonsState, val packages: InstalledPackages?, 
 }
 
 private const val TAG = "WrtControl"
+
+/** Cada cuánto se vuelve a pedir el listado de paquetes aunque no se haya instalado nada. */
+private const val PACKAGES_MAX_AGE_MS = 5 * 60_000L
 
 /** Identificador del teléfono en el router (parte del nombre de su sección): 10 letras y cifras. */
 private fun newPeerId(): String {
@@ -65,6 +69,10 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     @Volatile
     private var packagesStale = true
 
+    /** Cuándo se pidió [packages]: se vuelve a pedir pasado un rato (pudo cambiar desde LuCI). */
+    @Volatile
+    private var packagesAt = 0L
+
     /** Modelo y MAC de la LAN del router: el acceso remoto guardado solo vale para ese. */
     @Volatile
     private var routerId: String? = null
@@ -76,34 +84,28 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
         repo.use { api ->
             coroutineScope {
                 val state = async { api.addons.state() }
-                if (packagesStale || packagesFrom !== api) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (packagesStale || packagesFrom !== api || now - packagesAt > PACKAGES_MAX_AGE_MS) {
                     packages = api.addons.packages()
                     packagesFrom = api
+                    packagesAt = now
                     packagesStale = false
                 }
                 if (routerIdFrom !== api) {
-                    routerId = api.routerId()
+                    routerId = api.routerId().also { repo.rememberRouterId(it) }
                     routerIdFrom = api
                 }
                 val s = state.await()
-                var tunnel = repo.loadTunnel()?.takeIf { it.routerId == routerId }
-                // Lo que usará fuera de casa: el nombre del DNS dinámico y, por si no lo hay o tarda
-                // en actualizarse, las direcciones públicas de ahora.
-                if (tunnel != null && tunnel.enabled) {
-                    val updated = tunnel.copy(
-                        endpoints = s.publicAddresses.ifEmpty { tunnel.endpoints },
-                        // Si no se pudo leer el DNS dinámico, se queda el nombre que había.
-                        hostname = if (s.ddns != null) s.ownDdns?.domain else tunnel.hostname,
-                    )
-                    if (updated != tunnel) {
-                        tunnel = updated
-                        repo.saveTunnel(updated)
-                    }
-                }
-                AddonsData(s, packages, tunnel)
+                // Lo que usará fuera de casa: el nombre del DNS dinámico (si se pudo leer) y las
+                // direcciones públicas de ahora.
+                repo.refreshTunnelAddresses(s.publicAddresses, s.ddnsDomain, hostnameKnown = s.ddns != null)
+                AddonsData(s, packages, repo.loadTunnel())
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
+    }
+        // Al volver a la pantalla (o a la app), el listado de paquetes se pide de nuevo.
+        .onStart { packagesStale = true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
 
     /** Qué se está haciendo en el router ahora mismo (null si nada). */
     var busy by mutableStateOf<String?>(null)
@@ -130,31 +132,57 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
      * tocar el router: si la app se cierra a mitad, al repetir se usa la misma.
      */
     fun enableRemoteAccess(phoneName: String) = run("Configurando el acceso remoto…") { api ->
-        val id = routerId ?: api.routerId()
+        val id = routerId ?: api.routerId().also { repo.rememberRouterId(it) }
         val old = repo.loadTunnel()?.takeIf { it.routerId == id }
         val config = old ?: TunnelConfig(
             routerId = id,
             peerId = newPeerId(),
             privateKey = X25519.generatePrivateKey(),
             presharedKey = X25519.generatePresharedKey(),
-        ).also { repo.saveTunnel(it) }
+        ).also { repo.saveTunnel(id, it) }
         val setup = api.addons.enableRemoteAccess(config.peerId, phoneName, X25519.publicKey(config.privateKey), config.presharedKey)
         repo.saveTunnel(
+            id,
             config.copy(
                 enabled = true,
                 routerPublicKey = setup.routerPublicKey,
                 port = setup.port,
                 routerTunnelAddress = setup.routerTunnelAddress,
+                webAddress = setup.webAddress,
                 phoneAddress = setup.phoneAddress,
                 endpoints = setup.publicAddresses.ifEmpty { config.endpoints },
             ),
         )
     }
 
-    /** Quita el acceso remoto de [peer] (este teléfono u otro). */
+    /**
+     * Quita el acceso remoto de [peer]. Si es este teléfono, se hace por la conexión directa: al
+     * quitarlo, el router corta el túnel por el que habría que comprobar el cambio. Por eso solo se
+     * puede desde casa.
+     */
     fun removeRemotePeer(peer: RemotePeer) = run("Quitando el acceso remoto de ${peer.name}…") { api ->
-        api.addons.removeRemotePeer(peer.id)
-        if (repo.loadTunnel()?.peerId == peer.id) repo.saveTunnel(null)
+        val tunnel = repo.loadTunnel()
+        val mine = tunnel?.peerId == peer.id
+        val transport = repo.transport
+        if (mine && transport != null) transport.directOnly = true
+        try {
+            if (mine) {
+                try {
+                    api.systemInfo()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    throw IllegalStateException(
+                        "Ahora la app entra al router por el acceso remoto de este teléfono: quitarlo cortaría la conexión. " +
+                            "Quítalo desde casa.",
+                    )
+                }
+            }
+            api.addons.removeRemotePeer(peer.id)
+            if (mine) repo.saveTunnel(tunnel!!.routerId, null)
+        } finally {
+            if (mine && transport != null) transport.directOnly = false
+        }
     }
 
     fun saveDdns(edit: DdnsEdit, onDone: () -> Unit = {}) =

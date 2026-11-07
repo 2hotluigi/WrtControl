@@ -204,6 +204,96 @@ class RemoteAccessTest {
     }
 
     @Test
+    fun `con el servidor ya puesto, otro telefono o quitar uno reinicia la interfaz para que llegue al kernel`() = runTest {
+        val (f, api) = setup()
+        val other = X25519.generatePrivateKey()
+        api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        assertEquals("la interfaz nueva la levanta netifd", emptyList<String>(), f.ifups)
+
+        api.enableRemoteAccess("zzzz9999", "Galaxy", X25519.publicKey(other), X25519.generatePresharedKey())
+        assertEquals(listOf(VPN_INTERFACE), f.ifups)
+        assertEquals(setOf(X25519.publicKey(phone), X25519.publicKey(other)), f.wgKernel[VPN_INTERFACE])
+
+        // Un teléfono robado: al quitarlo, sale del kernel (no solo de la configuración).
+        api.removeRemotePeer("abcd1234")
+        assertEquals(setOf(X25519.publicKey(other)), f.wgKernel[VPN_INTERFACE])
+        assertEquals(2, f.ifups.size)
+    }
+
+    @Test
+    fun `sin el reinicio de la interfaz el telefono nuevo no llegaria y se deshace`() = runTest {
+        val (f, api) = setup()
+        api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        // Un router en el que /sbin/ifup no hiciera nada: el kernel se queda con el par de antes.
+        val original = f.fake.intercept!!
+        f.fake.intercept = { call -> if (call.name == "file.exec") dev.angel.wrtcontrol.ubus.ok("""{"code":0}""") else original(call) }
+        try {
+            api.enableRemoteAccess("zzzz9999", "Galaxy", X25519.publicKey(X25519.generatePrivateKey()), X25519.generatePresharedKey())
+            fail("el kernel no tiene el par nuevo: tenía que deshacerse")
+        } catch (_: dev.angel.wrtcontrol.parental.ChangeRevertedException) {
+        }
+    }
+
+    @Test
+    fun `un par anadido desde LuCI no impide anadir ni quitar telefonos y se cuenta aparte`() = runTest {
+        val (f, api) = setup()
+        api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        f.fake.section("cfg0abc", VPN_PEER_TYPE, "description" to "Portátil", "public_key" to X25519.publicKey(X25519.generatePrivateKey()))
+
+        api.enableRemoteAccess("zzzz9999", "Galaxy", X25519.publicKey(X25519.generatePrivateKey()), X25519.generatePresharedKey())
+        api.removeRemotePeer("abcd1234")
+
+        val remote = api.state().remote!!
+        assertEquals(listOf("Galaxy"), remote.peers.map { it.name })
+        assertEquals(listOf("Portátil"), remote.foreignPeers)
+        assertNotNull("el par de LuCI sigue", f.fake.committed["cfg0abc"])
+    }
+
+    @Test
+    fun `en 22_03 sin getWgInstances se comprueba que la interfaz se levanto despues del cambio`() = runTest {
+        val (f, api) = setup()
+        api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        // En 22.03, getWgInstances viene con luci-app-wireguard, no con luci-proto-wireguard.
+        f.installed.remove("luci-proto-wireguard")
+        testScheduler.advanceTimeBy(30_000)
+
+        api.enableRemoteAccess("zzzz9999", "Galaxy", X25519.publicKey(X25519.generatePrivateKey()), X25519.generatePresharedKey())
+        assertEquals(listOf(VPN_INTERFACE), f.ifups)
+        assertNull(f.fake.pendingApply)
+        // Sin datos en vivo, la pantalla no dice "nunca ha conectado".
+        assertEquals(false, api.state().wireguard!!.single().liveKnown)
+    }
+
+    @Test
+    fun `la regla del UDP entra tambien por la red de casa`() = runTest {
+        val (f, api) = setup()
+        api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        assertEquals("lan", f.fake.option("wrtcvpn_home_0", "src"))
+        assertEquals("51820", f.fake.option("wrtcvpn_home_0", "dest_port"))
+    }
+
+    @Test
+    fun `si uhttpd solo escucha en la LAN el tunel va a esa direccion y si solo escucha en IPv6 se explica`() = runTest {
+        val (f, api) = setup()
+        f.ipv4 = mapOf("lan" to "192.168.1.1")
+        f.fake.section("main", "uhttpd", "listen_http" to listOf("192.168.1.1:80"), "listen_https" to listOf("192.168.1.1:443"), config = "uhttpd")
+
+        val setup = api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+        assertEquals("192.168.1.1", setup.webAddress)
+        assertEquals("80 443", f.fake.option("wrtcvpn_web", "dest_port"))
+
+        api.removeRemotePeer("abcd1234")
+        f.fake.section("main", "uhttpd", "listen_http" to listOf("[::]:80"), config = "uhttpd")
+        try {
+            api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
+            fail("uhttpd no escucha en ninguna IPv4")
+        } catch (e: WebUnreachableException) {
+            assertTrue(e.message!!.contains("0.0.0.0"))
+        }
+        assertNull("no se tocó nada", f.fake.committed[VPN_INTERFACE])
+    }
+
+    @Test
     fun `el control parental no toca las secciones del acceso remoto`() = runTest {
         val (f, api) = setup()
         f.fake.section("cfg03", "system", "hostname" to "OpenWrt", "timezone" to "CST6", "zonename" to "America/Mexico_City")

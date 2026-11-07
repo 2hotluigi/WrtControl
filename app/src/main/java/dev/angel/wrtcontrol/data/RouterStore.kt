@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.first
 
 private val Context.routerDataStore by preferencesDataStore(name = "router")
 
-data class SavedRouter(val address: String, val username: String, val password: String?)
+/** [routerId]: modelo y MAC de la LAN del router la última vez que se llegó a él (ver OpenWrtApi.routerId). */
+data class SavedRouter(val address: String, val username: String, val password: String?, val routerId: String? = null)
 
 /** Router configurado. La dirección y el usuario van en claro; la contraseña, cifrada. */
 class RouterStore(private val context: Context, private val box: SecretBox) {
@@ -19,15 +20,18 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         val address = prefs[ADDRESS] ?: return null
         val username = prefs[USERNAME] ?: return null
         val password = prefs[PASSWORD]?.let(box::decrypt)
-        return SavedRouter(address, username, password)
+        return SavedRouter(address, username, password, prefs[ROUTER_ID])
     }
 
     suspend fun save(router: SavedRouter) {
         val encrypted = router.password?.let(box::encrypt)
         context.routerDataStore.edit { prefs ->
             prefs[ADDRESS] = router.address
+            // Otra dirección es (en principio) otro router: el identificador se vuelve a averiguar.
+            if (prefs[ADDRESS] != router.address) prefs.remove(ROUTER_ID)
             prefs[USERNAME] = router.username
             if (encrypted != null) prefs[PASSWORD] = encrypted else prefs.remove(PASSWORD)
+            router.routerId?.let { prefs[ROUTER_ID] = it }
         }
     }
 
@@ -46,14 +50,22 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         context.routerDataStore.edit { prefs -> if (pending) prefs[pendingKey(key)] = true else prefs.remove(pendingKey(key)) }
     }
 
-    /** Configuración del acceso remoto para el router de [address] (cifrada, lleva una clave privada). */
-    suspend fun loadTunnel(address: String): String? =
-        context.routerDataStore.data.first()[tunnelKey(address)]?.let(box::decrypt)
+    suspend fun saveRouterId(routerId: String) {
+        context.routerDataStore.edit { it[ROUTER_ID] = routerId }
+    }
 
-    suspend fun saveTunnel(address: String, json: String?) {
+    /**
+     * Configuración del acceso remoto para el router [routerId] en [address] (cifrada: lleva una
+     * clave privada). Por router y no solo por dirección: dos routers en 192.168.1.1 son dos claves.
+     */
+    suspend fun loadTunnel(address: String, routerId: String): String? =
+        context.routerDataStore.data.first()[tunnelKey(address, routerId)]?.let(box::decrypt)
+
+    suspend fun saveTunnel(address: String, routerId: String, json: String?) {
         val encrypted = json?.let(box::encrypt)
+        val key = tunnelKey(address, routerId)
         context.routerDataStore.edit { prefs ->
-            if (encrypted == null) prefs.remove(tunnelKey(address)) else prefs[tunnelKey(address)] = encrypted
+            if (encrypted == null) prefs.remove(key) else prefs[key] = encrypted
         }
     }
 
@@ -65,7 +77,8 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
     private companion object {
         fun backupKey(key: String) = stringPreferencesKey("parental_backup:" + key.trim().lowercase())
         fun pendingKey(key: String) = booleanPreferencesKey("parental_backup_pending:" + key.trim().lowercase())
-        fun tunnelKey(address: String) = stringPreferencesKey("tunnel:" + address.trim().lowercase())
+        fun tunnelKey(address: String, routerId: String) = stringPreferencesKey("tunnel:" + address.trim().lowercase() + "|" + routerId)
+        val ROUTER_ID = stringPreferencesKey("router_id")
         val ADDRESS = stringPreferencesKey("address")
         val USERNAME = stringPreferencesKey("username")
         val PASSWORD = stringPreferencesKey("password_encrypted")

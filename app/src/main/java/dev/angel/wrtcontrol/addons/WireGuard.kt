@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.UciSection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,8 +17,13 @@ data class WireGuardInterface(
     val listenPort: Int?,
     val addresses: List<String>,
     val peers: List<WireGuardPeer>,
-    /** La interfaz existe en el kernel (netifd la levantó). */
+    /** La interfaz está levantada. */
     val up: Boolean,
+    /**
+     * Hay datos en vivo (último saludo, tráfico). En 22.03, getWgInstances viene con
+     * luci-app-wireguard y no con luci-proto-wireguard: sin él no se sabe si alguien conectó.
+     */
+    val liveKnown: Boolean = true,
 )
 
 data class WireGuardPeer(
@@ -47,15 +53,23 @@ internal data class WgPeerStatus(
     @SerialName("transfer_tx") val transferTx: String = "0",
 )
 
-/** Interfaces WireGuard de [network] con lo que diga [live] (`getWgInstances`, por dispositivo). */
-internal fun parseWireGuard(network: List<UciSection>, live: Map<String, WgInstance>?): List<WireGuardInterface> =
+/**
+ * Interfaces WireGuard de [network] con lo que diga [live] (`getWgInstances`, por dispositivo) o, si
+ * no se puede leer, con lo que diga netifd ([interfaces]).
+ */
+internal fun parseWireGuard(
+    network: List<UciSection>,
+    live: Map<String, WgInstance>?,
+    interfaces: List<NetInterface> = emptyList(),
+): List<WireGuardInterface> =
     network.filter { it.type == "interface" && it.text("proto") == "wireguard" }.map { iface ->
         val status = live?.get(iface.name)
         WireGuardInterface(
             name = iface.name,
             listenPort = iface.text("listen_port")?.toIntOrNull(),
             addresses = iface.items("addresses"),
-            up = status != null,
+            up = if (live != null) status != null else interfaces.any { it.name == iface.name && it.up },
+            liveKnown = live != null,
             peers = network.filter { it.type == "wireguard_${iface.name}" }.map { peer ->
                 val key = peer.text("public_key").orEmpty()
                 val p = status?.peers?.firstOrNull { it.publicKey == key }

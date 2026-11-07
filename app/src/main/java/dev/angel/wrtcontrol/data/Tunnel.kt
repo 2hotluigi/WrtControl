@@ -21,6 +21,8 @@ data class TunnelConfig(
     val routerPublicKey: String = "",
     val port: Int = 0,
     val routerTunnelAddress: String = "",
+    /** Dónde escucha la web del router para el túnel si no es en [routerTunnelAddress] (uhttpd solo en la LAN). */
+    val webAddress: String? = null,
     val phoneAddress: String = "",
     /** Direcciones públicas del router la última vez que se vieron (IPv6 global, IPv4 pública). */
     val endpoints: List<String> = emptyList(),

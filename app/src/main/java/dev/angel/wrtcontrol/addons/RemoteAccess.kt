@@ -49,6 +49,8 @@ data class RemoteServer(
     /** Clave pública del router; null si la privada falta o no es válida. */
     val publicKey: String?,
     val peers: List<RemotePeer>,
+    /** Pares de esta interfaz que no creó la app (p. ej. desde LuCI): se dejan como están. */
+    val foreignPeers: List<String> = emptyList(),
 )
 
 internal fun remotePrivateKey(network: List<UciSection>): String? =
@@ -58,6 +60,8 @@ internal fun remotePrivateKey(network: List<UciSection>): String? =
 data class RemoteSetup(
     val routerPublicKey: String,
     val port: Int,
+    /** Dónde escucha la web del router para el túnel: null, en la dirección del túnel; si no, esa IPv4. */
+    val webAddress: String?,
     val routerTunnelAddress: String,
     val phoneAddress: String,
     /** Direcciones públicas del router ahora mismo (IPv6 global y, si no hay NAT, IPv4). */
@@ -81,6 +85,8 @@ internal fun parseRemoteServer(network: List<UciSection>): RemoteServer? {
                 address = s.items("allowed_ips").firstOrNull().orEmpty().substringBefore('/'),
             )
         },
+        foreignPeers = network.filter { it.type == VPN_PEER_TYPE && !it.name.startsWith(VPN_PEER_PREFIX) }
+            .map { it.text("description") ?: it.name },
     )
 }
 
@@ -99,6 +105,8 @@ internal fun remoteSections(
     peers: List<RemotePeer>,
     wanZones: List<String>,
     webPorts: List<Int>,
+    /** Redes de casa: el UDP del túnel también entra por ellas (la app lo usa en casa). */
+    homeZones: List<String> = emptyList(),
 ): Pair<List<UciSection>, List<UciSection>> {
     val network = listOf(
         uciSection(
@@ -138,6 +146,15 @@ internal fun remoteSections(
         uciSection(
             if (i == 0) VPN_RULE_IN else "${VPN_RULE_IN}_$i", "rule",
             "name" to VPN_RULE_LABEL + "WireGuard" + if (wanZones.size > 1) " ($zone)" else "",
+            "src" to zone,
+            "proto" to "udp",
+            "dest_port" to port.toString(),
+            "target" to "ACCEPT",
+        )
+    } + homeZones.mapIndexed { i, zone ->
+        uciSection(
+            "${VPN_PREFIX}_home_$i", "rule",
+            "name" to VPN_RULE_LABEL + "WireGuard desde casa ($zone)",
             "src" to zone,
             "proto" to "udp",
             "dest_port" to port.toString(),
@@ -189,9 +206,9 @@ internal fun nextPeerAddress(routerAddress: String, prefixLength: Int, used: Set
  * fe80::/10 ni las privadas fc00::/7) y la IPv4 de la WAN si es pública. La de la salida a
  * internet va primero.
  */
-internal fun publicAddresses(interfaces: List<NetInterface>): List<String> {
+fun publicAddresses(interfaces: List<NetInterface>): List<String> {
     val ordered = interfaces.filter { it.up && it.hasDefaultRoute } + interfaces.filter { it.up && !it.hasDefaultRoute }
-    val v6 = ordered.flatMap { it.ipv6 }.map { it.address }.filter(::isGlobalIpv6)
+    val v6 = ordered.flatMap { it.routerIpv6 }.map { it.address }.filter(::isGlobalIpv6)
     val v4 = interfaces.filter { it.up && it.hasDefaultRoute }.flatMap { it.ipv4 }.map { it.address }.filter { !isPrivateIpv4(it) }
     return (v6 + v4).distinct()
 }
@@ -213,13 +230,47 @@ private fun ipv4Range(address: String, mask: Int): LongRange {
     return start..(start + size - 1)
 }
 
-/** Puertos de la web del router (uhttpd): los que usa la app. Sin configuración, 80 y 443. */
-internal fun webPorts(uhttpd: List<UciSection>?): List<Int> =
-    uhttpd.orEmpty().filter { it.type == "uhttpd" }
-        .flatMap { it.items("listen_http") + it.items("listen_https") }
-        .mapNotNull { it.substringAfterLast(':').toIntOrNull() }
-        .filter { it in 1..65535 }.distinct().sorted()
-        .ifEmpty { listOf(80, 443) }
+/** A dónde va el túnel dentro del router: [address] null es la dirección del propio túnel. */
+data class WebTarget(val address: String?, val ports: List<Int>)
+
+/** uhttpd no escucha en ninguna IPv4 a la que se pueda llegar por el túnel. */
+class WebUnreachableException(message: String) : Exception(message)
+
+/**
+ * Dónde escucha la web del router (uhttpd: "80", "0.0.0.0:80", "192.168.1.1:80", "[::]:80"):
+ * - En todas las IPv4: el túnel va a la dirección del router en el túnel.
+ * - Solo en una IPv4 concreta del router (p. ej. la de la LAN, para que no se vea desde la WAN):
+ *   el túnel va a esa dirección (el teléfono la añade a sus allowed_ips).
+ * - Si no (solo IPv6, solo 127.0.0.1): no se puede, y se explica.
+ * Sin configuración de uhttpd que leer, lo de siempre: todas, 80 y 443.
+ */
+internal fun webTarget(uhttpd: List<UciSection>?, routerIpv4: Set<String>): WebTarget {
+    val entries = uhttpd?.filter { it.type == "uhttpd" }?.flatMap { it.items("listen_http") + it.items("listen_https") }
+        ?: return WebTarget(null, listOf(80, 443))
+    if (entries.isEmpty()) return WebTarget(null, listOf(80, 443))
+    val parsed = entries.mapNotNull { e ->
+        val port = e.substringAfterLast(':').toIntOrNull()?.takeIf { it in 1..65535 } ?: return@mapNotNull null
+        val host = if (':' in e) e.substringBeforeLast(':') else ""
+        host to port
+    }
+    val any = parsed.filter { (h, _) -> h == "" || h == "0.0.0.0" || h == "*" }.map { it.second }
+    if (any.isNotEmpty()) return WebTarget(null, any.distinct().sorted())
+    val bound = parsed.filter { (h, _) -> h in routerIpv4 && !h.startsWith("127.") }
+    val host = bound.firstOrNull()?.first
+        ?: throw WebUnreachableException(
+            "La web del router (uhttpd) solo escucha en " + entries.joinToString() + ". Para el acceso remoto " +
+                "tiene que escuchar en todas las IPv4 (0.0.0.0) o en la dirección de la LAN.",
+        )
+    return WebTarget(host, bound.filter { it.first == host }.map { it.second }.distinct().sorted())
+}
+
+/** Redes de casa: zonas sin NAT, salvo la del acceso remoto y las de internet. */
+internal fun homeZones(firewall: List<UciSection>, internet: List<String>): List<String> =
+    firewall.filter { it.type == "zone" && it.text("enabled") != "0" }
+        .filter { it.text("masq") !in setOf("1", "on", "true", "yes") }
+        .mapNotNull { it.text("name") }
+        .filter { it != VPN_ZONE && it !in internet }
+        .distinct()
 
 /**
  * Zonas por las que llega internet: las que contienen la interfaz con la ruta por defecto (wan,

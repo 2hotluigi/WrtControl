@@ -11,12 +11,22 @@ import kotlinx.serialization.Serializable
  * su dirección, para que un nombre fijo (micasa.duckdns.org) apunte siempre a él. Lo usa el acceso
  * remoto para encontrar el router fuera de casa.
  *
- * La app crea su propio servicio, la sección `wrtcontrol` de /etc/config/ddns, con IPv6 si el
- * router tiene una dirección IPv6 pública (con CGNAT, la IPv4 no sirve para entrar). Los servicios
- * creados desde LuCI no se tocan; solo se muestran si están activados.
+ * La app crea sus propios servicios en /etc/config/ddns: `wrtcontrol` para la IPv4, si la de la
+ * WAN es pública, y `wrtcontrol6` para la IPv6, si el router tiene una global. Con los dos, el nombre
+ * lleva registro A y AAAA y se llega desde redes solo IPv4 y solo IPv6 (con CGNAT, la IPv4 no sirve
+ * para entrar y solo queda la IPv6). Los servicios creados desde LuCI no se tocan; solo se muestran
+ * si están activados.
  */
 
+/** Servicio de la IPv4. */
 const val DDNS_SECTION = "wrtcontrol"
+
+/** Servicio de la IPv6. */
+const val DDNS_SECTION6 = "wrtcontrol6"
+
+val DDNS_SECTIONS = listOf(DDNS_SECTION, DDNS_SECTION6)
+
+enum class IpFamily { V4, V6 }
 
 /** Certificados para HTTPS: los de ca-bundle (22.03) y ca-certificates (25.12) acaban aquí. */
 private const val CA_CERTS = "/etc/ssl/certs/ca-certificates.crt"
@@ -47,8 +57,8 @@ enum class DdnsProvider(
         suffix = ".dedyn.io", usernameIsDomain = true,
     ),
 
-    /** Otro proveedor: la URL de actualización de ddns-scripts, con [DOMAIN], [PASSWORD] e [IP]. */
-    Custom(null, "Otro", "La URL de actualización de tu proveedor, con [DOMAIN], [USERNAME], [PASSWORD] e [IP] donde vayan."),
+    /** Otro proveedor: la URL de actualización de ddns-scripts, con [DOMAIN], [USERNAME], [PASSWORD] e [IP]. */
+    Custom(null, "Otro", "La URL de actualización de tu proveedor, con [DOMAIN], [USERNAME], [PASSWORD] e [IP] donde vayan. La app los rellena con el nombre, el usuario, el token y la dirección del router."),
     ;
 
     companion object {
@@ -56,12 +66,12 @@ enum class DdnsProvider(
     }
 }
 
-/** Lo que el usuario pide. [ipv6]: actualizar la dirección IPv6 (si no, la IPv4). */
+/** Lo que el usuario pide. [families]: qué direcciones publicar; vacío, las que tenga públicas el router. */
 data class DdnsEdit(
     val provider: DdnsProvider,
     val domain: String,
     val token: String,
-    val ipv6: Boolean,
+    val families: Set<IpFamily> = emptySet(),
     val updateUrl: String? = null,
     val username: String? = null,
 )
@@ -94,7 +104,7 @@ data class DdnsService(
     /** Última dirección que el router envió al proveedor con éxito. */
     val lastSentIp: String? = null,
 ) {
-    val own: Boolean get() = section == DDNS_SECTION
+    val own: Boolean get() = section in DDNS_SECTIONS
 }
 
 internal fun parseDdns(sections: List<UciSection>, status: Map<String, DdnsStatusJson>?, logs: Map<String, DdnsLog> = emptyMap()): List<DdnsService> =
@@ -145,18 +155,32 @@ fun ddnsProblem(edit: DdnsEdit): String? {
 internal fun ddnsInterface(interfaces: List<NetInterface>, ipv6: Boolean): String {
     val ordered = interfaces.filter { it.up && it.hasDefaultRoute } + interfaces.filter { it.up && !it.hasDefaultRoute }
     return if (ipv6) {
-        ordered.firstOrNull { i -> i.ipv6.any { isGlobalIpv6(it.address) } }?.name
+        ordered.firstOrNull { i -> i.routerIpv6.any { isGlobalIpv6(it.address) } }?.name
             ?: interfaces.firstOrNull { it.name == "wan6" }?.name ?: "wan6"
     } else {
         ordered.firstOrNull { it.hasDefaultRoute && it.ipv4.isNotEmpty() }?.name ?: "wan"
     }
 }
 
-internal fun ddnsSection(edit: DdnsEdit, iface: String): UciSection {
+/**
+ * Qué direcciones publicar: la IPv4 si la de la salida a internet es pública y la IPv6 si el router
+ * tiene una global. Sin ninguna (CGNAT sin IPv6 ahora mismo), la IPv6, que es la única que podría
+ * llegar a servir.
+ */
+internal fun ddnsFamilies(interfaces: List<NetInterface>): Set<IpFamily> {
+    val v4 = interfaces.any { it.up && it.hasDefaultRoute && it.ipv4.any { a -> !isPrivateIpv4(a.address) } }
+    val v6 = interfaces.any { it.up && it.routerIpv6.any { a -> isGlobalIpv6(a.address) } }
+    return buildSet {
+        if (v4) add(IpFamily.V4)
+        if (v6 || !v4) add(IpFamily.V6)
+    }
+}
+
+internal fun ddnsSection(edit: DdnsEdit, iface: String, family: IpFamily): UciSection {
     val domain = edit.fullDomain()
     val url = edit.updateUrl?.trim()
     return uciSection(
-        DDNS_SECTION, "service",
+        if (family == IpFamily.V4) DDNS_SECTION else DDNS_SECTION6, "service",
         "enabled" to "1",
         "service_name" to edit.provider.service,
         "update_url" to url.takeIf { edit.provider == DdnsProvider.Custom },
@@ -164,7 +188,7 @@ internal fun ddnsSection(edit: DdnsEdit, iface: String): UciSection {
         "domain" to domain,
         "username" to (edit.username?.trim()?.takeIf { it.isNotEmpty() } ?: domain),
         "password" to edit.token.trim(),
-        "use_ipv6" to if (edit.ipv6) "1" else "0",
+        "use_ipv6" to if (family == IpFamily.V6) "1" else "0",
         "ip_source" to "network",
         "ip_network" to iface,
         "interface" to iface,

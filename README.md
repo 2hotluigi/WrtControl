@@ -288,15 +288,26 @@ instalar WireGuard se reinicia la red (`luci.setInitAction`).
 
 **Deshacer.** El ACL de LuCI no incluye `uci rollback` (solo `apply` y `confirm`). Si un cambio no
 funciona, la app deja de confirmarlo y espera, como LuCI, a que el router lo deshaga solo al vencer
-el plazo (60 s), y lo comprueba. Esto vale también para el control parental: antes daba el cambio
-por "sin confirmar" aunque el router sí lo deshacía.
+el plazo (60 s), y lo comprueba. Para comprobarlo abre una sesión nueva: mientras el cambio siga
+pendiente, rpcd devuelve la misma sesión del cambio, así que hasta que la sesión es otra no está
+deshecho aunque la configuración ya parezca la de antes. Esto vale también para el control parental:
+antes daba el cambio por "sin confirmar" aunque el router sí lo deshacía.
 
-**SQM y UPnP.** Se leen y cambian en `/etc/config/sqm` y `/etc/config/upnpd`, con reversión. SQM se
-da por bueno si el router sigue respondiendo (una velocidad absurda podría dejar fuera a la app si
-entra por el túnel). UPnP, cuando miniupnpd está en marcha o parado según toque; si alguien paró el
-servicio, se arranca a mano porque ya no queda disparador de recarga. Los puertos abiertos salen
-de `luci.upnp` y se cierran con `delete_rule`. Si la IPv4 de la WAN es privada o de CGNAT, se
-avisa de que UPnP no puede abrir nada hacia internet.
+rpcd da también la sesión de un cambio pendiente a la app si se cierra a mitad y vuelve a entrar.
+Cuando el router lo deshace, esa sesión se queda con los cambios como pendientes y la app los vería
+puestos. La sesión compartida nunca prepara cambios: si en los dos minutos siguientes a entrar
+tiene alguno (`uci changes`), la app la abandona.
+
+**SQM y UPnP.** Se leen y cambian en `/etc/config/sqm` y `/etc/config/upnpd`, con reversión.
+- SQM se da por bueno si el router sigue respondiendo unos 10 s después de aplicarlo: procd lo
+  recarga un segundo después y run.sh tarda unos segundos más. Una velocidad absurda podría dejar
+  fuera a la app si entra por el túnel. La cola puede ir en el dispositivo de la WAN o en el que
+  tiene debajo (eth1 bajo pppoe-wan).
+- UPnP se da por bueno cuando miniupnpd está en marcha o parado según toque. Si alguien paró el
+  servicio, no queda disparador de recarga, así que se arranca a mano. Hasta 24.10, el ACL de LuCI
+  no deja ver `service list`: se arranca o se para a mano y basta.
+- Los puertos abiertos salen de `luci.upnp` y se cierran con `delete_rule`. Si la IPv4 de la WAN es
+  privada o de CGNAT, se avisa de que UPnP no puede abrir nada hacia internet.
 
 **Servidor WireGuard.** Secciones que empiezan por `wrtcvpn` (no por `wrtc_`, que el control
 parental borra si no las reconoce):
@@ -304,32 +315,55 @@ parental borra si no las reconoce):
   choque con las del router) y un par `wireguard_wrtcvpn` por teléfono, con su clave pública, una
   precompartida y su dirección /32.
 - `firewall`: la zona `wrtcvpn`, que no reenvía a ningún sitio. Desde ella solo se llega a la web
-  del router (puertos de uhttpd). Además, una regla que deja entrar el UDP del túnel por la WAN.
-  Las reglas se llaman "WrtControl acceso remoto · …" y no "WrtControl · …": esas las da por suyas
-  el control parental.
+  del router (puertos de uhttpd). Además, reglas que dejan entrar el UDP del túnel por la WAN y por
+  las redes de casa (en casa, la app también entra por el túnel). Las reglas se llaman "WrtControl
+  acceso remoto · …" y no "WrtControl · …": esas las da por suyas el control parental.
+- netifd no vuelve a configurar una interfaz si solo cambian sus pares (que son secciones aparte):
+  al añadir o quitar un teléfono con el servidor ya puesto, la app la reinicia con `/sbin/ifup`,
+  como el botón "Reiniciar" de LuCI, y comprueba en `wg show` (o, en 22.03 sin `getWgInstances`,
+  que la interfaz se levantó después) que el kernel tiene los pares nuevos. Así un teléfono quitado
+  deja de entrar en el momento. Los pares añadidos desde LuCI se dejan y se cuentan aparte.
+- La web del túnel: si uhttpd escucha en todas las IPv4, la app va a la dirección del router en el
+  túnel; si solo escucha en una (la de la LAN, para no verse desde la WAN), va a esa. Si solo escucha
+  en IPv6 o en 127.0.0.1, no se activa y se explica por qué.
 - La clave privada del router la genera el propio router (`luci.wireguard generateKeyPair`). La
   del teléfono se genera en el teléfono (X25519 de TweetNaCl en Kotlin, comprobado con el RFC 7748
   y con `wg pubkey`) y no sale de él.
 
-**DNS dinámico.** La sección `wrtcontrol` de `/etc/config/ddns` (DuckDNS, dynv6, deSEC o una URL
-propia), con IPv6 si el router tiene una IPv6 pública: con CGNAT, la IPv4 no sirve para entrar.
-Publica la dirección de la interfaz que la tenga (la wan6 o, si solo hay prefijo delegado, la de
-la LAN). Del registro de ddns-scripts se sacan la última IP enviada y el último fallo posterior.
+**DNS dinámico.** Las secciones `wrtcontrol` (IPv4, si la de la WAN es pública) y `wrtcontrol6`
+(IPv6, si el router tiene una global) de `/etc/config/ddns`, con DuckDNS, dynv6, deSEC o una URL
+propia. Con las dos, el nombre tiene registro A y AAAA y se llega desde redes solo IPv4 y solo IPv6;
+con CGNAT solo queda la IPv6. Se publica la dirección de la interfaz que la tenga (la wan6 o, si solo
+hay prefijo delegado, la de la LAN, que netifd da en `ipv6-prefix-assignment`). Hasta 24.10 ddns no
+es un servicio de procd: aplicar no lo recarga, así que la app lo reinicia y mira el pid en
+`luci.ddns`. Del registro de ddns-scripts se sacan la última IP enviada y el último fallo posterior.
 
 **El túnel en la app.** `tunnel/` es wireguard-go con la pila TCP/IP de gVisor (netstack): no hay
 interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y solo la app pasa por
 él. Abre un puerto en 127.0.0.1 que lleva cada conexión TCP a la web del router por el túnel.
 `RouterTransport` (OkHttp: `socketFactory`, `dns` e interceptor):
-- En casa, todo va directo.
-- Si una conexión directa no llega a abrirse y hay acceso remoto, levanta el túnel y repite la
-  petición (solo con fallos de conexión: una petición que ya salió no se repite). Busca el router
-  por el nombre del DNS dinámico (IPv6 antes), las últimas direcciones públicas vistas y la
-  dirección de casa, hasta que hay saludo.
+- Sin acceso remoto en el teléfono, todo va directo, como siempre.
+- Con acceso remoto, todo va por el túnel, también en casa. El saludo de WireGuard comprueba que al
+  otro lado está nuestro router. Una conexión directa solo comprueba que algo contesta en esa IP: en
+  una red ajena con la misma (192.168.1.1 en un hotel), la sesión y la contraseña irían sin cifrar a
+  otro aparato.
+- Busca el router de una dirección en una, cada una con un túnel nuevo, hasta que hay saludo. En
+  Wi-Fi o cable empieza por la dirección de casa (en casa responde enseguida); después prueba el
+  nombre del DNS dinámico (IPv6 antes) y las últimas direcciones públicas vistas, que la app apunta
+  cada vez que lee el router.
+- Si el túnel no sube (p. ej. tras actualizar el firmware, que borra WireGuard), va directo para no
+  dejar la app sin router en casa, y no lo reintenta durante 30 s.
 - La URL no cambia: solo cambia a dónde se conecta el socket.
-- Lo quita al volver a casa (cada 15 s mira si se llega directamente) o tras 90 s sin usarlo.
-- Si no se pudo levantar, no lo reintenta en cada petición durante 30 s.
+- Lo quita tras 90 s sin usarlo (nunca con peticiones en marcha) y si deja de haber saludos durante
+  más de 200 s (el router cambió de dirección): la siguiente petición lo vuelve a buscar.
+- Para quitar el acceso de este mismo teléfono, la app pasa a la conexión directa: al quitarlo, el
+  router corta el túnel por el que habría que comprobarlo. Por eso solo se puede desde casa.
+- El acceso remoto guardado va con el router para el que se creó (modelo y MAC de la LAN), no solo
+  con su dirección: otro router en 192.168.1.1 tiene su propia clave.
 
 Límites del acceso remoto:
+- Sin acceso remoto (o si el túnel no sube), la app habla con el router por HTTP sin cifrar, como
+  LuCI: en una red ajena con la misma IP, la contraseña iría a otro aparato.
 - Con CGNAT en IPv4 hace falta IPv6 en las dos puntas: el router y la red desde la que se entra.
   Si no, haría falta un servidor intermedio.
 - Sin DNS dinámico, si la dirección del router cambia mientras se está fuera, la app no lo

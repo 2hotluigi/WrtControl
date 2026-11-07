@@ -192,16 +192,41 @@ class AddonsVmTest {
             val live = api.state().wireguard!!.single { it.name == VPN_INTERFACE }
             assertTrue(live.peers.single().lastHandshake != null)
 
+            // Un segundo teléfono con el servidor ya creado: netifd no recarga los pares por sí solo,
+            // la app reinicia la interfaz y el kernel tiene los dos.
+            val other = X25519.generatePrivateKey()
+            val second = api.enableRemoteAccess("vmprueba2", "Otro", X25519.publicKey(other), X25519.generatePresharedKey())
+            assertEquals("10.77.0.3", second.phoneAddress)
+            val peers = ssh("wg show $VPN_INTERFACE peers")
+            assertTrue(peers.contains(X25519.publicKey(phone)) && peers.contains(X25519.publicKey(other)))
+            // Tras el reinicio de la interfaz, el primer teléfono vuelve a entrar.
+            var again = ""
+            repeat(10) {
+                again = client("wget -q -T 4 -O - http://${setup.routerTunnelAddress}/ 2>&1 | head -c 100")
+                if (again.contains("<html", ignoreCase = true)) return@repeat
+                Thread.sleep(2000)
+            }
+            assertTrue("el primero sigue entrando: $again", again.contains("<html", ignoreCase = true))
+
             // El control parental no toca el acceso remoto al aplicar sus cambios.
             val parental = dev.angel.wrtcontrol.parental.ParentalApi(client, log = ::log)
             parental.updateProfiles { p, _ -> p + dev.angel.wrtcontrol.parental.Profile("vmvpn", "VPN", listOf("02:00:00:00:00:98"), pause = dev.angel.wrtcontrol.parental.Pause.Indefinite) }
             parental.updateProfiles { _, _ -> emptyList() }
             assertTrue(ssh("uci -q get network.$VPN_INTERFACE.proto") == "wireguard")
             assertTrue(ssh("wg show $VPN_INTERFACE peers").contains(X25519.publicKey(phone)))
+
+            // Quitar el primero (p. ej. un teléfono robado) lo saca del kernel y deja de entrar.
+            api.removeRemotePeer("vmprueba1")
+            assertFalse(ssh("wg show $VPN_INTERFACE peers").contains(X25519.publicKey(phone)))
+            assertTrue(ssh("wg show $VPN_INTERFACE peers").contains(X25519.publicKey(other)))
+            val revoked = client("wget -q -T 4 -O - http://${setup.routerTunnelAddress}/ 2>&1 | head -c 100")
+            log("el teléfono quitado: $revoked")
+            assertFalse(revoked.contains("<html", ignoreCase = true))
         } finally {
             client("/usr/libexec/ip-full link del wgc")
             ssh("rm -f /tmp/wgc.key /tmp/wgc.psk")
             api.removeRemotePeer("vmprueba1")
+            api.removeRemotePeer("vmprueba2")
         }
         assertEquals("", ssh("uci show network | grep $VPN_PREFIX; uci show firewall | grep $VPN_PREFIX"))
         assertFalse(ssh("wg show interfaces").contains(VPN_INTERFACE))
@@ -227,7 +252,7 @@ class AddonsVmTest {
         ssh("uci set ddns.global.upd_privateip=1; uci commit ddns")
         try {
             val url = "http://10.0.3.2:${server.address.port}/nic/update?hostname=[DOMAIN]&myip=[IP]&pass=[PASSWORD]"
-            api.saveDdns(DdnsEdit(DdnsProvider.Custom, "vmtest.example.org", "secreto123", ipv6 = false, updateUrl = url))
+            api.saveDdns(DdnsEdit(DdnsProvider.Custom, "vmtest.example.org", "secreto123", families = setOf(IpFamily.V4), updateUrl = url))
             log("ddns: ${ssh("uci show ddns.$DDNS_SECTION")}")
             val request = requests.poll(60, TimeUnit.SECONDS)
             log("petición: $request")
@@ -235,7 +260,7 @@ class AddonsVmTest {
 
             var own: DdnsService? = null
             repeat(10) {
-                own = api.state().ownDdns
+                own = api.state().ownDdns.firstOrNull()
                 if (own?.lastUpdate != null) return@repeat
                 Thread.sleep(1000)
             }
@@ -248,7 +273,7 @@ class AddonsVmTest {
             ssh("uci set ddns.global.upd_privateip=0; uci commit ddns")
             server.stop(0)
         }
-        assertEquals(null, api.state().ownDdns)
+        assertTrue(api.state().ownDdns.isEmpty())
         assertFalse(ssh("ubus call service list '{\"name\":\"ddns\"}'").contains(DDNS_SECTION))
     }
 

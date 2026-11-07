@@ -5,6 +5,7 @@ import dev.angel.wrtcontrol.openwrt.InterfaceDump
 import dev.angel.wrtcontrol.openwrt.PackageTool
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.UciSection
+import dev.angel.wrtcontrol.openwrt.exec
 import dev.angel.wrtcontrol.openwrt.initAction
 import dev.angel.wrtcontrol.openwrt.installPackages
 import dev.angel.wrtcontrol.openwrt.installedPackages
@@ -86,6 +87,8 @@ data class AddonsState(
     val freeKiB: Long?,
     /** Dispositivo de la salida a internet (la interfaz con la ruta por defecto). */
     val internetDevice: String?,
+    /** Ese mismo y el que tiene debajo (pppoe-wan sobre eth1, p. ej.): SQM sirve en cualquiera. */
+    val internetDevices: Set<String> = setOfNotNull(internetDevice),
     /** IPv4 de esa interfaz. */
     val internetIpv4: String?,
     /** Dispositivos de red, con el de internet primero (para elegir dónde va el SQM). */
@@ -102,8 +105,11 @@ data class AddonsState(
     /** Servicios de DNS dinámico (null si no se pueden leer). */
     val ddns: List<DdnsService>? = null,
 ) {
-    /** El DNS dinámico de WrtControl, si está configurado. */
-    val ownDdns: DdnsService? get() = ddns?.firstOrNull { it.own }
+    /** Los servicios de DNS dinámico de WrtControl (IPv4 y/o IPv6); vacío si no está configurado. */
+    val ownDdns: List<DdnsService> get() = ddns.orEmpty().filter { it.own }
+
+    /** El nombre del DNS dinámico de WrtControl. */
+    val ddnsDomain: String? get() = ownDdns.firstOrNull()?.domain
 
     /**
      * La IPv4 de internet del router es privada o de CGNAT: hay otro router delante o el proveedor
@@ -128,6 +134,9 @@ data class AddonsState(
         }
     }
 }
+
+/** Comprobaciones (una por segundo) tras aplicar SQM antes de darlo por bueno (procd + run.sh). */
+internal const val SQM_SETTLE_POLLS = 10
 
 /** Ya hay otra cola de SQM activa en ese dispositivo: sqm-scripts aplicaría las dos. */
 class SqmConflictException(device: String) : Exception("Ya hay otra cola de SQM activa en $device. Desactívala antes.")
@@ -165,9 +174,10 @@ class AddonsApi(
         AddonsState(
             freeKiB = info.await()?.root?.avail,
             internetDevice = internet,
+            internetDevices = listOfNotNull(wan?.l3Device, wan?.device).filter { it.isNotBlank() }.toSet(),
             internetIpv4 = wan?.ipv4?.firstOrNull()?.address,
             devices = devices,
-            wireguard = network.await()?.let { parseWireGuard(it, wgLive.await()) },
+            wireguard = network.await()?.let { parseWireGuard(it, wgLive.await(), interfaces) },
             wireguardLoaded = loaded,
             sqm = sqm.await(),
             upnp = upnpConfig.await()?.let { parseUpnp(it, upnpRunning.await()?.values?.any { r -> r }, upnpStatus.await()) },
@@ -175,13 +185,16 @@ class AddonsApi(
             remote = network.await()?.let(::parseRemoteServer),
             publicAddresses = publicAddresses(interfaces),
             ddns = ddns.await()?.let { sections ->
-                val own = sections.any { it.name == DDNS_SECTION }
-                val log = if (!own) null else optional {
-                    ubus.callAs<kotlinx.serialization.json.JsonObject>(
-                        "luci.ddns", "get_services_log", buildJsonObject { put("service_name", DDNS_SECTION) },
-                    )["result"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                val logs = sections.map { it.name }.filter { it in DDNS_SECTIONS }.associateWith { name ->
+                    parseDdnsLog(
+                        optional {
+                            ubus.callAs<kotlinx.serialization.json.JsonObject>(
+                                "luci.ddns", "get_services_log", buildJsonObject { put("service_name", name) },
+                            )["result"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                        },
+                    )
                 }
-                parseDdns(sections, ddnsStatus.await(), mapOf(DDNS_SECTION to parseDdnsLog(log)))
+                parseDdns(sections, ddnsStatus.await(), logs)
             },
         )
     }
@@ -196,12 +209,13 @@ class AddonsApi(
         tx.ensureNoPendingApply()
         val sections = tx.uciSections("ddns")
         val interfaces = tx.callAs<InterfaceDump>("network.interface", "dump").interfaces
-        val wanted = ddnsSection(edit, ddnsInterface(interfaces, edit.ipv6))
-        val current = sections.firstOrNull { it.name == DDNS_SECTION }
-        if (current == wanted) return@withLock
-        if (current != null) tx.uciDelete("ddns", DDNS_SECTION)
-        tx.uciAdd("ddns", wanted)
-        applyDdns(tx, sections, running = true)
+        val wanted = edit.families.ifEmpty { ddnsFamilies(interfaces) }
+            .sorted().map { ddnsSection(edit, ddnsInterface(interfaces, it == IpFamily.V6), it) }
+        val current = sections.filter { it.name in DDNS_SECTIONS }
+        if (current.toSet() == wanted.toSet()) return@withLock
+        current.filter { it !in wanted }.forEach { tx.uciDelete("ddns", it.name) }
+        wanted.filter { it !in current }.forEach { tx.uciAdd("ddns", it) }
+        applyDdns(tx, sections, running = wanted.map { it.name }.toSet())
     }
 
     /** Quita el DNS dinámico de WrtControl (los servicios de LuCI no se tocan). */
@@ -209,27 +223,45 @@ class AddonsApi(
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val sections = tx.uciSections("ddns")
-        if (sections.none { it.name == DDNS_SECTION }) return@withLock
-        tx.uciDelete("ddns", DDNS_SECTION)
-        applyDdns(tx, sections, running = false)
+        val own = sections.filter { it.name in DDNS_SECTIONS }
+        if (own.isEmpty()) return@withLock
+        own.forEach { tx.uciDelete("ddns", it.name) }
+        applyDdns(tx, sections, running = emptySet())
     }
 
-    private suspend fun applyDdns(tx: UbusSession, before: List<UciSection>, running: Boolean) {
-        if (running) optional { tx.initAction("ddns", "enable") }
-        // Como con miniupnpd: si alguien paró el servicio, no queda disparador que lo recargue.
+    /**
+     * Aplica el DNS dinámico y comprueba que los actualizadores de [running] están en marcha y los
+     * demás de la app, parados. Hasta 24.10 ddns no es un servicio de procd: aplicar no lo recarga y
+     * el ACL de LuCI no deja ver `service list`, así que se mira el pid en `luci.ddns` y, si no está
+     * como debe, se reinicia el servicio (para todos y arranca los activados).
+     */
+    private suspend fun applyDdns(tx: UbusSession, before: List<UciSection>, running: Set<String>) {
+        if (running.isNotEmpty()) optional { tx.initAction("ddns", "enable") }
+        // Un servicio borrado ya no sale en luci.ddns, aunque su actualizador siga en marcha: sin
+        // `service list` no se ve, así que entonces se reinicia siempre (para los que ya no están).
+        val removed = before.map { it.name }.filter { it in DDNS_SECTIONS && it !in running }
         var kicked = false
         tx.applySafely(
-            failure = if (running) "El DNS dinámico no arrancó en el router, así que se dejó como estaba." else
+            failure = if (running.isNotEmpty()) "El DNS dinámico no arrancó en el router, así que se dejó como estaba." else
                 "El router no quitó el DNS dinámico, así que se dejó como estaba.",
-            isReverted = { ubus.openSession().uciSections("ddns") == before },
+            isReverted = { fresh -> fresh.uciSections("ddns") == before },
             isLive = {
-                val instances = tx.serviceInstances("ddns") ?: return@applySafely true
-                val up = instances[DDNS_SECTION] == true
-                if (up != running && !kicked) {
+                val instances = tx.serviceInstances("ddns")
+                val status = if (instances != null) null else
+                    optional { tx.callAs<Map<String, DdnsStatusJson>>("luci.ddns", "get_services_status") }
+                fun up(name: String) = if (instances != null) instances[name] == true else (status?.get(name)?.pid ?: 0) > 0
+                if (instances == null && removed.isNotEmpty() && !kicked) {
                     kicked = true
-                    optional { tx.initAction("ddns", if (running) "start" else "restart") }
+                    optional { tx.initAction("ddns", "restart") }
                 }
-                up == running
+                val ok = (instances != null || status != null) &&
+                    running.all(::up) && DDNS_SECTIONS.filter { it !in running }.none(::up)
+                if (!ok && !kicked) {
+                    kicked = true
+                    optional { tx.initAction("ddns", "restart") }
+                }
+                // Sin ninguna forma de mirarlo, basta con haberlo reiniciado.
+                ok || (instances == null && status == null)
             },
         )
     }
@@ -258,8 +290,8 @@ class AddonsApi(
             val address = current?.peers?.firstOrNull { it.id == peerId }?.address
                 ?: nextPeerAddress(routerAddress, prefix, others.map { it.address }.toSet())
             val peers = others + RemotePeer(peerId, label, publicKey, presharedKey, address)
-            applyRemote(tx, network, firewall, interfaces, privateKey, port, routerAddress, prefix, peers)
-            RemoteSetup(X25519.publicKey(privateKey), port, routerAddress, address, publicAddresses(interfaces))
+            val web = applyRemote(tx, network, firewall, interfaces, privateKey, port, routerAddress, prefix, peers)
+            RemoteSetup(X25519.publicKey(privateKey), port, web.address, routerAddress, address, publicAddresses(interfaces))
         }
 
     /** Quita el acceso remoto del teléfono [peerId]; con el último, quita también el servidor. */
@@ -276,6 +308,10 @@ class AddonsApi(
         applyRemote(tx, network, firewall, interfaces, privateKey, current.port, current.routerAddress, current.prefixLength, peers)
     }
 
+    /**
+     * Aplica el servidor con [peers] (sin ninguno, lo quita entero) y devuelve dónde escucha la web
+     * para el túnel.
+     */
     private suspend fun applyRemote(
         tx: UbusSession,
         network: List<UciSection>,
@@ -286,41 +322,63 @@ class AddonsApi(
         routerAddress: String,
         prefix: Int,
         peers: List<RemotePeer>,
-    ) {
+    ): WebTarget {
+        val routerIpv4 = interfaces.flatMap { it.ipv4 }.map { it.address }.toSet()
+        val web = if (peers.isEmpty()) WebTarget(null, emptyList()) else webTarget(optional { tx.uciSections("uhttpd") }, routerIpv4)
+        val internet = internetZones(firewall, interfaces)
         val (net, fw) = if (peers.isEmpty()) emptyList<UciSection>() to emptyList() else remoteSections(
             privateKey, port, routerAddress, prefix, peers,
-            wanZones = internetZones(firewall, interfaces),
-            webPorts = webPorts(optional { tx.uciSections("uhttpd") }),
+            wanZones = internet,
+            webPorts = web.ports,
+            homeZones = homeZones(firewall, internet),
         )
         val changes = listOf("network" to diffRemote(network, net), "firewall" to diffRemote(firewall, fw))
-        if (changes.all { (_, d) -> d.first.isEmpty() && d.second.isEmpty() }) return
+        if (changes.all { (_, d) -> d.first.isEmpty() && d.second.isEmpty() }) return web
         for ((config, diff) in changes) {
             diff.first.forEach { tx.uciDelete(config, it) }
             diff.second.forEach { tx.uciAdd(config, it) }
         }
         val before = network.filter { it.name.startsWith(VPN_PREFIX) } + firewall.filter { it.name.startsWith(VPN_PREFIX) }
         val keys = peers.map { it.publicKey }.toSet()
+        val removed = parseRemoteServer(network)?.peers.orEmpty().map { it.publicKey }.toSet() - keys
+        // netifd no vuelve a configurar la interfaz si solo cambian sus pares (secciones aparte): hay
+        // que reiniciarla, como el botón "Reiniciar" de LuCI (/sbin/ifup). Si la interfaz es nueva o
+        // se quita entera, ya lo hace netifd.
+        val restart = parseRemoteServer(network) != null && peers.isNotEmpty()
+        suspend fun ifup() {
+            tx.exec("/sbin/ifup", listOf(VPN_INTERFACE))
+        }
+        val uptimeBefore = interfaces.firstOrNull { it.name == VPN_INTERFACE }?.uptime
         tx.applySafely(
             failure = if (peers.isEmpty()) "El router no quitó el acceso remoto, así que se dejó como estaba." else
                 "El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.",
-            isReverted = {
-                val s = ubus.openSession()
-                s.uciSections("network").filter { it.name.startsWith(VPN_PREFIX) } +
-                    s.uciSections("firewall").filter { it.name.startsWith(VPN_PREFIX) } == before
+            isReverted = { fresh ->
+                fresh.uciSections("network").filter { it.name.startsWith(VPN_PREFIX) } +
+                    fresh.uciSections("firewall").filter { it.name.startsWith(VPN_PREFIX) } == before
             },
+            // Si la app va por este mismo túnel, la respuesta puede perderse: lo decide isLive.
+            afterApply = { if (restart) ifup() },
+            // Al deshacerlo, el kernel tampoco recupera los pares de antes sin reiniciar la interfaz.
+            afterRevert = { if (restart) ifup() },
             isLive = {
                 val live = optional { tx.callAs<Map<String, WgInstance>>("luci.wireguard", "getWgInstances") }
                 if (live == null) {
-                    // Sin luci-proto-wireguard: basta con que netifd tenga la interfaz como toca.
-                    val up = tx.callAs<InterfaceDump>("network.interface", "dump").interfaces.any { it.name == VPN_INTERFACE && it.up }
-                    up == peers.isNotEmpty()
+                    // Sin getWgInstances (22.03 sin luci-app-wireguard): que netifd tenga la interfaz
+                    // como toca y, si había que reiniciarla, que se haya levantado después del cambio.
+                    val iface = tx.callAs<InterfaceDump>("network.interface", "dump").interfaces.firstOrNull { it.name == VPN_INTERFACE }
+                    val up = iface?.up == true
+                    if (peers.isEmpty()) !up
+                    else up && (!restart || uptimeBefore == null || (iface?.uptime ?: Long.MAX_VALUE) < uptimeBefore)
                 } else {
                     val wg = live[VPN_INTERFACE]
+                    val liveKeys = wg?.peers?.map { it.publicKey }?.toSet()
+                    // Puede haber pares añadidos fuera de la app: basta con que estén los de la app y no los quitados.
                     if (peers.isEmpty()) wg == null
-                    else wg != null && wg.listenPort == port.toString() && wg.peers.map { it.publicKey }.toSet() == keys
+                    else wg != null && wg.listenPort == port.toString() && liveKeys!!.containsAll(keys) && liveKeys.none { it in removed }
                 }
             },
         )
+        return web
     }
 
     /** Clave privada nueva para el router: la crea el propio router (`wg genkey`) si el ACL lo deja. */
@@ -399,10 +457,27 @@ class AddonsApi(
             if (changed.isEmpty()) return@withLock
             tx.uciSet("sqm", edit.section, changed)
         }
+        var polls = 0
+        var answered = 0
         tx.applySafely(
             failure = "El router dejó de responder con el SQM nuevo, así que se deshizo el cambio.",
-            isReverted = { ubus.openSession().uciSections("sqm", "queue").map(::parseSqmQueue) == before },
-            isLive = { tx.callAs<SystemInfo>("system", "info"); true },
+            isReverted = { fresh -> fresh.uciSections("sqm", "queue").map(::parseSqmQueue) == before },
+            // procd recarga sqm un segundo después del apply y run.sh tarda unos segundos más: se
+            // confirma solo si el router sigue respondiendo bien pasado ese rato.
+            isLive = {
+                val ok = try {
+                    tx.callAs<SystemInfo>("system", "info")
+                    true
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+                polls++
+                answered = if (ok) answered + 1 else 0
+                // Cada comprobación va un segundo después de la anterior: SQM_SETTLE_POLLS ≈ segundos.
+                polls >= SQM_SETTLE_POLLS && answered >= 3
+            },
         )
         // Como LuCI al activar una cola: que el servicio también arranque con el router.
         if (edit.enabled) optional { ubus.initAction("sqm", "enable") }
@@ -429,10 +504,19 @@ class AddonsApi(
         tx.applySafely(
             failure = if (enabled == true) "UPnP no arrancó en el router, así que se dejó como estaba." else
                 "El router no aplicó el cambio de UPnP, así que se dejó como estaba.",
-            isReverted = { ubus.openSession().uciSections("upnpd", "upnpd").firstOrNull() == section },
+            isReverted = { fresh -> fresh.uciSections("upnpd", "upnpd").firstOrNull() == section },
             isLive = {
                 if (enabled == null) true else {
-                    val running = tx.serviceInstances("miniupnpd")?.values?.any { it } ?: return@applySafely true
+                    val instances = tx.serviceInstances("miniupnpd")
+                    if (instances == null) {
+                        // Sin `service list` (hasta 24.10 con el ACL de LuCI): se arranca o para a mano y basta.
+                        if (!kicked) {
+                            kicked = true
+                            optional { tx.initAction("miniupnpd", if (enabled) "restart" else "stop") }
+                        }
+                        return@applySafely true
+                    }
+                    val running = instances.values.any { it }
                     if (running != enabled && !kicked) {
                         kicked = true
                         optional { tx.initAction("miniupnpd", if (enabled) "start" else "stop") }

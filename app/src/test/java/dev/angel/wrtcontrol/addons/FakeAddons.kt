@@ -8,6 +8,7 @@ import dev.angel.wrtcontrol.ubus.accessDenied
 import dev.angel.wrtcontrol.ubus.ok
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -57,8 +58,36 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
     /** netifd no levanta las interfaces WireGuard (p. ej. una clave mal escrita). */
     var wgFails = false
 
-    /** Registro de ddns-scripts del servicio de WrtControl (/var/log/ddns/wrtcontrol.log). */
+    /** Registro de ddns-scripts de los servicios de WrtControl (/var/log/ddns/<sección>.log). */
     var ddnsLog: String? = null
+
+    /**
+     * Como hasta 24.10: el ACL de LuCI no deja `service list`, y ddns no es un servicio de procd
+     * (aplicar no lo recarga: solo arranca o para con su init).
+     */
+    var oldRouter = false
+
+    /** Actualizadores de ddns en marcha cuando [oldRouter] (los que arrancó el último restart). */
+    private var ddnsStarted = setOf<String>()
+
+    /**
+     * Pares de cada interfaz WireGuard en el kernel. Como netifd: se toman de la configuración al
+     * levantar la interfaz (al aparecer o con /sbin/ifup), no cuando cambian solo sus pares.
+     */
+    val wgKernel = mutableMapOf<String, Set<String>>()
+
+    /** Llamadas a /sbin/ifup. */
+    val ifups = mutableListOf<String>()
+
+    /** Cuándo (ms del reloj del falso) se levantó por última vez cada interfaz WireGuard. */
+    private val wgUpAt = mutableMapOf<String, Long>()
+
+    /** Direcciones de cada interfaz en `network.interface dump`. */
+    var ipv4 = mapOf<String, String>()
+    var ipv6 = mapOf<String, List<String>>()
+
+    /** Dirección del router dentro del prefijo delegado a cada interfaz (sin dirección propia en la wan6). */
+    var prefixLocal = mapOf<String, String>()
 
     val router get() = fake.router
 
@@ -101,15 +130,40 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
         }
     }
 
-    private fun ddnsRunning(): List<String> =
+    private fun ddnsEnabled(): List<String> =
         if ("ddns-scripts" !in installed) emptyList() else fake.committed
             .filter { (_, v) -> v[".type"]?.jsonPrimitive?.content == "service" && v["enabled"]?.jsonPrimitive?.content == "1" }
             .keys.toList()
+
+    private fun ddnsRunning(): List<String> = if (oldRouter) ddnsStarted.toList() else ddnsEnabled()
+
+    private fun wgInterfaces() = fake.committed.filter { (_, v) ->
+        v[".type"]?.jsonPrimitive?.content == "interface" && v["proto"]?.jsonPrimitive?.content == "wireguard"
+    }.keys
+
+    private fun committedPeers(iface: String) = fake.committed.values
+        .filter { it[".type"]?.jsonPrimitive?.content == "wireguard_$iface" }
+        .map { it["public_key"]?.jsonPrimitive?.content.orEmpty() }.toSet()
+
+    /** netifd levanta las interfaces nuevas (con los pares de ese momento) y quita las borradas. */
+    private fun syncKernel() {
+        if ("wireguard" !in protos || wgFails) {
+            wgKernel.clear()
+            return
+        }
+        val configured = wgInterfaces()
+        wgKernel.keys.retainAll(configured)
+        configured.filter { it !in wgKernel }.forEach {
+            wgKernel[it] = committedPeers(it)
+            wgUpAt[it] = fake.clock()
+        }
+    }
 
     private fun upnpRunning(): Boolean =
         "miniupnpd-nftables" in installed && fake.option("config", "enabled") == "1" && !upnpWontStart && !upnpStopped
 
     private fun handle(call: RecordedCall): Reply? {
+        syncKernel()
         val a = call.args
         fun arg(key: String) = a[key]?.jsonPrimitive?.content
         return when (call.name) {
@@ -125,13 +179,45 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
                             putJsonArray("route") {
                                 if (name.startsWith("wan")) addJsonObject { put("target", "0.0.0.0"); put("mask", 0) }
                             }
+                            putJsonArray("ipv4-address") {
+                                ipv4[name]?.let { addJsonObject { put("address", it); put("mask", 24) } }
+                            }
+                            putJsonArray("ipv6-address") {
+                                ipv6[name].orEmpty().forEach { addJsonObject { put("address", it); put("mask", 64) } }
+                            }
+                            putJsonArray("ipv6-prefix-assignment") {
+                                prefixLocal[name]?.let { local ->
+                                    addJsonObject {
+                                        put("address", local.substringBeforeLast(':') + ":"); put("mask", 64)
+                                        putJsonObject("local-address") { put("address", local); put("mask", 64) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Las interfaces WireGuard que netifd tiene levantadas, con su tiempo desde el último arranque.
+                    wgKernel.keys.forEach { name ->
+                        addJsonObject {
+                            put("interface", name); put("up", true); put("l3_device", name)
+                            put("uptime", (fake.clock() - (wgUpAt[name] ?: 0L)) / 1000)
                         }
                     }
                 }
             }.toString())
             "network.get_proto_handlers" -> ok(buildJsonObject { protos.forEach { putJsonObject(it) {} } }.toString())
+            "file.exec" -> if (arg("command") != "/sbin/ifup") null else {
+                val iface = a["params"]!!.jsonArray.first().jsonPrimitive.content
+                ifups += iface
+                if (iface in wgInterfaces() && "wireguard" in protos && !wgFails) {
+                    wgKernel[iface] = committedPeers(iface)
+                    wgUpAt[iface] = fake.clock()
+                }
+                ok("""{"code":0}""")
+            }
             "luci.setInitAction" -> {
                 initActions += "${arg("name")} ${arg("action")}"
+                if (arg("name") == "ddns" && arg("action") in setOf("start", "restart")) ddnsStarted = ddnsEnabled().toSet()
+                if (arg("name") == "ddns" && arg("action") == "stop") ddnsStarted = emptySet()
                 if (arg("name") == "network" && arg("action") == "restart" && "wireguard-tools" in installed) protos += "wireguard"
                 if (arg("name") == "miniupnpd") when (arg("action")) {
                     "start", "restart" -> upnpStopped = false
@@ -139,7 +225,7 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
                 }
                 ok("""{"result":true}""")
             }
-            "service.list" -> when (arg("name")) {
+            "service.list" -> if (oldRouter) accessDenied else when (arg("name")) {
                 "miniupnpd" -> ok(buildJsonObject {
                     if ("miniupnpd-nftables" in installed) putJsonObject("miniupnpd") {
                         putJsonObject("instances") { if (upnpRunning()) putJsonObject("instance1") { put("running", true) } }
@@ -181,24 +267,20 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
             }
             // Como `wg show all dump`: las interfaces WireGuard que netifd levantó con su configuración.
             "luci.wireguard.getWgInstances" -> if ("luci-proto-wireguard" !in installed) accessDenied else ok(buildJsonObject {
-                if ("wireguard" in protos && !wgFails) {
-                    fake.committed.filter { (_, v) -> v[".type"]?.jsonPrimitive?.content == "interface" && v["proto"]?.jsonPrimitive?.content == "wireguard" }
-                        .forEach { (dev, v) ->
-                            putJsonObject(dev) {
-                                put("name", dev)
-                                put("listen_port", v["listen_port"]?.jsonPrimitive?.content ?: "0")
-                                putJsonArray("peers") {
-                                    fake.committed.values.filter { it[".type"]?.jsonPrimitive?.content == "wireguard_$dev" }.forEach { peer ->
-                                        val key = peer["public_key"]?.jsonPrimitive?.content.orEmpty()
-                                        addJsonObject {
-                                            put("public_key", key)
-                                            put("latest_handshake", "${wgHandshakes[dev]?.get(key) ?: 0}")
-                                            put("transfer_rx", "1000"); put("transfer_tx", "2000")
-                                        }
-                                    }
+                wgKernel.forEach { (dev, keys) ->
+                    putJsonObject(dev) {
+                        put("name", dev)
+                        put("listen_port", fake.option(dev, "listen_port") ?: "0")
+                        putJsonArray("peers") {
+                            keys.forEach { key ->
+                                addJsonObject {
+                                    put("public_key", key)
+                                    put("latest_handshake", "${wgHandshakes[dev]?.get(key) ?: 0}")
+                                    put("transfer_rx", "1000"); put("transfer_tx", "2000")
                                 }
                             }
                         }
+                    }
                 }
             }.toString())
             "luci.wireguard.generateKeyPair" -> if ("luci-proto-wireguard" !in installed) accessDenied else {

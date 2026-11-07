@@ -11,8 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.addons.publicAddresses
 import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.BoardInfo
+import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.ui.ErrorBanner
@@ -36,13 +39,26 @@ import kotlin.time.Duration.Companion.seconds
 data class StatusData(val board: BoardInfo, val info: SystemInfo, val interfaces: List<NetInterface>)
 
 class StatusViewModel(repo: RouterRepository) : ViewModel() {
+
+    /** Sesión con la que se averiguó qué router es (otra sesión puede ser otro router). */
+    @Volatile
+    private var identifiedWith: OpenWrtApi? = null
+
     val state: StateFlow<Loadable<StatusData>> = pollingFlow(5.seconds) {
         repo.use { api ->
             coroutineScope {
                 val board = async { api.board() }
                 val info = async { api.systemInfo() }
                 val interfaces = async { api.interfaces() }
-                StatusData(board.await(), info.await(), interfaces.await())
+                val data = StatusData(board.await(), info.await(), interfaces.await())
+                // Esta recarga está siempre en marcha con la app abierta: aquí se averigua qué router
+                // es y se apuntan sus direcciones públicas, para el acceso remoto.
+                if (identifiedWith !== api) {
+                    repo.rememberRouterId(api.routerId())
+                    identifiedWith = api
+                }
+                repo.refreshTunnelAddresses(publicAddresses(data.interfaces))
+                data
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
@@ -97,7 +113,7 @@ private fun InterfaceCard(iface: NetInterface) {
         InfoRow("Protocolo", iface.proto)
         InfoRow("Dispositivo", iface.l3Device ?: iface.device ?: "—")
         if (iface.ipv4.isNotEmpty()) InfoRow("IPv4", iface.ipv4.joinToString { "${it.address}/${it.mask}" })
-        val v6 = iface.ipv6 + iface.ipv6Prefixes
+        val v6 = iface.ipv6 + iface.ipv6Prefixes.map { IpAddress(it.address, it.mask) }
         if (v6.isNotEmpty()) InfoRow("IPv6", v6.joinToString { "${it.address}/${it.mask}" })
         if (iface.dns.isNotEmpty()) InfoRow("DNS", iface.dns.joinToString())
         if (iface.up) iface.uptime?.let { InfoRow("Conectada", formatDuration(it)) }

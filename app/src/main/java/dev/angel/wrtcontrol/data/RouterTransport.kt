@@ -17,6 +17,7 @@ import java.net.SocketAddress
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicInteger
 import javax.net.SocketFactory
 
 /** El túnel nativo (wireguard-go con netstack); las pruebas usan uno falso. */
@@ -32,8 +33,6 @@ interface TunnelHandle {
     /** Hora (segundos) del último saludo con el router; 0 si no ha habido. */
     fun lastHandshake(): Long
 
-    fun setEndpoint(endpoint: String)
-
     fun stop()
 }
 
@@ -44,22 +43,26 @@ enum class Link { Direct, Connecting, Tunnel }
 class TunnelUnavailableException(message: String) : IOException(message)
 
 /**
- * Lleva las conexiones de OkHttp al router: directas en casa y por el túnel fuera. Cambia solo:
+ * Lleva las conexiones de OkHttp al router.
  *
- * - Si una conexión directa no llega a abrirse (el router no está en esta red) y hay acceso remoto
- *   configurado, levanta el túnel y repite la petición, que no llegó a salir.
- * - Con el túnel puesto, las conexiones nuevas van al puerto local del túnel. La URL no cambia
- *   (sigue siendo la dirección de casa): solo cambia a dónde se conecta el socket.
- * - [checkDirect] mira si se vuelve a llegar directamente (al volver a casa) y entonces lo quita;
- *   [stopIfIdle] lo quita si lleva un rato sin usarse, para no gastar batería con los avisos de
- *   WireGuard.
+ * - Sin acceso remoto en este teléfono, directas, como siempre.
+ * - Con acceso remoto, por el túnel también en casa (primero a la IP de la LAN): el saludo de
+ *   WireGuard comprueba que al otro lado está nuestro router. Una conexión directa solo comprueba
+ *   que algo contesta en esa IP, y en otra red con la misma (192.168.1.1 en un hotel) la sesión y
+ *   la contraseña irían a un aparato ajeno, sin cifrar.
+ * - Si el túnel no sube (p. ej. tras actualizar el firmware, que borra WireGuard), las peticiones
+ *   van directas para no dejar la app sin router en casa, y no se reintenta durante [RETRY_TUNNEL_MS].
+ * - La URL no cambia (sigue siendo la dirección de casa): solo cambia a dónde se conecta el socket.
+ * - Se quita tras [idleMs] sin usarse y si deja de haber saludos (el router cambió de dirección):
+ *   la siguiente petición lo vuelve a levantar, resolviendo otra vez el DNS dinámico.
  */
 class RouterTransport(
     private val engine: TunnelEngine?,
     private val resolver: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() },
-    /** ¿Se abre una conexión directa a host:puerto? (sin pasar por el túnel). */
-    private val directProbe: (String, Int) -> Boolean = { host, port -> probe(host, port) },
+    /** ¿Está el teléfono en una red local (Wi-Fi, Ethernet), donde puede estar el router? */
+    private val onLocalNetwork: () -> Boolean = { true },
     private val handshakeWaitMs: Long = 5_000,
+    private val lanHandshakeWaitMs: Long = 1_500,
     private val idleMs: Long = 90_000,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
@@ -67,14 +70,38 @@ class RouterTransport(
     @Volatile
     var config: TunnelConfig? = null
         set(value) {
+            val old = field
             field = value
-            if (value?.enabled != true) stop()
+            // Si solo cambian las direcciones donde buscar el router, el túnel puesto sigue valiendo.
+            if (old?.copy(endpoints = emptyList(), hostname = null) != value?.copy(endpoints = emptyList(), hostname = null)) {
+                generation.incrementAndGet()
+                failedAt = 0L
+                dropTunnel()
+            }
+        }
+
+    /**
+     * Solo conexiones directas, sin túnel: para quitar el acceso remoto de este mismo teléfono (al
+     * hacerlo, el router corta el túnel por el que habría que comprobarlo).
+     */
+    @Volatile
+    var directOnly = false
+        set(value) {
+            field = value
+            if (value) dropTunnel()
         }
 
     /** Conexiones reutilizables: al cambiar de camino se tiran, porque van por el otro. */
     val pool = ConnectionPool()
 
-    private val lock = Any()
+    /** Arranques de uno en uno (son lentos: no se hacen bajo [stateLock]). */
+    private val startLock = Any()
+
+    /** Poner o quitar el túnel (rápido). */
+    private val stateLock = Any()
+
+    /** Cambia con cada configuración: un arranque que empezó con otra no se publica. */
+    private val generation = AtomicInteger()
 
     @Volatile
     private var tunnel: TunnelHandle? = null
@@ -86,9 +113,12 @@ class RouterTransport(
     @Volatile
     private var failedAt = 0L
 
-    /** Último destino directo pedido (la dirección del router en casa). */
+    /** Por qué falló, para explicarlo si la conexión directa tampoco llega. */
     @Volatile
-    private var lastTarget: Pair<String, Int>? = null
+    private var failure: TunnelUnavailableException? = null
+
+    /** Peticiones en marcha: no se quita el túnel debajo de ellas. */
+    private val inFlight = AtomicInteger()
 
     private val _link = MutableStateFlow(Link.Direct)
     val link: StateFlow<Link> = _link.asStateFlow()
@@ -106,65 +136,100 @@ class RouterTransport(
 
     val interceptor: Interceptor = Interceptor { chain ->
         val request = chain.request()
-        lastUse = now()
-        if (tunnel == null) lastTarget = request.url.host to request.url.port
+        inFlight.incrementAndGet()
         try {
-            chain.proceed(request)
-        } catch (e: IOException) {
-            val cfg = config
-            if (tunnel != null || cfg?.enabled != true || engine == null || !isConnectFailure(e)) throw e
-            // Si el túnel acaba de fallar (p. ej. el router se está reiniciando), no se vuelve a
-            // probar en cada petición: cada intento tarda unos segundos.
-            if (failedAt != 0L && now() - failedAt < RETRY_TUNNEL_MS) throw e
-            // El router no está en esta red: por el túnel. La petición no llegó a salir, se repite.
-            try {
-                startTunnel(cfg, request.url.host, request.url.port)
-            } catch (t: TunnelUnavailableException) {
-                failedAt = now()
-                throw t
+            lastUse = now()
+            if (wantsTunnel(config)) {
+                try {
+                    startTunnel(config!!, request.url.host, request.url.port)
+                } catch (_: TunnelUnavailableException) {
+                    // Sin túnel, directo; si tampoco llega, se explica lo del túnel (ver abajo).
+                }
             }
-            chain.proceed(request)
+            val viaTunnel = tunnel != null
+            try {
+                chain.proceed(request)
+            } catch (e: IOException) {
+                val neverSent = isConnectFailure(e) && e.suppressed.all { it is IOException && isConnectFailure(it) }
+                if (viaTunnel && neverSent) {
+                    // El túnel se cayó antes de que saliera nada: se rehace y se repite una vez.
+                    dropTunnel()
+                    if (wantsTunnel(config)) {
+                        startTunnel(config!!, request.url.host, request.url.port)
+                        return@Interceptor chain.proceed(request)
+                    }
+                }
+                if (!viaTunnel && neverSent) failure?.let { throw it }
+                throw e
+            }
+        } finally {
+            inFlight.decrementAndGet()
+            lastUse = now()
         }
     }
 
-    /** Levanta el túnel probando cada dirección conocida del router hasta que haya saludo. */
-    fun startTunnel(cfg: TunnelConfig, routerHost: String, routerPort: Int): Unit = synchronized(lock) {
+    private fun wantsTunnel(cfg: TunnelConfig?): Boolean =
+        cfg?.enabled == true && engine != null && !directOnly && tunnel == null &&
+            (failedAt == 0L || now() - failedAt >= RETRY_TUNNEL_MS)
+
+    /**
+     * Levanta el túnel probando las direcciones del router de una en una, cada una con un túnel
+     * nuevo (así el primer saludo sale enseguida hacia ella), hasta que haya saludo.
+     */
+    fun startTunnel(cfg: TunnelConfig, routerHost: String, routerPort: Int): Unit = synchronized(startLock) {
         if (tunnel != null) return
+        if (failedAt != 0L && now() - failedAt < RETRY_TUNNEL_MS) throw failure ?: TunnelUnavailableException("Acceso remoto no disponible")
+        val gen = generation.get()
         val engine = engine ?: throw TunnelUnavailableException("Esta versión de la app no trae el acceso remoto.")
-        val endpoints = endpoints(cfg, routerHost)
-        if (endpoints.isEmpty()) {
-            throw TunnelUnavailableException(
+        val candidates = endpoints(cfg, routerHost)
+        if (candidates.isEmpty()) {
+            fail(TunnelUnavailableException(
                 "No se llega al router y el acceso remoto no sabe dónde buscarlo: configura el DNS dinámico desde casa.",
-            )
+            ))
         }
         _link.value = Link.Connecting
-        val handle = try {
-            engine.start(cfg, endpoints.first(), "${cfg.routerTunnelAddress}:$routerPort")
-        } catch (e: Exception) {
-            _link.value = Link.Direct
-            throw TunnelUnavailableException("No se pudo levantar el acceso remoto: ${e.message}")
-        }
-        for ((i, endpoint) in endpoints.withIndex()) {
-            if (i > 0) runCatching { handle.setEndpoint(endpoint) }
-            if (waitHandshake(handle)) {
-                tunnel = handle
-                failedAt = 0L
-                lastUse = now()
-                pool.evictAll()
-                _link.value = Link.Tunnel
+        val target = "${cfg.webAddress ?: cfg.routerTunnelAddress}:$routerPort"
+        val home = routerHost.trim('[', ']')
+        for (endpoint in candidates) {
+            val handle = try {
+                engine.start(cfg, endpoint, target)
+            } catch (_: Exception) {
+                continue
+            }
+            val lan = endpoint.startsWith("$home:") || endpoint.startsWith("[$home]:")
+            if (waitHandshake(handle, if (lan) lanHandshakeWaitMs else handshakeWaitMs)) {
+                synchronized(stateLock) {
+                    if (gen != generation.get() || config?.enabled != true || directOnly) {
+                        runCatching { handle.stop() }
+                        _link.value = Link.Direct
+                        throw TunnelUnavailableException("El acceso remoto cambió mientras se conectaba.")
+                    }
+                    tunnel = handle
+                    failedAt = 0L
+                    failure = null
+                    lastUse = now()
+                    pool.evictAll()
+                    _link.value = Link.Tunnel
+                }
                 return
             }
+            runCatching { handle.stop() }
         }
-        handle.stop()
         _link.value = Link.Direct
-        throw TunnelUnavailableException(
-            "No se pudo llegar al router por el acceso remoto (probado: ${endpoints.joinToString()}). " +
+        fail(TunnelUnavailableException(
+            "No se pudo llegar al router por el acceso remoto (probado: ${candidates.joinToString()}). " +
                 "Puede que la red en la que estás no tenga IPv6 o que el router no esté encendido.",
-        )
+        ))
     }
 
-    private fun waitHandshake(handle: TunnelHandle): Boolean {
-        repeat((handshakeWaitMs / HANDSHAKE_POLL_MS).toInt().coerceAtLeast(1)) {
+    private fun fail(e: TunnelUnavailableException): Nothing {
+        failedAt = now()
+        failure = e
+        throw e
+    }
+
+    private fun waitHandshake(handle: TunnelHandle, waitMs: Long): Boolean {
+        repeat((waitMs / HANDSHAKE_POLL_MS).toInt().coerceAtLeast(1)) {
             if (handle.lastHandshake() > 0) return true
             Thread.sleep(HANDSHAKE_POLL_MS)
         }
@@ -172,11 +237,13 @@ class RouterTransport(
     }
 
     /**
-     * Direcciones donde buscar el router, en orden: el nombre del DNS dinámico (IPv6 antes),
-     * las últimas direcciones públicas vistas y, por último, la de casa si es una IP.
+     * Direcciones donde buscar el router, en orden: en una red local, primero la de casa (si es
+     * una IP: en casa el saludo llega enseguida); después el nombre del DNS dinámico (IPv6 antes) y
+     * las últimas direcciones públicas vistas. Fuera de una red local, la de casa va al final.
      */
     internal fun endpoints(cfg: TunnelConfig, routerHost: String?): List<String> {
-        val hosts = buildList {
+        val home = routerHost?.trim('[', ']')?.takeIf(::isIpLiteral)
+        val remote = buildList {
             cfg.hostname?.let { name ->
                 val resolved = try {
                     resolver(name)
@@ -186,30 +253,39 @@ class RouterTransport(
                 resolved.sortedBy { it is Inet4Address }.forEach { add(ipText(it)) }
             }
             addAll(cfg.endpoints)
-            routerHost?.trim('[', ']')?.takeIf(::isIpLiteral)?.let(::add)
-        }.distinct()
-        return hosts.map { if (':' in it) "[$it]:${cfg.port}" else "$it:${cfg.port}" }
+        }
+        val hosts = if (home == null) remote else if (onLocalNetwork()) listOf(home) + remote else remote + home
+        return hosts.distinct().map { if (':' in it) "[$it]:${cfg.port}" else "$it:${cfg.port}" }
     }
 
-    /** Si ya se llega directamente (de vuelta en casa), quita el túnel. */
-    fun checkDirect() {
-        if (tunnel == null) return
-        val (host, port) = lastTarget ?: return
-        if (directProbe(host, port)) stop()
-    }
-
-    /** Quita el túnel si lleva [idleMs] sin usarse. */
+    /** Quita el túnel si lleva [idleMs] sin usarse y no hay nada en marcha por él. */
     fun stopIfIdle() {
-        if (tunnel != null && now() - lastUse > idleMs) stop()
+        if (tunnel != null && inFlight.get() == 0 && now() - lastUse > idleMs) dropTunnel()
     }
 
-    /** Quita el túnel (las conexiones siguientes vuelven a ir directas). */
-    fun stop(): Unit = synchronized(lock) {
+    /**
+     * Quita el túnel si hace más de [STALE_HANDSHAKE_S] que no hay saludo (con el aviso cada 25 s,
+     * WireGuard vuelve a saludar cada dos minutos mientras el router contesta): el router cambió de
+     * dirección o ya no está. La siguiente petición lo vuelve a buscar.
+     */
+    fun checkAlive() {
         val t = tunnel ?: return
-        tunnel = null
+        val last = runCatching { t.lastHandshake() }.getOrDefault(0L)
+        if (last > 0 && now() / 1000 - last > STALE_HANDSHAKE_S && inFlight.get() == 0) dropTunnel()
+    }
+
+    /** Quita el túnel (las conexiones siguientes lo vuelven a levantar o van directas). */
+    fun stop() = dropTunnel()
+
+    private fun dropTunnel() {
+        val t = synchronized(stateLock) {
+            val t = tunnel ?: return
+            tunnel = null
+            _link.value = Link.Direct
+            t
+        }
         runCatching { t.stop() }
         pool.evictAll()
-        _link.value = Link.Direct
     }
 
     private inner class RoutedSocket : Socket() {
@@ -217,7 +293,7 @@ class RouterTransport(
             val t = tunnel
             when {
                 t != null -> super.connect(InetSocketAddress(LOOPBACK_V4, t.localPort), timeout)
-                // Con acceso remoto, no se espera mucho a que conteste en casa: si no está, al túnel.
+                // Con acceso remoto y el túnel caído, no se espera mucho a la conexión directa.
                 config?.enabled == true -> super.connect(endpoint, if (timeout == 0) DIRECT_TIMEOUT_MS else minOf(timeout, DIRECT_TIMEOUT_MS))
                 else -> super.connect(endpoint, timeout)
             }
@@ -225,11 +301,14 @@ class RouterTransport(
     }
 
     companion object {
-        /** Lo que se espera a la conexión directa cuando hay acceso remoto para probar. */
+        /** Lo que se espera a la conexión directa cuando hay acceso remoto. */
         const val DIRECT_TIMEOUT_MS = 2_500
 
         /** Tras un intento fallido, lo que se espera antes de volver a probar el túnel. */
         const val RETRY_TUNNEL_MS = 30_000L
+
+        /** Sin saludo desde hace esto, el túnel se da por muerto (WireGuard rechaza sesiones de más de 180 s). */
+        const val STALE_HANDSHAKE_S = 200L
 
         private const val HANDSHAKE_POLL_MS = 100L
 
@@ -270,12 +349,5 @@ class RouterTransport(
 
         fun isIpLiteral(host: String): Boolean =
             Regex("^\\d{1,3}(\\.\\d{1,3}){3}$").matches(host) || (':' in host && Regex("^[0-9a-fA-F:.]+$").matches(host))
-
-        private fun probe(host: String, port: Int): Boolean = try {
-            Socket().use { it.connect(InetSocketAddress(host, port), 1_500) }
-            true
-        } catch (_: IOException) {
-            false
-        }
     }
 }

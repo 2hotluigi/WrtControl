@@ -78,6 +78,9 @@ class FakeOpenWrt(
     var intercept: ((RecordedCall) -> Reply?)? = null
 
     private val staged = mutableMapOf<String, MutableList<(MutableMap<String, MutableMap<String, JsonElement>>) -> Unit>>()
+
+    /** Lo que aplicó el apply pendiente: al deshacerlo, rpcd se lo devuelve a su sesión como pendiente. */
+    private var appliedOps: List<(MutableMap<String, MutableMap<String, JsonElement>>) -> Unit> = emptyList()
     private var snapshot: Map<String, Map<String, JsonElement>>? = null
     private var sessions = 0
     private var handles = 100L
@@ -136,6 +139,11 @@ class FakeOpenWrt(
                 ).apply { putAll(a["values"]!!.jsonObject) }
             }.let { ok("""{"section":"${arg("name")}"}""") }
             "uci.delete" -> stage(call.sid) { cfg -> cfg.remove(arg("section")!!) }.let { ok() }
+            "uci.changes" -> ok(buildJsonObject {
+                putJsonObject("changes") {
+                    if (staged[call.sid].orEmpty().isNotEmpty()) putJsonArray("pendiente") { }
+                }
+            }.toString())
             "uci.set" -> stage(call.sid) { cfg -> cfg[arg("section")!!]?.putAll(a["values"]!!.jsonObject) }.let { ok() }
             "uci.apply" -> apply(call.sid, a["rollback"]?.jsonPrimitive?.content == "true", a["timeout"]?.jsonPrimitive?.content?.toLong() ?: 30)
             "uci.confirm" -> when (pendingApply) {
@@ -260,6 +268,9 @@ class FakeOpenWrt(
             committed.clear()
             snapshot!!.forEach { (k, v) -> committed[k] = v.toMutableMap() }
         }
+        // Como rpc_uci_do_rollback: los cambios deshechos vuelven a la sesión del apply como pendientes.
+        pendingApply?.let { sid -> staged.getOrPut(sid) { mutableListOf() }.addAll(0, appliedOps) }
+        appliedOps = emptyList()
         pendingApply = null
         snapshot = null
         applyDeadline = null
@@ -279,6 +290,7 @@ class FakeOpenWrt(
         if (rollback) {
             pendingApply = sid
             applyDeadline = clock() + timeoutSeconds * 1000
+            appliedOps = ops
         }
         applySystemTimezone()
         reload()

@@ -46,7 +46,8 @@ import dev.angel.wrtcontrol.addons.UpnpMapping
 import dev.angel.wrtcontrol.addons.UpnpState
 import dev.angel.wrtcontrol.addons.RemotePeer
 import dev.angel.wrtcontrol.addons.VPN_INTERFACE
-import dev.angel.wrtcontrol.addons.DDNS_SECTION
+import dev.angel.wrtcontrol.addons.DDNS_SECTIONS
+import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.addons.DdnsEdit
 import dev.angel.wrtcontrol.addons.DdnsProvider
 import dev.angel.wrtcontrol.addons.DdnsService
@@ -78,6 +79,7 @@ fun AddonsScreen(address: String) {
     val vm: AddonsViewModel = viewModel(key = "addons:$address") { AddonsViewModel(repo) }
     val state by vm.state.collectAsStateWithLifecycle()
     val locked = LocalAppLocked.current
+    val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
 
     var installing by remember { mutableStateOf<Addon?>(null) }
     var editingSqm by remember { mutableStateOf<SqmQueue?>(null) }
@@ -112,8 +114,8 @@ fun AddonsScreen(address: String) {
                 item { SectionTitle("Acceso remoto") }
                 item {
                     AddonCard(Addon.WireGuard, status(Addon.WireGuard), canInstall = tool != null, busy = busy,
-                        onInstall = { installing = Addon.WireGuard }, onFinish = vm::finishWireGuard) {
-                        RemoteAccessContent(data, busy, onEnable = { vm.enableRemoteAccess(phoneName()) }, onRemove = { removingPeer = it })
+                        onInstall = { vm.error = null; installing = Addon.WireGuard }, onFinish = vm::finishWireGuard) {
+                        RemoteAccessContent(data, busy, onEnable = { vm.enableRemoteAccess(phoneName()) }, onRemove = { vm.error = null; removingPeer = it })
                         WireGuardContent(s.wireguard.orEmpty().filter { it.name != VPN_INTERFACE })
                     }
                 }
@@ -125,7 +127,7 @@ fun AddonsScreen(address: String) {
                             publicAddresses = s.publicAddresses,
                             remote = s.remote != null,
                             busy = busy,
-                            onEdit = { editingDdns = true },
+                            onEdit = { vm.error = null; editingDdns = true },
                             onRemove = vm::removeDdns,
                         )
                     }
@@ -138,10 +140,11 @@ fun AddonsScreen(address: String) {
                         SqmContent(
                             queues = s.sqm.orEmpty(),
                             internetDevice = s.internetDevice,
+                            internetDevices = s.internetDevices,
                             busy = busy,
                             onToggle = { q, on -> vm.saveSqm(SqmEdit(q.section, on, q.device, q.downloadKbit, q.uploadKbit)) },
-                            onEdit = { editingSqm = it },
-                            onCreate = { newSqm = true },
+                            onEdit = { vm.error = null; editingSqm = it },
+                            onCreate = { vm.error = null; newSqm = true },
                         )
                     }
                 }
@@ -166,13 +169,14 @@ fun AddonsScreen(address: String) {
                     )
                 }
                 if (editingDdns) {
-                    val own = s.ownDdns
-                    val section = s.ddnsConfig.orEmpty().firstOrNull { it.name == DDNS_SECTION }
+                    val own = s.ownDdns.firstOrNull()
+                    val section = s.ddnsConfig.orEmpty().firstOrNull { it.name in DDNS_SECTIONS }
                     DdnsDialog(
                         current = own,
                         currentToken = section?.text("password").orEmpty(),
                         currentUrl = section?.text("update_url").orEmpty(),
-                        ipv6 = s.publicAddresses.any { ':' in it } || s.publicAddresses.isEmpty(),
+                        currentUsername = section?.text("username")?.takeIf { it != own?.domain }.orEmpty(),
+                        publicAddresses = s.publicAddresses,
                         busy = busy,
                         error = vm.error,
                         onDismiss = { if (!busy) { editingDdns = false; vm.error = null } },
@@ -186,7 +190,8 @@ fun AddonsScreen(address: String) {
                         title = { Text("Quitar el acceso remoto") },
                         text = {
                             Text(
-                                if (mine) "Este teléfono dejará de poder entrar al router desde fuera de casa. En casa sigue funcionando."
+                                if (mine) "Este teléfono dejará de poder entrar al router desde fuera de casa. En casa sigue " +
+                                    "funcionando. Hay que hacerlo desde casa: la app lo quita por la conexión directa."
                                 else "${peer.name} dejará de poder entrar al router desde fuera de casa.",
                             )
                         },
@@ -199,7 +204,7 @@ fun AddonsScreen(address: String) {
                 if (newSqm || editingSqm != null) {
                     SqmDialog(
                         queue = editingSqm,
-                        devices = s.devices,
+                        devices = (s.devices + s.internetDevices).distinct(),
                         internetDevice = s.internetDevice,
                         busy = busy,
                         error = vm.error,
@@ -330,18 +335,29 @@ private fun RemoteAccessContent(data: AddonsData, busy: Boolean, onEnable: () ->
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            s.ownDdns?.let { "Desde fuera, la app lo buscará en ${it.domain}." }
+            s.ddnsDomain?.let { "Desde fuera, la app lo buscará en $it." }
                 ?: "Sin DNS dinámico, la app usará la última dirección que vio: si cambia mientras estás fuera, no lo encontrará.",
             style = MaterialTheme.typography.bodySmall,
-            color = if (s.ownDdns == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (s.ddnsDomain == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (remote.foreignPeers.isNotEmpty()) {
+            Text(
+                "Además hay ${remote.foreignPeers.size} par(es) añadidos fuera de la app (${remote.foreignPeers.joinToString()}): " +
+                    "se gestionan desde LuCI.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         remote.peers.forEach { peer ->
-            val status = live?.peers?.firstOrNull { it.publicKey == peer.publicKey }?.lastHandshake
-                ?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "aún no ha conectado"
+            val status = when {
+                live == null || !live.liveKnown -> null
+                else -> live.peers.firstOrNull { it.publicKey == peer.publicKey }?.lastHandshake
+                    ?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "aún no ha conectado"
+            }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f)) {
                     Text(peer.name + if (data.tunnel?.peerId == peer.id) " (este teléfono)" else "", style = MaterialTheme.typography.bodyMedium)
-                    Text("${peer.address} · $status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(listOfNotNull(peer.address, status).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { onRemove(peer) }, enabled = !busy) {
                     Icon(painterResource(R.drawable.ic_delete), contentDescription = "Quitar el acceso remoto de ${peer.name}")
@@ -374,9 +390,10 @@ private fun WireGuardContent(interfaces: List<WireGuardInterface>) {
         if (iface.addresses.isNotEmpty()) Text(iface.addresses.joinToString(), style = MaterialTheme.typography.bodySmall)
         if (iface.peers.isEmpty()) Text("Sin pares.", style = MaterialTheme.typography.bodySmall)
         iface.peers.forEach { peer ->
-            val seen = peer.lastHandshake?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "nunca ha conectado"
+            val seen = if (!iface.liveKnown) null else
+                peer.lastHandshake?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "nunca ha conectado"
             Text(
-                "${peer.description.ifBlank { peer.publicKey.take(8) + "…" }}: $seen",
+                peer.description.ifBlank { peer.publicKey.take(8) + "…" } + (seen?.let { ": $it" } ?: ""),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -394,7 +411,8 @@ private fun DdnsContent(
     onEdit: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val own = services.firstOrNull { it.own }
+    val owned = services.filter { it.own }
+    val own = owned.firstOrNull()
     if (own == null) {
         Text(
             if (remote) "El acceso remoto lo necesita: sin un nombre fijo, si tu proveedor le cambia la dirección al router mientras estás fuera, la app no lo encontrará."
@@ -405,26 +423,18 @@ private fun DdnsContent(
     } else {
         HorizontalDivider()
         Text(own.domain, style = MaterialTheme.typography.titleSmall)
-        Text(
-            buildString {
-                append(own.provider?.title ?: own.serviceName ?: "Proveedor propio")
-                append(if (own.ipv6) " · IPv6" else " · IPv4")
-                append(if (own.running) " · en marcha" else " · parado")
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            own.lastUpdate?.let { "Actualizado: $it" + (own.lastSentIp?.let { ip -> " ($ip)" } ?: "") } ?: "Aún no se ha actualizado.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        own.lastError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-        if (own.ipv6 && publicAddresses.none { ':' in it }) {
+        Text(own.provider?.title ?: own.serviceName ?: "Proveedor propio", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        owned.sortedBy { it.ipv6 }.forEach { svc ->
+            val family = if (svc.ipv6) "IPv6" else "IPv4"
             Text(
-                "El router no tiene ahora una IPv6 pública que publicar.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                "$family: " + (svc.lastUpdate?.let { "actualizado $it" + (svc.lastSentIp?.let { ip -> " ($ip)" } ?: "") } ?: "aún no se ha actualizado") +
+                    if (svc.running) "" else " · parado",
+                style = MaterialTheme.typography.bodyMedium,
             )
+            svc.lastError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            if (svc.ipv6 && publicAddresses.none { ':' in it }) {
+                Text("El router no tiene ahora una IPv6 pública que publicar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onEdit, enabled = !busy) { Text("Cambiar") }
@@ -445,7 +455,8 @@ private fun DdnsDialog(
     current: DdnsService?,
     currentToken: String,
     currentUrl: String,
-    ipv6: Boolean,
+    currentUsername: String,
+    publicAddresses: List<String>,
     busy: Boolean,
     error: String?,
     onDismiss: () -> Unit,
@@ -455,7 +466,12 @@ private fun DdnsDialog(
     var domain by remember { mutableStateOf(current?.domain.orEmpty()) }
     var token by remember { mutableStateOf(currentToken) }
     var url by remember { mutableStateOf(currentUrl) }
-    val edit = DdnsEdit(provider, domain, token, ipv6 = current?.ipv6 ?: ipv6, updateUrl = url.takeIf { provider == DdnsProvider.Custom })
+    var username by remember { mutableStateOf(currentUsername) }
+    val edit = DdnsEdit(
+        provider, domain, token,
+        updateUrl = url.takeIf { provider == DdnsProvider.Custom },
+        username = username.takeIf { provider == DdnsProvider.Custom && it.isNotBlank() },
+    )
     val problem = ddnsProblem(edit)
 
     AlertDialog(
@@ -489,10 +505,20 @@ private fun DdnsDialog(
                         label = { Text("URL de actualización") },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    OutlinedTextField(
+                        value = username, onValueChange = { username = it }, singleLine = true,
+                        label = { Text("Usuario (si la URL lo pide)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
+                val v4 = publicAddresses.any { '.' in it }
+                val v6 = publicAddresses.any { ':' in it }
                 Text(
-                    if (edit.ipv6) "Se publicará la dirección IPv6 del router: con CGNAT, la IPv4 no sirve para entrar desde fuera."
-                    else "Se publicará la dirección IPv4 del router.",
+                    when {
+                        v4 && v6 -> "Se publicarán la IPv4 y la IPv6 del router: así se llega desde cualquier red."
+                        v4 -> "Se publicará la IPv4 del router."
+                        else -> "Se publicará la IPv6 del router: con CGNAT, la IPv4 no sirve para entrar desde fuera."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -517,6 +543,7 @@ private fun DdnsDialog(
 private fun SqmContent(
     queues: List<SqmQueue>,
     internetDevice: String?,
+    internetDevices: Set<String>,
     busy: Boolean,
     onToggle: (SqmQueue, Boolean) -> Unit,
     onEdit: (SqmQueue) -> Unit,
@@ -537,7 +564,7 @@ private fun SqmContent(
             onChange = { onToggle(q, it) },
             modifier = Modifier.testTag("sqm-${q.section}"),
         )
-        if (internetDevice != null && q.device != internetDevice) {
+        if (internetDevice != null && q.device !in internetDevices) {
             Text(
                 "Esta cola está en ${q.device.ifBlank { "ningún dispositivo" }}, pero la salida a internet es $internetDevice: " +
                     "así no hace nada. Edítala para cambiarla.",
@@ -565,7 +592,11 @@ private fun SqmDialog(
     var up by remember { mutableStateOf(queue?.uploadKbit?.let(::formatMbitNumber).orEmpty()) }
     val enabled = queue?.enabled ?: true
     val edit = SqmEdit(queue?.section, enabled, device, parseMbit(down) ?: -1, parseMbit(up) ?: -1)
-    val problem = if (parseMbit(down) == null || parseMbit(up) == null) "Escribe las dos velocidades en Mbit/s." else sqmProblem(edit)
+    val problem = when {
+        listOf(down, up).any { THOUSANDS.matches(it.trim()) } -> "Escribe la velocidad sin puntos de miles (p. ej. 1000)."
+        parseMbit(down) == null || parseMbit(up) == null -> "Escribe las dos velocidades en Mbit/s."
+        else -> sqmProblem(edit)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -620,6 +651,9 @@ internal fun formatMbit(kbit: Long): String = if (kbit <= 0) "sin límite" else 
 
 internal fun formatMbitNumber(kbit: Long): String =
     if (kbit % 1000 == 0L) "${kbit / 1000}" else String.format(Locale.ROOT, "%.3f", kbit / 1000.0).trimEnd('0').trimEnd('.').replace('.', ',')
+
+/** "1.000": en español es mil, no uno con tres decimales. Se pide sin puntos para no adivinar. */
+private val THOUSANDS = Regex("^\\d{1,3}(\\.\\d{3})+$")
 
 /** "85" → 85000; "1,5" o "1.5" → 1500 (kbit/s). null si no es un número. */
 internal fun parseMbit(text: String): Long? =

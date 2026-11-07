@@ -77,13 +77,18 @@ internal suspend fun UbusSession.ensureNoPendingApply() {
  * lanza [ChangeRevertedException] con [failure]... siempre que [isReverted] lo compruebe: rpcd
  * puede quedarse sin la copia que restaura (p. ej. si otra sesión hace un `uci apply` sin
  * reversión mientras tanto) y entonces el cambio se queda. En ese caso, [ChangeUncertainException].
- * [isReverted] debe leer con otra sesión: al deshacer, rpcd devuelve los cambios a esta como pendientes.
+ * [isReverted] recibe una sesión recién abierta (al deshacer, rpcd devuelve los cambios a esta como
+ * pendientes, así que no sirve para leer).
  *
  * Si se cancela la corrutina a mitad, no se confirma nada y el router lo revierte solo.
  */
 internal suspend fun UbusSession.applySafely(
     failure: String,
-    isReverted: suspend () -> Boolean,
+    isReverted: suspend (fresh: UbusSession) -> Boolean,
+    /** Lo que haya que hacer nada más aplicar (p. ej. reiniciar una interfaz); si falla, decide [isLive]. */
+    afterApply: suspend () -> Unit = {},
+    /** Lo que haya que hacer cuando el router ya lo deshizo (p. ej. volver a reiniciar esa interfaz). */
+    afterRevert: suspend () -> Unit = {},
     isLive: suspend () -> Boolean,
 ) {
     try {
@@ -93,6 +98,7 @@ internal suspend fun UbusSession.applySafely(
         throw e
     }
     val applied = TimeSource.Monotonic.markNow()
+    runCatchingNonCancel { afterApply() }
 
     var reason = failure
     val live = withTimeoutOrNull(VERIFY_TIMEOUT_MS) {
@@ -121,13 +127,20 @@ internal suspend fun UbusSession.applySafely(
             while (!checkReverted(isReverted)) delay(VERIFY_INTERVAL_MS * 2)
             true
         } ?: false
+        if (reverted) runCatchingNonCancel { afterRevert() }
         throw if (reverted) ChangeRevertedException(reason) else ChangeUncertainException()
     }
     uciConfirm()
 }
 
-private suspend fun checkReverted(isReverted: suspend () -> Boolean): Boolean = try {
-    isReverted()
+/**
+ * Mientras el apply sigue pendiente, rpcd da esta misma sesión a cualquier login del usuario: hasta
+ * que una sesión nueva tenga otro identificador, el router no lo ha deshecho, aunque la configuración
+ * ya parezca la de antes (p. ej. un cambio que solo borraba y volvía a crear una sección igual).
+ */
+private suspend fun UbusSession.checkReverted(isReverted: suspend (UbusSession) -> Boolean): Boolean = try {
+    val fresh = reopen()
+    fresh.id != id && isReverted(fresh)
 } catch (e: CancellationException) {
     throw e
 } catch (_: Exception) {

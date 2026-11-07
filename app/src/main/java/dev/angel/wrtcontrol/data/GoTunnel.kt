@@ -14,8 +14,6 @@ class GoTunnelEngine : TunnelEngine {
 
             override fun lastHandshake(): Long = t.lastHandshake()
 
-            override fun setEndpoint(endpoint: String) = t.setEndpoint(endpoint)
-
             override fun stop() = t.stop()
         }
     }

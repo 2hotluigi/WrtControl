@@ -43,6 +43,10 @@ private const val UBUS_PERMISSION_DENIED = 6
 private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 private val FORM_MEDIA_TYPE = "application/x-www-form-urlencoded".toMediaType()
 
+/** Tras un login, cuánto se vigila si la sesión era la de un cambio pendiente (60 s de plazo y margen). */
+private const val RECLAIM_WINDOW_MS = 120_000L
+private const val CHANGES_CHECK_MS = 10_000L
+
 /** Lo que espera la app a un comando de cgi-exec: algo más que el `script_timeout` de uhttpd (60 s). */
 const val CGI_TIMEOUT_SECONDS = 75L
 
@@ -109,6 +113,9 @@ internal fun <T> decodeUbus(
 class UbusSession internal constructor(private val client: UbusClient, val id: String) : UbusCaller {
     override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? =
         client.callInSession(id, target, method, args)
+
+    /** Otra sesión del mismo usuario (rpcd devuelve esta si sigue teniendo un apply pendiente). */
+    internal suspend fun reopen(): UbusSession = client.openSession()
 }
 
 /**
@@ -138,11 +145,20 @@ class UbusClient(
     private val loginMutex = Mutex()
     private val nextId = AtomicLong(1)
 
+    /** Cuándo se obtuvo la sesión compartida y cuándo se miró por última vez si tiene cambios. */
+    @Volatile
+    private var sessionSince = 0L
+
+    @Volatile
+    private var changesCheckedAt = 0L
+
     /** Inicia sesión y, si funciona, guarda las credenciales para renovarla más adelante. */
     suspend fun login(credentials: Credentials): SessionInfo {
         val info = newSession(credentials)
         this.credentials = credentials
         session = info.id
+        sessionSince = System.currentTimeMillis()
+        changesCheckedAt = 0L
         return info
     }
 
@@ -195,7 +211,8 @@ class UbusClient(
 
     /** Llama a `objeto.método` con la sesión actual y devuelve los datos crudos. */
     override suspend fun call(target: String, method: String, args: JsonObject): JsonElement? {
-        val sid = session ?: renewSession(expired = null)
+        var sid = session ?: renewSession(expired = null)
+        if (target == "uci" && method == "get" && hasPhantomChanges(sid)) sid = renewSession(expired = sid)
         return try {
             rawCall(sid, target, method, args)
         } catch (e: UbusException.AccessDenied) {
@@ -273,6 +290,26 @@ class UbusClient(
         session = null
         val creds = credentials ?: throw UbusException.SessionExpired()
         login(creds).id
+    }
+
+    /**
+     * rpcd da la sesión de un `uci apply` pendiente de confirmar a cualquier login del mismo usuario.
+     * Si la sesión compartida resulta ser una de esas (p. ej. la app se cerró a mitad de un cambio y
+     * volvió a entrar) y el router lo deshace al vencer el plazo, rpcd le devuelve esos cambios como
+     * pendientes, y `uci get` los mezclaría con la configuración: la app enseñaría puesto un cambio
+     * deshecho. La sesión compartida nunca prepara cambios: si tiene alguno, se abandona.
+     */
+    private suspend fun hasPhantomChanges(sid: String): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - sessionSince > RECLAIM_WINDOW_MS || now - changesCheckedAt < CHANGES_CHECK_MS) return false
+        changesCheckedAt = now
+        val changes = try {
+            rawCall(sid, "uci", "changes", JsonObject(emptyMap()))
+        } catch (_: UbusException) {
+            return false
+        }
+        val pending = ((changes as? JsonObject)?.get("changes") as? JsonObject)?.isNotEmpty() == true
+        return pending && session == sid
     }
 
     /** session.access está permitido para cualquier sesión válida (grupo "unauthenticated"). */
