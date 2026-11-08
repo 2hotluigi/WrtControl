@@ -32,6 +32,12 @@ class VmIntegrationTest {
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
 
     /**
+     * A dónde hace ping el cliente: algo al otro lado de la WAN, para que pase por el forward del router.
+     * En la CI es el propio PC (10.0.3.2), porque los runners de GitHub no dejan salir ICMP a internet.
+     */
+    private val pingTarget: String = System.getenv("WRTCONTROL_PING_TARGET") ?: "1.1.1.1"
+
+    /**
      * Ejecuta [command] en la VM. Con muchas conexiones seguidas, dropbear rechaza alguna de vez
      * en cuando (ssh termina con 255): se reintenta, para que eso no parezca un fallo del router.
      */
@@ -65,7 +71,7 @@ class VmIntegrationTest {
 
     private fun startPing() = ssh(
         "kill \$(cat /tmp/wrtc_ping.pid 2>/dev/null) 2>/dev/null; " +
-            "(setsid $IP_FULL netns exec wrtc_client ping 1.1.1.1 > /tmp/wrtc_ping.log 2>&1 & echo \$! > /tmp/wrtc_ping.pid); sleep 3",
+            "(setsid $IP_FULL netns exec wrtc_client ping $pingTarget > /tmp/wrtc_ping.log 2>&1 & echo \$! > /tmp/wrtc_ping.pid); sleep 3",
     )
 
     private fun stopPing() = ssh("kill \$(cat /tmp/wrtc_ping.pid) 2>/dev/null; rm -f /tmp/wrtc_ping.pid")
