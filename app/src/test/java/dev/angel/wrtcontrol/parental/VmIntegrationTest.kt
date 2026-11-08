@@ -264,6 +264,9 @@ class VmIntegrationTest {
         ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=$port ' | grep -F '$filter' || true").lines()
             .mapNotNull { Regex("mark=(\\d+)").find(it)?.groupValues?.get(1)?.toLong() }
 
+    /** Las entradas de conntrack del cliente, para los mensajes de error. */
+    private fun clientConntrack(): List<String> = ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack || true").lines()
+
     /**
      * Comprueba el fichero de reglas en uso con el analizador de nftables 1.0.2 de OpenWrt 22.03,
      * si está en la VM (/tmp/nft102, ver el README). Se envuelve en una tabla como hace fw4.
@@ -427,7 +430,11 @@ class VmIntegrationTest {
             val window = afterCut.profiles.single().cutWindow!!
             log("ventana del corte: marca ${window.value} hasta ${window.until}")
             assertTrue("las conexiones nuevas funcionan", connects("http://$web/"))
-            assertTrue("y en la ventana llevan su marca", (window.value.toLong() shl 14) in clientMarks(80, "dst=$web "))
+            val marksInWindow = clientMarks(80, "dst=$web ")
+            assertTrue(
+                "y en la ventana llevan su marca: $marksInWindow; conntrack: ${clientConntrack()}",
+                (window.value.toLong() shl 14) in marksInWindow,
+            )
             // Al acabar la ventana (y antes de cualquier horario, que también cortaría), la conexión
             // abierta en ella se corta; las nuevas ya llevan la época del perfil.
             // Se mira el contador de la regla de corte: el servidor puede haber cerrado la conexión
@@ -485,7 +492,10 @@ class VmIntegrationTest {
         const val CLIENT_MAC = "02:00:00:00:00:99"
 
         /** Lo que dice uclient-fetch cuando la conexión se rechaza o no llega. */
-        val BLOCKED_MESSAGES = listOf("Operation not permitted", "Connection refused", "Connection reset", "timed out", "Failed to send request")
+        // "Connection failed": así informa el wget de 24.10 (mbedTLS) de un HTTPS rechazado.
+        val BLOCKED_MESSAGES = listOf(
+            "Operation not permitted", "Connection refused", "Connection reset", "timed out", "Failed to send request", "Connection failed",
+        )
 
         /** Con setsid, `ip` puede resolver al applet de BusyBox, que no tiene `netns`. */
         const val IP_FULL = "/usr/libexec/ip-full"
