@@ -256,7 +256,10 @@ desfase con el que las escribió (`time_offset`) y, si la zona cambia, también 
 en el siguiente cambio para que sigan siendo el mismo instante.
 
 **Compatibilidad comprobada** en el código de fw4, rpcd y nftables de 22.03 (fw4 de 2022-10-18,
-nftables 1.0.2) y probada en la VM con 25.12.
+nftables 1.0.2), probada en la VM con 25.12 y cada noche en la CI con 24.10, 25.12 y snapshot.
+En 24.10 el ACL de LuCI no deja ver `service list`: la app no sabe si el DNS de un perfil o
+miniupnpd están en marcha (lo muestra como desconocido; el DNS sí se comprueba al aplicar, con
+`nslookup`), y si miniupnpd no arranca tras activarlo, no lo deshace.
 
 **Límites conocidos.**
 - Se identifica a cada dispositivo por su MAC. Si un teléfono usa una MAC aleatoria que cambia
