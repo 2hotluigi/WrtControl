@@ -1,0 +1,54 @@
+# Ajustes sobre la configuración por defecto de detekt (buildUponDefaultConfig = true).
+# El estilo del proyecto es compacto: líneas de hasta 140 y llamadas en una línea cuando caben.
+# Las reglas de ktlint que obligan a partir cada argumento o expresión en su línea están apagadas.
+
+naming:
+  FunctionNaming:
+    # Las funciones @Composable empiezan por mayúscula; las pruebas usan `nombres con espacios`.
+    ignoreAnnotated: ['Composable']
+    excludes: ['**/test/**']
+
+complexity:
+  LongParameterList:
+    # Los componentes de Compose reciben muchos parámetros por diseño.
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+
+style:
+  MaxLineLength:
+    maxLineLength: 140
+    excludes: ['**/test/**']
+  MagicNumber:
+    excludes: ['**/test/**']
+    ignoreAnnotated: ['Composable']
+
+ktlint:
+  # Compose: funciones con nombre en PascalCase.
+  FunctionNaming:
+    active: false
+  # Las líneas largas las vigila MaxLineLength de detekt.
+  MaximumLineLength:
+    active: false
+  ArgumentListWrapping:
+    active: false
+  ParameterListWrapping:
+    active: false
+  BinaryExpressionWrapping:
+    active: false
+  Wrapping:
+    active: false
+  StatementWrapping:
+    active: false
+  PropertyWrapping:
+    active: false
+  FunctionSignature:
+    active: false
+  ClassSignature:
+    active: false
+  FunctionLiteral:
+    active: false
+  MultiLineIfElse:
+    active: false
+  BlankLineBetweenWhenConditions:
+    active: false

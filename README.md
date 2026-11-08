@@ -15,7 +15,14 @@ básico no hay que instalar nada en el router: basta con LuCI.
 ```sh
 gradlew testDebugUnitTest   # pruebas unitarias (JVM, sin emulador)
 gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
+gradlew detekt lintDebug    # análisis estático y estilo (ktlint va dentro de detekt)
+gradlew koverHtmlReportDebug  # cobertura: app/build/reports/kover/htmlDebug/index.html
 ```
+
+La CI (`.github/workflows/ci.yml`) ejecuta todo esto y `go test` del túnel en cada PR. Lo que ya
+había al activar detekt y lint está en `app/detekt-baseline.xml` y `app/lint-baseline.xml`: la CI
+solo falla por problemas nuevos. Al arreglar algo de la línea base, se regenera con
+`gradlew detektBaseline` o `gradlew updateLintBaseline`.
 
 El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
 `app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar

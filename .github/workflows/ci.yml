@@ -1,0 +1,74 @@
+# Se ejecuta en cada PR y en cada push a master. Para que no se pueda fusionar en rojo, en GitHub:
+# Settings → Branches → master → "Require status checks to pass" con los trabajos "android" y "tunnel".
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # El mismo que pide gradle/gradle-daemon-jvm.properties: así no lo descarga en cada ejecución.
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pruebas unitarias
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: detekt + ktlint
+        run: ./gradlew :app:detekt
+
+      - name: Android lint
+        run: ./gradlew :app:lintDebug
+
+      - name: Cobertura (kover)
+        run: ./gradlew :app:koverXmlReportDebug :app:koverHtmlReportDebug
+
+      - name: Informes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
+
+  tunnel:
+    name: tunnel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tunnel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tunnel/go.mod
+          cache-dependency-path: tunnel/go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race ./...
