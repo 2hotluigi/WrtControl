@@ -41,6 +41,8 @@ jobs:
       # Los runners de GitHub no dejan salir ICMP a internet: el ping de las pruebas va al PC, al otro
       # lado de la WAN (QEMU lo responde), así que sigue pasando por el forward del router.
       WRTCONTROL_PING_TARGET: 10.0.3.2
+      # "Una conexión nueva funciona": un servidor HTTP en el PC (paso "Servidor HTTP en el PC").
+      WRTCONTROL_HTTP_TARGET: http://10.0.3.2:8080/
     steps:
       - uses: actions/checkout@v4
 
@@ -69,11 +71,18 @@ jobs:
           # La WAN tarda unos segundos en tener dirección después de que la web ya responde.
           ok=''
           for i in $(seq 30); do
-            vm 'wget -q -T 3 -O /dev/null http://1.1.1.1/cdn-cgi/trace' && { ok=1; echo "HTTP a internet en $((i * 3)) s"; break; }
+            vm 'wget -q -T 3 -O /dev/null https://downloads.openwrt.org/' && { ok=1; echo "Internet en $((i * 3)) s"; break; }
             sleep 3
           done
           vm "ip -br addr; ip route; nslookup openwrt.org 2>&1 | tail -3; ping -c 2 -W 2 $WRTCONTROL_PING_TARGET" || true
-          [ -n "$ok" ] || { vm 'wget -T 5 -O /dev/null http://1.1.1.1/cdn-cgi/trace; wget -T 5 -O /dev/null https://downloads.openwrt.org/'; exit 1; }
+          [ -n "$ok" ] || { vm 'wget -T 5 -O /dev/null https://downloads.openwrt.org/'; exit 1; }
+
+      - name: Servidor HTTP en el PC
+        run: |
+          mkdir -p /tmp/wrtc-http && echo ok > /tmp/wrtc-http/index.html
+          nohup python3 -m http.server 8080 --directory /tmp/wrtc-http > /tmp/wrtc-http.log 2>&1 &
+          sleep 1
+          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM "wget -q -O - $WRTCONTROL_HTTP_TARGET"
 
       - name: Cliente de pruebas en el router
         run: |

@@ -38,6 +38,13 @@ class VmIntegrationTest {
     private val pingTarget: String = System.getenv("WRTCONTROL_PING_TARGET") ?: "1.1.1.1"
 
     /**
+     * Para "una conexión TCP nueva funciona": por IP, porque el cliente no tiene DNS. /cdn-cgi/trace
+     * responde sin redirigir al wget de 25.12, pero el de 24.10 recibe una redirección que no sabe
+     * seguir; la CI usa un servidor HTTP en el PC, al otro lado de la WAN.
+     */
+    private val httpTarget: String = System.getenv("WRTCONTROL_HTTP_TARGET") ?: "http://1.1.1.1/cdn-cgi/trace"
+
+    /**
      * Ejecuta [command] en la VM. Con muchas conexiones seguidas, dropbear rechaza alguna de vez
      * en cuando (ssh termina con 255): se reintenta, para que eso no parezca un fallo del router.
      */
@@ -65,9 +72,9 @@ class VmIntegrationTest {
         return replies() - before
     }
 
-    /** Conexión TCP nueva. /cdn-cgi/trace responde por IP sin redirigir (el cliente no tiene DNS). */
+    /** Conexión TCP nueva a [httpTarget]. */
     private fun newConnectionWorks(): Boolean =
-        ssh("$IP_FULL netns exec wrtc_client wget -q -T 4 -O /dev/null http://1.1.1.1/cdn-cgi/trace && echo OK || echo FALLO").endsWith("OK")
+        ssh("$IP_FULL netns exec wrtc_client wget -q -T 4 -O /dev/null $httpTarget && echo OK || echo FALLO").endsWith("OK")
 
     private fun startPing() = ssh(
         "kill \$(cat /tmp/wrtc_ping.pid 2>/dev/null) 2>/dev/null; " +
@@ -244,6 +251,7 @@ class VmIntegrationTest {
      */
     private fun connects(url: String): Boolean {
         val out = ssh("$IP_FULL netns exec wrtc_client wget -T 4 -O /dev/null --no-check-certificate $url 2>&1; true")
+        log("wget $url: ${out.lines().filter { it.isNotBlank() }.takeLast(2)}")
         return BLOCKED_MESSAGES.none { it in out }
     }
 
