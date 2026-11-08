@@ -36,14 +36,15 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 
 | Tarea | Prioridad | Hecho cuando |
 |---|---|---|
-| CI en GitHub Actions: `testDebugUnitTest`, Android lint, detekt/ktlint, kover y `go test ./tunnel` | P0 | Cada PR los ejecuta y no se puede fusionar en rojo |
-| Matriz de OpenWrt en CI: imágenes x86-64 en QEMU (24.10, 25.12, snapshot) con `VmIntegrationTest` y `AddonsVmTest` | P0 | Se ejecuta cada noche y en PRs que tocan `parental/` o `addons/` |
+| ~~CI en GitHub Actions: `testDebugUnitTest`, Android lint, detekt/ktlint, kover y `go test ./tunnel`~~ | P0 | Hecho: cada PR los ejecuta y `master` exige `android` y `tunnel` en verde |
+| ~~Matriz de OpenWrt en CI: imágenes x86-64 en QEMU (24.10, 25.12, snapshot) con `VmIntegrationTest` y `AddonsVmTest`~~ | P0 | Hecho: cada noche y en los PR que tocan `parental/`, `addons/`, `openwrt/` o `ubus/` (`.github/workflows/vm.yml`) |
+| Snapshot (la próxima versión): el ACL de LuCI ya no deja `luci.setInitAction`, que la app usa para reiniciar la red tras instalar WireGuard y para arrancar miniupnpd. Usar la alternativa nueva (p. ej. `rc init`) cuando no esté | P0 | `AddonsVmTest` en verde en snapshot |
 | Validar el `.nft` generado con `nft -c` en un contenedor | P0 | Falla la CI si una regla no analiza |
 | Compilación reproducible del AAR del túnel (Go + gomobile en CI) | P0 | El AAR del repo coincide con el que genera la CI |
 | Versión del esquema en el router (`schema_version`), conservar opciones desconocidas y bloquear la escritura si lo configuró una versión más nueva | P0 | Hoy una versión anterior borra los ajustes nuevos al guardar. Pruebas de migración N−1 / N / N+1 |
 | Errores legibles: traducir `UbusException` y los fallos de paquetes a mensaje + causa + acción | P0 | Nunca se muestra un nombre de clase ni un código de rpcd |
 | Textos a `strings.xml` (español e inglés) | P0 | Sin textos de usuario en el código Kotlin |
-| Versión mínima: soporte probado desde 24.10; 23.05 "puede funcionar"; retirar 22.03 cuando no haya más remedio | P0 | Decidido, documentado en el README y reflejado en la pantalla de conexión |
+| Versión mínima: soporte probado desde 24.10; 23.05 "puede funcionar"; retirar 22.03 cuando no haya más remedio. En 24.10 el ACL de LuCI no deja ver `service list`: saber si un servicio está en marcha por otro camino (p. ej. `rc list`) y deshacer UPnP si miniupnpd no arranca | P0 | Decidido, documentado en el README y reflejado en la pantalla de conexión. La prueba de UPnP que no arranca pasa en 24.10 |
 | Usuario rpcd con ACL limitado (no root) que la app crea en la primera conexión | P0 | La app funciona sin la contraseña de root guardada |
 | Proceso: PRs pequeños, `versionCode` que suba, firma de release, changelog | P0 | Definición de hecho: pruebas + VM en CI + README + captura de la pantalla nueva |
 
