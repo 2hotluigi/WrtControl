@@ -60,7 +60,9 @@ class AddonsVmTest {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
         val (_, api) = api()
         // Punto de partida: sin WireGuard y con netifd sin el protocolo.
-        log(ssh("apk del luci-proto-wireguard wireguard-tools kmod-wireguard 2>&1 | tail -2; /etc/init.d/network restart; sleep 3"))
+        // apk desde 25.12; opkg hasta 24.10.
+        val wg = "luci-proto-wireguard wireguard-tools kmod-wireguard"
+        log(ssh("{ if command -v apk >/dev/null; then apk del $wg; else opkg remove $wg; fi; } 2>&1 | tail -2; /etc/init.d/network restart; sleep 3"))
         val before = api.packages()!!
         assertEquals(PackageTool.PackageManager, before.tool)
         assertEquals(AddonStatus.Missing, api.state().status(Addon.WireGuard, before))

@@ -71,6 +71,17 @@ WrtControl y en UTC.
 - DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
   le envía el nombre, la IP y el token.
 
+**En la CI** (`.github/workflows/vm.yml`) las dos pruebas se ejecutan cada noche contra 24.10, 25.12
+y snapshot (la última versión de cada serie), y en los PR que tocan `parental/`, `addons/`,
+`openwrt/`, `ubus/` o estas pruebas. `tools/vm/openwrt-qemu.sh` hace la imagen con el Image
+Builder oficial (con la clave SSH y los paquetes ya puestos) y la arranca en QEMU con la misma red
+que la VM de VirtualBox, así que las pruebas no cambian. Vale en cualquier Linux con KVM:
+
+```sh
+sh tools/vm/openwrt-qemu.sh build 25.12 vm ~/.ssh/id_ed25519.pub
+sh tools/vm/openwrt-qemu.sh up vm/openwrt.img      # LAN por tap (sudo): el router queda en 192.168.56.2
+```
+
 Si en la VM está el `nft` de OpenWrt 22.03 en `/tmp/nft102` (paquetes `nftables-json`,
 `libnftnl11`, `libmnl0` y `jansson4` de 22.03.7 para x86_64), la prueba pasa también el fichero
 de reglas por su analizador. Esa copia se cuelga al hablar con el kernel de 25.12, pero analiza

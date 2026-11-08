@@ -1,0 +1,95 @@
+# Pruebas contra OpenWrt de verdad (VmIntegrationTest y AddonsVmTest) en QEMU, en cada versión
+# soportada. Cada noche, en los PR que tocan el control parental, los paquetes o estas pruebas, y a mano.
+name: OpenWrt
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/src/main/java/dev/angel/wrtcontrol/parental/**'
+      - 'app/src/main/java/dev/angel/wrtcontrol/addons/**'
+      - 'app/src/main/java/dev/angel/wrtcontrol/openwrt/**'
+      - 'app/src/main/java/dev/angel/wrtcontrol/ubus/**'
+      - 'app/src/test/java/**/*VmTest.kt'
+      - 'app/src/test/java/**/VmIntegrationTest.kt'
+      - 'tools/vm/**'
+      - '.github/workflows/vm.yml'
+
+concurrency:
+  group: vm-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  vm:
+    name: openwrt-${{ matrix.openwrt }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        openwrt: ['24.10', '25.12', snapshot]
+    # snapshot cambia cada día: avisa, pero no tumba la ejecución.
+    continue-on-error: ${{ matrix.openwrt == 'snapshot' }}
+    env:
+      WRTCONTROL_VM: 192.168.56.2
+      WRTCONTROL_SSH_OPTS: -i ${{ github.workspace }}/vm/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: KVM y dependencias
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo apt-get update -q
+          sudo apt-get install -yq --no-install-recommends qemu-system-x86 zstd gawk rsync libncurses-dev
+
+      - name: Imagen de OpenWrt ${{ matrix.openwrt }}
+        run: |
+          mkdir -p vm
+          ssh-keygen -q -t ed25519 -N '' -f vm/id_ed25519
+          sh tools/vm/openwrt-qemu.sh build '${{ matrix.openwrt }}' vm vm/id_ed25519.pub
+          echo "Versión: $(cat vm/version)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Arrancar el router
+        run: sh tools/vm/openwrt-qemu.sh up vm/openwrt.img
+
+      - name: Cliente de pruebas en el router
+        run: |
+          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM 'cat /etc/openwrt_release; cat > /tmp/netns-client.sh && sh /tmp/netns-client.sh up' < tools/vm/netns-client.sh
+          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM '/usr/libexec/ip-full netns list' | grep -q wrtc_client
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: VmIntegrationTest y AddonsVmTest
+        run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*AddonsVmTest*' --rerun
+
+      - name: Registro del router
+        if: always()
+        run: |
+          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM 'logread' > vm/logread.txt 2>&1 || true
+          cp /tmp/wrtc-qemu/console.log vm/ 2>/dev/null || true
+          sh tools/vm/openwrt-qemu.sh down
+
+      - name: Informes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-${{ matrix.openwrt }}
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            vm/logread.txt
+            vm/console.log
+            vm/version
+          if-no-files-found: ignore
