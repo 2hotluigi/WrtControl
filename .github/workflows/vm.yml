@@ -59,9 +59,20 @@ jobs:
       - name: Arrancar el router
         run: sh tools/vm/openwrt-qemu.sh up vm/openwrt.img
 
+      - name: Internet en el router
+        run: |
+          vm() { ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM "$@"; }
+          vm 'cat /etc/openwrt_release'
+          # La WAN tarda unos segundos en tener dirección después de que la web ya responde.
+          for i in $(seq 45); do
+            vm 'ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1' && { echo "ping a internet en $((i * 2)) s"; break; }
+            sleep 2
+          done
+          vm 'ip -br addr; ip route; nslookup openwrt.org 2>&1 | tail -3; ping -c 2 -W 2 1.1.1.1; wget -q -T 5 -O /dev/null http://1.1.1.1/cdn-cgi/trace && echo "HTTP a internet: OK"'
+
       - name: Cliente de pruebas en el router
         run: |
-          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM 'cat /etc/openwrt_release; cat > /tmp/netns-client.sh && sh /tmp/netns-client.sh up' < tools/vm/netns-client.sh
+          ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM 'cat > /tmp/netns-client.sh && sh /tmp/netns-client.sh up' < tools/vm/netns-client.sh
           ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM '/usr/libexec/ip-full netns list' | grep -q wrtc_client
 
       - uses: actions/setup-java@v4
