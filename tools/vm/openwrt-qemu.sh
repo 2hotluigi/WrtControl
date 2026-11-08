@@ -25,34 +25,53 @@ PACKAGES="luci ip-full kmod-veth luci-proto-wireguard luci-app-ddns luci-app-sqm
 die() { echo "$*" >&2; exit 1; }
 
 # Versión más nueva de una serie (24.10 → 24.10.8), sin candidatas.
+# downloads.openwrt.org a veces corta una descarga larga a mitad: se reintenta y se sigue donde iba.
+fetch() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -C - "$1" -o "$2"; }
+
 latest() {
-	curl -fsSL https://downloads.openwrt.org/.versions.json |
+	curl -fsSL --retry 5 --retry-all-errors https://downloads.openwrt.org/.versions.json |
 		jq -r --arg s "$1." '[.versions_list[] | select(startswith($s)) | select(test("-rc") | not)] | first // empty'
+}
+
+# Dónde está el Image Builder de una serie: "<url base> <fichero> <sha256> <versión>".
+ibinfo() {
+	if [ "$1" = snapshot ]; then
+		base=https://downloads.openwrt.org/snapshots/targets/x86/64
+		version=snapshot
+	else
+		version=$(latest "$1")
+		[ -n "$version" ] || die "No hay versiones de la serie $1"
+		base=https://downloads.openwrt.org/releases/$version/targets/x86/64
+	fi
+	line=$(curl -fsSL --retry 5 --retry-all-errors "$base/sha256sums" | grep -E ' \*openwrt-imagebuilder-.*x86-64\.Linux-x86_64\.tar\.zst$')
+	[ -n "$line" ] || die "No encuentro el Image Builder en $base/sha256sums"
+	echo "$base ${line#* \*} ${line%% *} $version"
 }
 
 build() {
 	series=$1 out=$2 pubkey=$3
 	[ -f "$pubkey" ] || die "No encuentro la clave pública $pubkey"
-	if [ "$series" = snapshot ]; then
-		base=https://downloads.openwrt.org/snapshots/targets/x86/64
-		version=snapshot
-	else
-		version=$(latest "$series")
-		[ -n "$version" ] || die "No hay versiones de la serie $series"
-		base=https://downloads.openwrt.org/releases/$version/targets/x86/64
-	fi
-	echo "OpenWrt $version ($base)"
+	# shellcheck disable=SC2046
+	set -- $(ibinfo "$series")
+	base=${1:-} ib=${2:-} sum=${3:-} version=${4:-}
+	[ -n "$sum" ] || die "No se pudo saber qué Image Builder descargar"
+	echo "OpenWrt $version: $base/$ib"
 
 	mkdir -p "$out"
 	out=$(cd "$out" && pwd)
 	work=$out/work
 	rm -rf "$work" && mkdir -p "$work"
-	curl -fsSL "$base/sha256sums" -o "$work/sha256sums"
-	ib=$(sed -n 's/^[0-9a-f]* \*\(openwrt-imagebuilder-.*x86-64\.Linux-x86_64\.tar\.zst\)$/\1/p' "$work/sha256sums")
-	[ -n "$ib" ] || die "No encuentro el Image Builder en $base/sha256sums"
-	curl -fsSL "$base/$ib" -o "$work/$ib"
-	(cd "$work" && grep " \*$ib\$" sha256sums | sha256sum -c -)
-	tar --zstd -xf "$work/$ib" -C "$work"
+	# Con WRTC_IB_CACHE (la CI lo guarda entre ejecuciones) solo se descarga si cambió la versión.
+	cache=${WRTC_IB_CACHE:-$work}
+	mkdir -p "$cache"
+	if [ -f "$cache/$ib" ] && echo "$sum  $cache/$ib" | sha256sum -c --status; then
+		echo "Image Builder en caché"
+	else
+		rm -f "$cache"/openwrt-imagebuilder-*
+		fetch "$base/$ib" "$cache/$ib"
+		echo "$sum  $cache/$ib" | sha256sum -c -
+	fi
+	tar --zstd -xf "$cache/$ib" -C "$work"
 	ibdir=$(find "$work" -maxdepth 1 -type d -name 'openwrt-imagebuilder-*' | head -n 1)
 
 	files=$work/files
@@ -119,5 +138,6 @@ case "${1:-}" in
 build) [ $# -eq 4 ] || die "uso: $0 build <24.10|25.12|snapshot> <dir> <clave.pub>"; build "$2" "$3" "$4" ;;
 up) [ $# -eq 2 ] || die "uso: $0 up <imagen>"; up "$2" ;;
 down) down ;;
-*) die "uso: $0 build|up|down" ;;
+ibinfo) [ $# -eq 2 ] || die "uso: $0 ibinfo <serie>"; ibinfo "$2" ;;
+*) die "uso: $0 build|up|down|ibinfo" ;;
 esac

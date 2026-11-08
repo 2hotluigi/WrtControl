@@ -54,7 +54,22 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -yq --no-install-recommends qemu-system-x86 zstd gawk rsync libncurses-dev
 
+      - name: Versión de OpenWrt ${{ matrix.openwrt }}
+        id: ib
+        run: |
+          info=$(sh tools/vm/openwrt-qemu.sh ibinfo '${{ matrix.openwrt }}')
+          echo "$info"
+          echo "sha=$(echo "$info" | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
+
+      # El Image Builder pesa cientos de MB y downloads.openwrt.org a veces corta: se guarda por su sha256.
+      - uses: actions/cache@v4
+        with:
+          path: vm-cache
+          key: openwrt-ib-${{ steps.ib.outputs.sha }}
+
       - name: Imagen de OpenWrt ${{ matrix.openwrt }}
+        env:
+          WRTC_IB_CACHE: ${{ github.workspace }}/vm-cache
         run: |
           mkdir -p vm
           ssh-keygen -q -t ed25519 -N '' -f vm/id_ed25519

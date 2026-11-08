@@ -265,6 +265,21 @@ class VmIntegrationTest {
         ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=$port ' | grep -F '$filter' || true").lines()
             .mapNotNull { Regex("mark=(\\d+)").find(it)?.groupValues?.get(1)?.toLong() }
 
+    /**
+     * Las marcas de [clientMarks] en cuanto aparezca [expected], o las últimas a los 10 s. En QEMU/KVM
+     * la entrada de una conexión recién cerrada a veces no se ve en /proc hasta un momento después.
+     */
+    private fun clientMarksWith(expected: Long, filter: String): List<Long> {
+        var marks = clientMarks(80, filter)
+        repeat(10) {
+            if (expected !in marks) {
+                Thread.sleep(1000)
+                marks = clientMarks(80, filter)
+            }
+        }
+        return marks
+    }
+
     /** Las entradas de conntrack del cliente, para los mensajes de error. */
     private fun clientConntrack(): List<String> = ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack || true").lines()
 
@@ -426,12 +441,20 @@ class VmIntegrationTest {
             val nc = ssh("cat /tmp/wrtc_nc.out")
             log("conexión abierta antes del filtro: ${nc.lines().filter { it.isNotBlank() }}")
             assertTrue("la conexión abierta antes del filtro se cortó", "OK antes" in nc && "OK despues" !in nc)
-            val afterCut = api.load()
-            assertTrue("la regla de corte actuó", (afterCut.firewall!!.ownCounters["corte vmtest"] ?: 0) > 0)
+            // El contador puede tardar un momento en reflejar el corte: se mira unos segundos.
+            var afterCut = api.load()
+            repeat(5) {
+                if ((afterCut.firewall!!.ownCounters["corte vmtest"] ?: 0) == 0L) {
+                    Thread.sleep(1000)
+                    afterCut = api.load()
+                }
+            }
+            val counters = afterCut.firewall!!.ownCounters
+            assertTrue("la regla de corte actuó: $counters", (counters["corte vmtest"] ?: 0) > 0)
             val window = afterCut.profiles.single().cutWindow!!
             log("ventana del corte: marca ${window.value} hasta ${window.until}")
             assertTrue("las conexiones nuevas funcionan", connects("http://$web/"))
-            val marksInWindow = clientMarks(80, "dst=$web ")
+            val marksInWindow = clientMarksWith(window.value.toLong() shl 14, "dst=$web ")
             assertTrue(
                 "y en la ventana llevan su marca: $marksInWindow; conntrack: ${clientConntrack()}",
                 (window.value.toLong() shl 14) in marksInWindow,
@@ -450,7 +473,7 @@ class VmIntegrationTest {
             assertTrue("y al acabarla se cortó", "OK despues" !in nc2 && cutsAfter > cutsBefore)
             assertTrue("después de la ventana se conecta", connects("http://$web/"))
             val epochMark = afterCut.profiles.single().cutEpoch.toLong() shl 14
-            val marksAfter = clientMarks(80, "dst=$web ")
+            val marksAfter = clientMarksWith(epochMark, "dst=$web ")
             log("marcas tras la ventana: $marksAfter (época $epochMark); conntrack: ${ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=80 ' || true").lines().takeLast(4)}")
             assertTrue("con la época del perfil: $marksAfter", epochMark in marksAfter)
             val snapshot = api.load()
