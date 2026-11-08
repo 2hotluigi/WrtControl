@@ -226,7 +226,8 @@ class VmIntegrationTest {
             }
             log("bloqueados por IPv4, por 8.8.8.8 y por IPv6; openwrt.org resuelve")
             val snapshot = api.load()
-            assertEquals(true, snapshot.filterRunning(snapshot.profiles.single()))
+            // null: sin `service list` (24.10 con el ACL de LuCI) no se sabe; SafeApply ya lo comprobó con nslookup.
+            assertTrue(snapshot.filterRunning(snapshot.profiles.single()) != false)
             // El propio router y los demás equipos no se filtran.
             assertTrue(ssh("nslookup -type=a tiktok.com 127.0.0.1").lines().any { it.startsWith("Name:") })
 
