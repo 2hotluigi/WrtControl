@@ -375,3 +375,15 @@ Límites del acceso remoto:
 ## Hoja de ruta
 
 Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.
+
+## Licencia
+
+Copyright © 2026 Luis Angel Abrego Hererra.
+
+WrtControl es software libre: se puede redistribuir y modificar bajo los términos de la
+[GNU General Public License](LICENSE), versión 3 o (a elección de quien lo use) cualquier versión
+posterior (`GPL-3.0-or-later`). Quien distribuya una versión modificada tiene que publicar su
+código con la misma licencia. Se distribuye sin ninguna garantía.
+
+Las dependencias conservan sus licencias: AndroidX, OkHttp y gVisor (Apache-2.0), wireguard-go
+(MIT) y TweetNaCl, de donde sale el X25519 (dominio público).
