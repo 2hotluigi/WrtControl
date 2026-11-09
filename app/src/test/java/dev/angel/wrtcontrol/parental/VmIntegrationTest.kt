@@ -32,6 +32,19 @@ class VmIntegrationTest {
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
 
     /**
+     * A dónde hace ping el cliente: algo al otro lado de la WAN, para que pase por el forward del router.
+     * En la CI es el propio PC (10.0.3.2), porque los runners de GitHub no dejan salir ICMP a internet.
+     */
+    private val pingTarget: String = System.getenv("WRTCONTROL_PING_TARGET") ?: "1.1.1.1"
+
+    /**
+     * Para "una conexión TCP nueva funciona": por IP, porque el cliente no tiene DNS. /cdn-cgi/trace
+     * responde sin redirigir al wget de 25.12, pero el de 24.10 recibe una redirección que no sabe
+     * seguir; la CI usa un servidor HTTP en el PC, al otro lado de la WAN.
+     */
+    private val httpTarget: String = System.getenv("WRTCONTROL_HTTP_TARGET") ?: "http://1.1.1.1/cdn-cgi/trace"
+
+    /**
      * Ejecuta [command] en la VM. Con muchas conexiones seguidas, dropbear rechaza alguna de vez
      * en cuando (ssh termina con 255): se reintenta, para que eso no parezca un fallo del router.
      */
@@ -59,13 +72,13 @@ class VmIntegrationTest {
         return replies() - before
     }
 
-    /** Conexión TCP nueva. /cdn-cgi/trace responde por IP sin redirigir (el cliente no tiene DNS). */
+    /** Conexión TCP nueva a [httpTarget]. */
     private fun newConnectionWorks(): Boolean =
-        ssh("$IP_FULL netns exec wrtc_client wget -q -T 4 -O /dev/null http://1.1.1.1/cdn-cgi/trace && echo OK || echo FALLO").endsWith("OK")
+        ssh("$IP_FULL netns exec wrtc_client wget -q -T 4 -O /dev/null $httpTarget && echo OK || echo FALLO").endsWith("OK")
 
     private fun startPing() = ssh(
         "kill \$(cat /tmp/wrtc_ping.pid 2>/dev/null) 2>/dev/null; " +
-            "(setsid $IP_FULL netns exec wrtc_client ping 1.1.1.1 > /tmp/wrtc_ping.log 2>&1 & echo \$! > /tmp/wrtc_ping.pid); sleep 3",
+            "(setsid $IP_FULL netns exec wrtc_client ping $pingTarget > /tmp/wrtc_ping.log 2>&1 & echo \$! > /tmp/wrtc_ping.pid); sleep 3",
     )
 
     private fun stopPing() = ssh("kill \$(cat /tmp/wrtc_ping.pid) 2>/dev/null; rm -f /tmp/wrtc_ping.pid")
@@ -213,7 +226,8 @@ class VmIntegrationTest {
             }
             log("bloqueados por IPv4, por 8.8.8.8 y por IPv6; openwrt.org resuelve")
             val snapshot = api.load()
-            assertEquals(true, snapshot.filterRunning(snapshot.profiles.single()))
+            // null: sin `service list` (24.10 con el ACL de LuCI) no se sabe; SafeApply ya lo comprobó con nslookup.
+            assertTrue(snapshot.filterRunning(snapshot.profiles.single()) != false)
             // El propio router y los demás equipos no se filtran.
             assertTrue(ssh("nslookup -type=a tiktok.com 127.0.0.1").lines().any { it.startsWith("Name:") })
 
@@ -238,6 +252,7 @@ class VmIntegrationTest {
      */
     private fun connects(url: String): Boolean {
         val out = ssh("$IP_FULL netns exec wrtc_client wget -T 4 -O /dev/null --no-check-certificate $url 2>&1; true")
+        log("wget $url: ${out.lines().filter { it.isNotBlank() }.takeLast(2)}")
         return BLOCKED_MESSAGES.none { it in out }
     }
 
@@ -249,6 +264,24 @@ class VmIntegrationTest {
     private fun clientMarks(port: Int, filter: String): List<Long> =
         ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=$port ' | grep -F '$filter' || true").lines()
             .mapNotNull { Regex("mark=(\\d+)").find(it)?.groupValues?.get(1)?.toLong() }
+
+    /**
+     * Las marcas de [clientMarks] en cuanto aparezca [expected], o las últimas a los 10 s. En QEMU/KVM
+     * la entrada de una conexión recién cerrada a veces no se ve en /proc hasta un momento después.
+     */
+    private fun clientMarksWith(expected: Long, filter: String): List<Long> {
+        var marks = clientMarks(80, filter)
+        repeat(10) {
+            if (expected !in marks) {
+                Thread.sleep(1000)
+                marks = clientMarks(80, filter)
+            }
+        }
+        return marks
+    }
+
+    /** Las entradas de conntrack del cliente, para los mensajes de error. */
+    private fun clientConntrack(): List<String> = ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack || true").lines()
 
     /**
      * Comprueba el fichero de reglas en uso con el analizador de nftables 1.0.2 de OpenWrt 22.03,
@@ -408,12 +441,24 @@ class VmIntegrationTest {
             val nc = ssh("cat /tmp/wrtc_nc.out")
             log("conexión abierta antes del filtro: ${nc.lines().filter { it.isNotBlank() }}")
             assertTrue("la conexión abierta antes del filtro se cortó", "OK antes" in nc && "OK despues" !in nc)
-            val afterCut = api.load()
-            assertTrue("la regla de corte actuó", (afterCut.firewall!!.ownCounters["corte vmtest"] ?: 0) > 0)
+            // El contador puede tardar un momento en reflejar el corte: se mira unos segundos.
+            var afterCut = api.load()
+            repeat(5) {
+                if ((afterCut.firewall!!.ownCounters["corte vmtest"] ?: 0) == 0L) {
+                    Thread.sleep(1000)
+                    afterCut = api.load()
+                }
+            }
+            val counters = afterCut.firewall!!.ownCounters
+            assertTrue("la regla de corte actuó: $counters", (counters["corte vmtest"] ?: 0) > 0)
             val window = afterCut.profiles.single().cutWindow!!
             log("ventana del corte: marca ${window.value} hasta ${window.until}")
             assertTrue("las conexiones nuevas funcionan", connects("http://$web/"))
-            assertTrue("y en la ventana llevan su marca", (window.value.toLong() shl 14) in clientMarks(80, "dst=$web "))
+            val marksInWindow = clientMarksWith(window.value.toLong() shl 14, "dst=$web ")
+            assertTrue(
+                "y en la ventana llevan su marca: $marksInWindow; conntrack: ${clientConntrack()}",
+                (window.value.toLong() shl 14) in marksInWindow,
+            )
             // Al acabar la ventana (y antes de cualquier horario, que también cortaría), la conexión
             // abierta en ella se corta; las nuevas ya llevan la época del perfil.
             // Se mira el contador de la regla de corte: el servidor puede haber cerrado la conexión
@@ -428,7 +473,7 @@ class VmIntegrationTest {
             assertTrue("y al acabarla se cortó", "OK despues" !in nc2 && cutsAfter > cutsBefore)
             assertTrue("después de la ventana se conecta", connects("http://$web/"))
             val epochMark = afterCut.profiles.single().cutEpoch.toLong() shl 14
-            val marksAfter = clientMarks(80, "dst=$web ")
+            val marksAfter = clientMarksWith(epochMark, "dst=$web ")
             log("marcas tras la ventana: $marksAfter (época $epochMark); conntrack: ${ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=80 ' || true").lines().takeLast(4)}")
             assertTrue("con la época del perfil: $marksAfter", epochMark in marksAfter)
             val snapshot = api.load()
@@ -471,7 +516,10 @@ class VmIntegrationTest {
         const val CLIENT_MAC = "02:00:00:00:00:99"
 
         /** Lo que dice uclient-fetch cuando la conexión se rechaza o no llega. */
-        val BLOCKED_MESSAGES = listOf("Operation not permitted", "Connection refused", "Connection reset", "timed out", "Failed to send request")
+        // "Connection failed": así informa el wget de 24.10 (mbedTLS) de un HTTPS rechazado.
+        val BLOCKED_MESSAGES = listOf(
+            "Operation not permitted", "Connection refused", "Connection reset", "timed out", "Failed to send request", "Connection failed",
+        )
 
         /** Con setsid, `ip` puede resolver al applet de BusyBox, que no tiene `netns`. */
         const val IP_FULL = "/usr/libexec/ip-full"

@@ -1,0 +1,273 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Addons.kt:AddonsApi$edit.enabled &amp;&amp; before.any { it.enabled &amp;&amp; it.device == edit.device &amp;&amp; it.section != edit.section }</ID>
+    <ID>ComplexCondition:AddonsScreen.kt:installing == null &amp;&amp; editingSqm == null &amp;&amp; !newSqm &amp;&amp; !editingDdns</ID>
+    <ID>ComplexCondition:ParentalViewModel.kt:ParentalViewModel$pending &amp;&amp; !empty &amp;&amp; (stored == null || s.profiles.map { it.id }.containsAll(stored.profiles.map { it.id }))</ID>
+    <ID>CyclomaticComplexMethod:Addons.kt:AddonsApi$private suspend fun applyDdns</ID>
+    <ID>CyclomaticComplexMethod:Addons.kt:AddonsApi$private suspend fun applyRemote: WebTarget</ID>
+    <ID>CyclomaticComplexMethod:Addons.kt:AddonsApi$suspend fun saveSqm</ID>
+    <ID>CyclomaticComplexMethod:Addons.kt:AddonsApi$suspend fun setUpnp</ID>
+    <ID>CyclomaticComplexMethod:Addons.kt:AddonsApi$suspend fun state: AddonsState</ID>
+    <ID>CyclomaticComplexMethod:AddonsScreen.kt:@Composable fun AddonsScreen</ID>
+    <ID>CyclomaticComplexMethod:AddonsScreen.kt:@Composable private fun DdnsContent</ID>
+    <ID>CyclomaticComplexMethod:AddonsScreen.kt:@Composable private fun RemoteAccessContent</ID>
+    <ID>CyclomaticComplexMethod:AddonsScreen.kt:@OptIn(ExperimentalLayoutApi::class) @Composable private fun DdnsDialog</ID>
+    <ID>CyclomaticComplexMethod:AddonsScreen.kt:@OptIn(ExperimentalLayoutApi::class) @Composable private fun SqmDialog</ID>
+    <ID>CyclomaticComplexMethod:Ddns.kt:fun ddnsProblem: String?</ID>
+    <ID>CyclomaticComplexMethod:Devices.kt:fun buildDeviceList: List&lt;Device&gt;</ID>
+    <ID>CyclomaticComplexMethod:FakeAddons.kt:FakeAddons$private fun cgi: Reply</ID>
+    <ID>CyclomaticComplexMethod:FakeAddons.kt:FakeAddons$private fun handle: Reply?</ID>
+    <ID>CyclomaticComplexMethod:FakeOpenWrt.kt:FakeOpenWrt$private fun handle: Reply</ID>
+    <ID>CyclomaticComplexMethod:FakeOpenWrt.kt:FakeOpenWrt$private fun nslookup: String</ID>
+    <ID>CyclomaticComplexMethod:LoadedFirewall.kt:fun parseLoadedFirewall: LoadedFirewall</ID>
+    <ID>CyclomaticComplexMethod:NftInclude.kt:internal fun bumpCutEpochs: List&lt;Profile&gt;</ID>
+    <ID>CyclomaticComplexMethod:ParentalApi.kt:DnsCheck$private suspend fun filtersUpstream: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ParentalApi.kt:DnsCheck$suspend fun ready: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ParentalScreen.kt:@Composable fun ParentalScreen</ID>
+    <ID>CyclomaticComplexMethod:ParentalScreen.kt:@Composable private fun ProfileCard</ID>
+    <ID>CyclomaticComplexMethod:ProfileEditor.kt:@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun ProfileEditor</ID>
+    <ID>CyclomaticComplexMethod:RouterTransport.kt:RouterTransport$fun startTunnel: Unit</ID>
+    <ID>CyclomaticComplexMethod:ScheduleDialog.kt:@Composable fun ScheduleDialog</ID>
+    <ID>EmptyElseBlock:FakeRouter.kt:if (cur.isNotEmpty()) out += cur.toString()</ID>
+    <ID>Filename:Tunnel.kt:dev.angel.wrtcontrol.data.Tunnel.kt</ID>
+    <ID>ImportOrdering:Addons.kt:import dev.angel.wrtcontrol.openwrt.InstalledPackages import dev.angel.wrtcontrol.openwrt.InterfaceDump import dev.angel.wrtcontrol.openwrt.PackageTool import dev.angel.wrtcontrol.openwrt.SystemInfo import dev.angel.wrtcontrol.openwrt.UciSection import dev.angel.wrtcontrol.openwrt.exec import dev.angel.wrtcontrol.openwrt.initAction import dev.angel.wrtcontrol.openwrt.installPackages import dev.angel.wrtcontrol.openwrt.installedPackages import dev.angel.wrtcontrol.openwrt.protoHandlers import dev.angel.wrtcontrol.openwrt.serviceInstances import dev.angel.wrtcontrol.openwrt.uciAdd import dev.angel.wrtcontrol.openwrt.uciDelete import dev.angel.wrtcontrol.openwrt.NetInterface import dev.angel.wrtcontrol.openwrt.uciSection import dev.angel.wrtcontrol.openwrt.uciSections import dev.angel.wrtcontrol.openwrt.uciSet import dev.angel.wrtcontrol.parental.applySafely import dev.angel.wrtcontrol.parental.ensureNoPendingApply import dev.angel.wrtcontrol.ubus.UbusClient import dev.angel.wrtcontrol.ubus.UbusSession import dev.angel.wrtcontrol.ubus.UbusException import dev.angel.wrtcontrol.ubus.callAs import kotlinx.coroutines.CancellationException import kotlinx.coroutines.async import kotlinx.coroutines.coroutineScope import kotlinx.coroutines.delay import kotlinx.coroutines.sync.Mutex import kotlinx.coroutines.sync.withLock import kotlinx.coroutines.withTimeoutOrNull import kotlinx.serialization.json.buildJsonObject import kotlinx.serialization.json.put</ID>
+    <ID>ImportOrdering:AddonsScreen.kt:import androidx.compose.foundation.layout.Arrangement import androidx.compose.foundation.layout.Box import androidx.compose.foundation.layout.Column import androidx.compose.foundation.layout.ExperimentalLayoutApi import androidx.compose.foundation.layout.FlowRow import androidx.compose.foundation.layout.PaddingValues import androidx.compose.foundation.layout.Row import androidx.compose.foundation.layout.fillMaxSize import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.foundation.layout.padding import androidx.compose.foundation.lazy.LazyColumn import androidx.compose.foundation.text.KeyboardOptions import androidx.compose.material3.AlertDialog import androidx.compose.material3.Button import androidx.compose.material3.FilterChip import androidx.compose.material3.HorizontalDivider import androidx.compose.material3.Icon import androidx.compose.material3.IconButton import androidx.compose.material3.LinearProgressIndicator import androidx.compose.material3.MaterialTheme import androidx.compose.material3.OutlinedTextField import androidx.compose.material3.Surface import androidx.compose.material3.Text import androidx.compose.material3.TextButton import androidx.compose.runtime.Composable import androidx.compose.runtime.getValue import androidx.compose.runtime.mutableStateOf import androidx.compose.runtime.remember import androidx.compose.runtime.setValue import androidx.compose.ui.Alignment import androidx.compose.ui.Modifier import androidx.compose.ui.platform.testTag import androidx.compose.ui.res.painterResource import androidx.compose.ui.text.input.KeyboardType import androidx.compose.ui.unit.dp import androidx.lifecycle.compose.collectAsStateWithLifecycle import androidx.lifecycle.viewmodel.compose.viewModel import dev.angel.wrtcontrol.R import dev.angel.wrtcontrol.addons.Addon import dev.angel.wrtcontrol.addons.AddonStatus import dev.angel.wrtcontrol.addons.SqmEdit import dev.angel.wrtcontrol.addons.SqmQueue import dev.angel.wrtcontrol.addons.UpnpMapping import dev.angel.wrtcontrol.addons.UpnpState import dev.angel.wrtcontrol.addons.RemotePeer import dev.angel.wrtcontrol.addons.VPN_INTERFACE import dev.angel.wrtcontrol.addons.DDNS_SECTIONS import dev.angel.wrtcontrol.data.Link import dev.angel.wrtcontrol.addons.DdnsEdit import dev.angel.wrtcontrol.addons.DdnsProvider import dev.angel.wrtcontrol.addons.DdnsService import dev.angel.wrtcontrol.addons.ddnsProblem import dev.angel.wrtcontrol.addons.fullDomain import androidx.compose.foundation.rememberScrollState import androidx.compose.foundation.verticalScroll import androidx.compose.ui.text.input.PasswordVisualTransformation import dev.angel.wrtcontrol.addons.WireGuardInterface import dev.angel.wrtcontrol.addons.sqmProblem import dev.angel.wrtcontrol.openwrt.UciSection import dev.angel.wrtcontrol.ui.ErrorBanner import dev.angel.wrtcontrol.ui.InfoCard import dev.angel.wrtcontrol.ui.LoadableContent import dev.angel.wrtcontrol.ui.LocalAppLocked import dev.angel.wrtcontrol.ui.LocalRepository import dev.angel.wrtcontrol.ui.NoticeCard import dev.angel.wrtcontrol.ui.StatusPill import dev.angel.wrtcontrol.ui.formatBytes import dev.angel.wrtcontrol.ui.formatDuration import dev.angel.wrtcontrol.ui.parental.DismissibleError import dev.angel.wrtcontrol.ui.parental.SwitchRow import java.util.Locale import kotlin.math.roundToLong</ID>
+    <ID>ImportOrdering:AddonsViewModel.kt:import android.util.Log import androidx.compose.runtime.getValue import androidx.compose.runtime.mutableStateOf import androidx.compose.runtime.setValue import androidx.lifecycle.ViewModel import androidx.lifecycle.viewModelScope import dev.angel.wrtcontrol.addons.Addon import dev.angel.wrtcontrol.addons.AddonsState import dev.angel.wrtcontrol.addons.DdnsEdit import dev.angel.wrtcontrol.addons.RemotePeer import dev.angel.wrtcontrol.addons.X25519 import dev.angel.wrtcontrol.data.TunnelConfig import dev.angel.wrtcontrol.addons.SqmEdit import dev.angel.wrtcontrol.addons.UpnpMapping import dev.angel.wrtcontrol.data.RouterRepository import dev.angel.wrtcontrol.openwrt.InstalledPackages import dev.angel.wrtcontrol.openwrt.OpenWrtApi import dev.angel.wrtcontrol.openwrt.PackageTool import dev.angel.wrtcontrol.ui.Loadable import dev.angel.wrtcontrol.ui.pollingFlow import dev.angel.wrtcontrol.ui.userMessage import kotlinx.coroutines.CancellationException import kotlinx.coroutines.async import kotlinx.coroutines.channels.Channel import kotlinx.coroutines.coroutineScope import kotlinx.coroutines.flow.SharingStarted import kotlinx.coroutines.flow.StateFlow import kotlinx.coroutines.flow.onStart import kotlinx.coroutines.flow.stateIn import kotlinx.coroutines.launch import kotlin.time.Duration.Companion.seconds</ID>
+    <ID>ImportOrdering:AppLock.kt:import android.app.Activity import android.content.Context import android.view.WindowManager import android.os.SystemClock import androidx.biometric.BiometricManager import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL import androidx.biometric.BiometricPrompt import androidx.compose.foundation.layout.Arrangement import androidx.compose.foundation.layout.Box import androidx.compose.foundation.layout.Column import androidx.compose.foundation.layout.fillMaxSize import androidx.compose.foundation.layout.padding import androidx.compose.material3.Button import androidx.compose.material3.Icon import androidx.compose.material3.MaterialTheme import androidx.compose.material3.Surface import androidx.compose.material3.Text import androidx.compose.runtime.Composable import androidx.compose.runtime.CompositionLocalProvider import androidx.compose.runtime.compositionLocalOf import androidx.compose.runtime.DisposableEffect import androidx.compose.runtime.LaunchedEffect import androidx.compose.runtime.collectAsState import androidx.compose.runtime.getValue import androidx.compose.runtime.mutableStateOf import androidx.compose.runtime.remember import androidx.compose.runtime.setValue import androidx.compose.runtime.staticCompositionLocalOf import androidx.compose.ui.Alignment import androidx.compose.ui.Modifier import androidx.compose.ui.platform.LocalContext import androidx.compose.ui.res.painterResource import androidx.compose.ui.semantics.clearAndSetSemantics import androidx.compose.ui.text.style.TextAlign import androidx.compose.ui.unit.dp import androidx.core.content.ContextCompat import androidx.fragment.app.FragmentActivity import androidx.lifecycle.Lifecycle import androidx.lifecycle.LifecycleEventObserver import androidx.lifecycle.compose.LocalLifecycleOwner import dev.angel.wrtcontrol.R import dev.angel.wrtcontrol.data.AppSettings</ID>
+    <ID>ImportOrdering:HomeScreen.kt:import androidx.compose.foundation.layout.Box import androidx.compose.foundation.layout.Column import androidx.compose.foundation.layout.padding import androidx.compose.material3.ExperimentalMaterial3Api import androidx.compose.material3.Icon import androidx.compose.material3.IconButton import androidx.compose.material3.MaterialTheme import androidx.compose.material3.NavigationBar import androidx.compose.material3.NavigationBarItem import androidx.compose.material3.Scaffold import androidx.compose.material3.Text import androidx.compose.material3.TopAppBar import androidx.compose.runtime.Composable import androidx.compose.runtime.getValue import androidx.compose.runtime.mutableIntStateOf import androidx.compose.runtime.rememberCoroutineScope import androidx.compose.runtime.saveable.rememberSaveable import androidx.compose.runtime.setValue import androidx.compose.ui.Modifier import androidx.compose.ui.res.painterResource import androidx.lifecycle.compose.collectAsStateWithLifecycle import androidx.lifecycle.viewmodel.compose.viewModel import dev.angel.wrtcontrol.R import dev.angel.wrtcontrol.data.Connection import dev.angel.wrtcontrol.data.Link import androidx.compose.ui.platform.testTag import dev.angel.wrtcontrol.ui.LocalRepository import dev.angel.wrtcontrol.ui.addons.AddonsScreen import dev.angel.wrtcontrol.ui.parental.ParentalScreen import kotlinx.coroutines.launch</ID>
+    <ID>ImportOrdering:OpenWrtApi.kt:import android.util.Log import dev.angel.wrtcontrol.addons.AddonsApi import dev.angel.wrtcontrol.parental.ParentalApi import kotlinx.coroutines.sync.Mutex import dev.angel.wrtcontrol.ubus.UbusClient import kotlinx.coroutines.CancellationException import kotlinx.coroutines.async import kotlinx.serialization.Serializable import kotlinx.serialization.json.buildJsonObject import kotlinx.serialization.json.put import kotlinx.coroutines.coroutineScope</ID>
+    <ID>ImportOrdering:ProfileEditor.kt:import androidx.compose.foundation.clickable import androidx.compose.foundation.isSystemInDarkTheme import androidx.compose.foundation.layout.Arrangement import androidx.compose.foundation.layout.Column import androidx.compose.foundation.layout.ExperimentalLayoutApi import androidx.compose.foundation.layout.FlowRow import androidx.compose.foundation.layout.PaddingValues import androidx.compose.foundation.layout.consumeWindowInsets import androidx.compose.foundation.layout.imePadding import androidx.compose.foundation.layout.Row import androidx.compose.foundation.layout.fillMaxSize import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.foundation.layout.padding import androidx.compose.foundation.lazy.LazyColumn import androidx.compose.foundation.lazy.items import androidx.compose.foundation.selection.selectable import androidx.compose.foundation.selection.selectableGroup import androidx.compose.foundation.text.KeyboardOptions import androidx.compose.material3.AlertDialog import androidx.compose.material3.ButtonDefaults import androidx.compose.material3.Checkbox import androidx.compose.material3.ExperimentalMaterial3Api import androidx.compose.material3.FilterChip import androidx.compose.material3.HorizontalDivider import androidx.compose.material3.Icon import androidx.compose.material3.IconButton import androidx.compose.material3.LinearProgressIndicator import androidx.compose.material3.MaterialTheme import androidx.compose.material3.OutlinedButton import androidx.compose.material3.OutlinedTextField import androidx.compose.material3.RadioButton import androidx.compose.material3.Scaffold import androidx.compose.material3.Surface import androidx.compose.material3.Switch import androidx.compose.material3.Text import androidx.compose.material3.TextButton import androidx.compose.material3.TopAppBar import androidx.compose.runtime.Composable import androidx.compose.runtime.SideEffect import androidx.compose.runtime.getValue import androidx.compose.runtime.mutableStateOf import androidx.compose.runtime.remember import androidx.compose.runtime.setValue import androidx.compose.ui.Alignment import androidx.compose.ui.Modifier import androidx.compose.ui.platform.testTag import androidx.compose.ui.res.painterResource import androidx.compose.ui.semantics.Role import androidx.compose.ui.text.font.FontFamily import androidx.compose.ui.text.input.KeyboardCapitalization import androidx.compose.ui.text.input.KeyboardType import androidx.compose.ui.unit.dp import androidx.compose.ui.platform.LocalView import androidx.compose.ui.window.Dialog import androidx.compose.ui.window.DialogProperties import androidx.compose.ui.window.DialogWindowProvider import androidx.core.view.WindowCompat import dev.angel.wrtcontrol.R import dev.angel.wrtcontrol.openwrt.Device import dev.angel.wrtcontrol.parental.FilterLevel import dev.angel.wrtcontrol.parental.MAX_BLOCKED_DOMAINS import dev.angel.wrtcontrol.parental.MAX_PROFILE_NAME import dev.angel.wrtcontrol.parental.Profile import dev.angel.wrtcontrol.parental.SERVICES import dev.angel.wrtcontrol.parental.Schedule import dev.angel.wrtcontrol.parental.YoutubeMode import dev.angel.wrtcontrol.parental.cleanProfileName import dev.angel.wrtcontrol.parental.newId import dev.angel.wrtcontrol.parental.normalizeDomain import dev.angel.wrtcontrol.parental.normalizeMac import dev.angel.wrtcontrol.ui.ErrorBanner import java.time.DayOfWeek import java.time.LocalTime</ID>
+    <ID>ImportOrdering:RouterRepository.kt:import dev.angel.wrtcontrol.openwrt.OpenWrtApi import dev.angel.wrtcontrol.ubus.Credentials import dev.angel.wrtcontrol.ubus.UbusClient import dev.angel.wrtcontrol.ubus.UbusException import kotlinx.coroutines.flow.MutableStateFlow import kotlinx.coroutines.flow.StateFlow import kotlinx.coroutines.flow.asStateFlow import kotlinx.coroutines.CancellationException import okhttp3.OkHttpClient</ID>
+    <ID>ImportOrdering:StatusScreen.kt:import androidx.compose.foundation.layout.Arrangement import androidx.compose.foundation.layout.PaddingValues import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.foundation.lazy.LazyColumn import androidx.compose.foundation.lazy.items import androidx.compose.material3.LinearProgressIndicator import androidx.compose.runtime.Composable import androidx.compose.ui.Modifier import androidx.compose.ui.unit.dp import androidx.lifecycle.ViewModel import androidx.lifecycle.viewModelScope import dev.angel.wrtcontrol.addons.publicAddresses import dev.angel.wrtcontrol.data.RouterRepository import dev.angel.wrtcontrol.openwrt.OpenWrtApi import dev.angel.wrtcontrol.openwrt.BoardInfo import dev.angel.wrtcontrol.openwrt.IpAddress import dev.angel.wrtcontrol.openwrt.NetInterface import dev.angel.wrtcontrol.openwrt.SystemInfo import dev.angel.wrtcontrol.ui.ErrorBanner import dev.angel.wrtcontrol.ui.InfoCard import dev.angel.wrtcontrol.ui.InfoRow import dev.angel.wrtcontrol.ui.Loadable import dev.angel.wrtcontrol.ui.LoadableContent import dev.angel.wrtcontrol.ui.StatusPill import dev.angel.wrtcontrol.ui.formatBytes import dev.angel.wrtcontrol.ui.formatDuration import dev.angel.wrtcontrol.ui.formatLoad import dev.angel.wrtcontrol.ui.fraction import dev.angel.wrtcontrol.ui.pollingFlow import kotlinx.coroutines.async import kotlinx.coroutines.coroutineScope import kotlinx.coroutines.flow.SharingStarted import kotlinx.coroutines.flow.StateFlow import kotlinx.coroutines.flow.stateIn import kotlin.time.Duration.Companion.seconds</ID>
+    <ID>ImportOrdering:VmIntegrationTest.kt:import dev.angel.wrtcontrol.data.RouterAddress import dev.angel.wrtcontrol.ubus.Credentials import dev.angel.wrtcontrol.ubus.UbusClient import kotlinx.coroutines.runBlocking import okhttp3.OkHttpClient import org.junit.Assert.assertEquals import org.junit.Assert.assertNull import org.junit.Assert.assertTrue import org.junit.Assume.assumeTrue import org.junit.Test import kotlin.concurrent.thread import java.net.InetAddress import java.net.ServerSocket import java.time.LocalTime import java.util.concurrent.TimeUnit</ID>
+    <ID>ImportOrdering:WrtApp.kt:import android.app.Application import android.net.ConnectivityManager import android.net.NetworkCapabilities import dev.angel.wrtcontrol.data.AppSettings import dev.angel.wrtcontrol.data.RouterRepository import dev.angel.wrtcontrol.data.RouterStore import dev.angel.wrtcontrol.data.RouterTransport import dev.angel.wrtcontrol.data.tunnelEngine import kotlinx.coroutines.delay import dev.angel.wrtcontrol.data.SecretBox import kotlinx.coroutines.CoroutineScope import kotlinx.coroutines.Dispatchers import kotlinx.coroutines.SupervisorJob import kotlinx.coroutines.launch import okhttp3.OkHttpClient import java.util.concurrent.TimeUnit</ID>
+    <ID>Kdoc:UbusClient.kt:UbusClient$/** * Abre una sesión aparte con las credenciales guardadas, sin tocar la que usan las * consultas periódicas. Ojo: si hay un `uci apply` pendiente de confirmar del mismo * usuario, rpcd devuelve esa sesión en vez de una nueva (para poder confirmarlo). */</ID>
+    <ID>LargeClass:ProtectionApiTest.kt:ProtectionApiTest</ID>
+    <ID>LargeClass:ProtectionCompilerTest.kt:ProtectionCompilerTest</ID>
+    <ID>LongMethod:AddonsVmTest.kt:AddonsVmTest$@Test fun `acceso remoto con un WireGuard de verdad desde el cliente`: Unit</ID>
+    <ID>LongMethod:FakeAddons.kt:FakeAddons$private fun handle: Reply?</ID>
+    <ID>LongMethod:FakeOpenWrt.kt:FakeOpenWrt$private fun handle: Reply</ID>
+    <ID>LongMethod:VmIntegrationTest.kt:VmIntegrationTest$@Test fun `proteccion con trafico real`</ID>
+    <ID>LoopWithTooManyJumpStatements:Packages.kt:for</ID>
+    <ID>MagicNumber:Addons.kt:10</ID>
+    <ID>MagicNumber:Addons.kt:100</ID>
+    <ID>MagicNumber:Addons.kt:127</ID>
+    <ID>MagicNumber:Addons.kt:16</ID>
+    <ID>MagicNumber:Addons.kt:168</ID>
+    <ID>MagicNumber:Addons.kt:169</ID>
+    <ID>MagicNumber:Addons.kt:172</ID>
+    <ID>MagicNumber:Addons.kt:192</ID>
+    <ID>MagicNumber:Addons.kt:254</ID>
+    <ID>MagicNumber:Addons.kt:31</ID>
+    <ID>MagicNumber:Addons.kt:4</ID>
+    <ID>MagicNumber:Addons.kt:64</ID>
+    <ID>MagicNumber:AddonsScreen.kt:1000</ID>
+    <ID>MagicNumber:AddonsScreen.kt:1000.0</ID>
+    <ID>MagicNumber:AddonsViewModel.kt:10</ID>
+    <ID>MagicNumber:Devices.kt:255</ID>
+    <ID>MagicNumber:Devices.kt:256</ID>
+    <ID>MagicNumber:Devices.kt:32</ID>
+    <ID>MagicNumber:Devices.kt:4</ID>
+    <ID>MagicNumber:FirewallCompiler.kt:16</ID>
+    <ID>MagicNumber:FirewallCompiler.kt:23</ID>
+    <ID>MagicNumber:FirewallCompiler.kt:3</ID>
+    <ID>MagicNumber:FirewallCompiler.kt:59</ID>
+    <ID>MagicNumber:FirewallCompiler.kt:8</ID>
+    <ID>MagicNumber:Format.kt:1024</ID>
+    <ID>MagicNumber:Format.kt:65_536.0</ID>
+    <ID>MagicNumber:LoadedFirewall.kt:200</ID>
+    <ID>MagicNumber:NftInclude.kt:0x20</ID>
+    <ID>MagicNumber:NftInclude.kt:0x7E</ID>
+    <ID>MagicNumber:NftInclude.kt:16</ID>
+    <ID>MagicNumber:NftInclude.kt:8</ID>
+    <ID>MagicNumber:Packages.kt:255</ID>
+    <ID>MagicNumber:ParentalApi.kt:DnsCheck$3</ID>
+    <ID>MagicNumber:ParentalApi.kt:ParentalApi$1000</ID>
+    <ID>MagicNumber:ParentalApi.kt:ParentalApi$6</ID>
+    <ID>MagicNumber:ParentalFormat.kt:3</ID>
+    <ID>MagicNumber:ParentalFormat.kt:6L</ID>
+    <ID>MagicNumber:ProfileStore.kt:12</ID>
+    <ID>MagicNumber:ProfileStore.kt:3</ID>
+    <ID>MagicNumber:RemoteAccess.kt:0x2000</ID>
+    <ID>MagicNumber:RemoteAccess.kt:0x3fff</ID>
+    <ID>MagicNumber:RemoteAccess.kt:0xff</ID>
+    <ID>MagicNumber:RemoteAccess.kt:3</ID>
+    <ID>MagicNumber:RemoteAccess.kt:443</ID>
+    <ID>MagicNumber:RemoteAccess.kt:8</ID>
+    <ID>MagicNumber:RemoteAccess.kt:80</ID>
+    <ID>MagicNumber:RouterClock.kt:900</ID>
+    <ID>MagicNumber:RouterClock.kt:900.0</ID>
+    <ID>MagicNumber:RouterTransport.kt:RouterTransport$1000</ID>
+    <ID>MagicNumber:RouterTransport.kt:RouterTransport.Companion$8</ID>
+    <ID>MagicNumber:SecretBox.kt:SecretBox$256</ID>
+    <ID>MagicNumber:Services.kt:253</ID>
+    <ID>MagicNumber:UbusClient.kt:UbusClient$200</ID>
+    <ID>MagicNumber:UbusClient.kt:UbusClient$4</ID>
+    <ID>MagicNumber:UbusClient.kt:UbusClient$403</ID>
+    <ID>MagicNumber:UbusClient.kt:UbusClient$404</ID>
+    <ID>MagicNumber:UbusException.kt:10</ID>
+    <ID>MagicNumber:UbusException.kt:3</ID>
+    <ID>MagicNumber:UbusException.kt:4</ID>
+    <ID>MagicNumber:UbusException.kt:5</ID>
+    <ID>MagicNumber:UbusException.kt:6</ID>
+    <ID>MagicNumber:UbusException.kt:7</ID>
+    <ID>MagicNumber:UbusException.kt:8</ID>
+    <ID>MagicNumber:UbusException.kt:9</ID>
+    <ID>MagicNumber:WrtApp.kt:WrtApp$15_000</ID>
+    <ID>MagicNumber:X25519.kt:X25519$0x7fff</ID>
+    <ID>MagicNumber:X25519.kt:X25519$0xff</ID>
+    <ID>MagicNumber:X25519.kt:X25519$0xffed</ID>
+    <ID>MagicNumber:X25519.kt:X25519$0xffff</ID>
+    <ID>MagicNumber:X25519.kt:X25519$127</ID>
+    <ID>MagicNumber:X25519.kt:X25519$14</ID>
+    <ID>MagicNumber:X25519.kt:X25519$15</ID>
+    <ID>MagicNumber:X25519.kt:X25519$16</ID>
+    <ID>MagicNumber:X25519.kt:X25519$248</ID>
+    <ID>MagicNumber:X25519.kt:X25519$253</ID>
+    <ID>MagicNumber:X25519.kt:X25519$254</ID>
+    <ID>MagicNumber:X25519.kt:X25519$31</ID>
+    <ID>MagicNumber:X25519.kt:X25519$32</ID>
+    <ID>MagicNumber:X25519.kt:X25519$38</ID>
+    <ID>MagicNumber:X25519.kt:X25519$4</ID>
+    <ID>MagicNumber:X25519.kt:X25519$64</ID>
+    <ID>MagicNumber:X25519.kt:X25519$8</ID>
+    <ID>MatchingDeclarationName:DevicesScreen.kt:DevicesViewModel : ViewModel</ID>
+    <ID>MatchingDeclarationName:GoTunnel.kt:GoTunnelEngine : TunnelEngine</ID>
+    <ID>MatchingDeclarationName:LoginScreen.kt:LoginViewModel : ViewModel</ID>
+    <ID>MatchingDeclarationName:Services.kt:BlockableService</ID>
+    <ID>MatchingDeclarationName:Tunnel.kt:TunnelConfig</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:"$family: " + (svc.lastUpdate?.let { "actualizado $it" + (svc.lastSentIp?.let { ip -&gt; " ($ip)" } ?: "") } ?: "aún no se ha actualizado")</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:"Está instalado, pero falta su parte de LuCI (${addon.luciPackage}), que es la que da permiso a la app para configurarlo."</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:AddonStatus.Missing</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:RemoteAccessContent(data, busy, onEnable = { vm.enableRemoteAccess(phoneName()) }, onRemove = { vm.error = null; removingPeer = it })</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:Text("El router no tiene ahora una IPv6 pública que publicar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:Text(listOfNotNull(peer.address, status).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:Text(own.provider?.title ?: own.serviceName ?: "Proveedor propio", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:Text(peer.name + if (data.tunnel?.peerId == peer.id) " (este teléfono)" else "", style = MaterialTheme.typography.bodyMedium)</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:if</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:if (kbit % 1000 == 0L) "${kbit / 1000}" else String.format(Locale.ROOT, "%.3f", kbit / 1000.0).trimEnd('0').trimEnd('.').replace('.', ',')</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:s.upnp?.let { UpnpContent(it, s.internetIpv4.takeIf { s.behindNat }, busy, vm::setUpnp, vm::setUpnpSecure, vm::closeMapping) }</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:supportingText = { if (domain.isNotBlank() &amp;&amp; problem == null) Text(edit.fullDomain()) else provider.suffix?.let { Text("p. ej. micasa$it") } }</ID>
+    <ID>MaxLineLength:AddonsScreen.kt:var device by remember { mutableStateOf(queue?.device?.takeIf { it.isNotBlank() } ?: internetDevice ?: devices.firstOrNull().orEmpty()) }</ID>
+    <ID>MaxLineLength:AppLock.kt:if (enabled == true) window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)</ID>
+    <ID>MaxLineLength:Ddns.kt:!Regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$").matches(domain) -&gt; "Escribe un nombre válido (p. ej. micasa${edit.provider.suffix ?: ".dynv6.net"})."</ID>
+    <ID>MaxLineLength:Ddns.kt:DdnsProvider.Custom$Custom</ID>
+    <ID>MaxLineLength:Ddns.kt:internal</ID>
+    <ID>MaxLineLength:FirewallCompiler.kt:listOf("set_mark", "set_xmark").any { key -&gt; s.text(key)?.let(::markMask)?.let { it and (MARK_BIT or QUARANTINE_MARK or WAN_MARK) != 0L } == true }</ID>
+    <ID>MaxLineLength:FirewallCompiler.kt:out += uciSection("wrtc_cn_${id}_g$i", "cname", "instance" to instance, "cname" to names.joinToString(","), "target" to GOOGLE_SAFE_HOST)</ID>
+    <ID>MaxLineLength:FirewallCompiler.kt:out += uciSection("wrtc_cn_${id}_yt", "cname", "instance" to instance, "cname" to YOUTUBE_NAMES.joinToString(","), "target" to target)</ID>
+    <ID>MaxLineLength:FirewallCompiler.kt:out += uciSection("wrtc_hr_${id}_$suffix", "hostrecord", "instance" to instance, "name" to listOf(host), "ip" to SAFE_SEARCH_RECORDS.getValue(host))</ID>
+    <ID>MaxLineLength:FirewallCompiler.kt:rules += markRule("wrtc_r_${schedule.id}_${part + 1}", "$label · horario ${index + 1}$suffix", p.macs, window, startDate = p.extraUntil)</ID>
+    <ID>MaxLineLength:HomeScreen.kt:color = if (link == Link.Tunnel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant</ID>
+    <ID>MaxLineLength:NftInclude.kt:forward += "$macs $family daddr ${set(ips)} meta l4proto udp counter reject with icmpx type admin-prohibited comment ${quote(tag)}"</ID>
+    <ID>MaxLineLength:NftInclude.kt:require(env.homeZones.isNotEmpty()) { "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena" }</ID>
+    <ID>MaxLineLength:ParentalApi.kt:DnsCheck$"El DNS para familias (${(if (f.level != FilterLevel.None) f.level else FilterLevel.Adult).upstreams().first()}) no responde "</ID>
+    <ID>MaxLineLength:ParentalApi.kt:ParentalApi$compileRouter(config, routerDateTime(localSeconds), routerEnv(sections, emptyList(), devices = devices.await())).ruleLabels.toSet()</ID>
+    <ID>MaxLineLength:ParentalApi.kt:ParentalApi$log("firewall antes: tabla=${firewallBefore?.tableHandle} max=${firewallBefore?.maxRuleHandle} reglas=${firewallBefore?.wrtcontrolRules}")</ID>
+    <ID>MaxLineLength:ParentalApi.kt:ParentalApi$log("firewall: recargado=$reloaded coincide=$matches propias=${now.includeVersion}/${plan.include?.version} reglas=${now.wrtcontrolRules.toSet()} esperadas=${plan.ruleLabels.toSet()}")</ID>
+    <ID>MaxLineLength:ParentalApi.kt:private</ID>
+    <ID>MaxLineLength:ParentalFormat.kt:val untilEnd = if (end.isAfter(now.plusDays(1))) emptyList() else listOf(ExtraOption(end, "Hasta ${formatUntil(end, now)}, fin del horario"))</ID>
+    <ID>MaxLineLength:ParentalScreen.kt:Button</ID>
+    <ID>MaxLineLength:ParentalScreen.kt:Text("Protección", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp))</ID>
+    <ID>MaxLineLength:ParentalScreen.kt:access is Access.Blocked</ID>
+    <ID>MaxLineLength:ParentalScreen.kt:authenticate</ID>
+    <ID>MaxLineLength:ProfileEditor.kt:.</ID>
+    <ID>MaxLineLength:ProfileEditor.kt:days = setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)</ID>
+    <ID>MaxLineLength:ProfileEditor.kt:filter = filter.copy(services = if (selected) filter.services - service.id else filter.services + service.id)</ID>
+    <ID>MaxLineLength:ProfileEditor.kt:item { Text("Bloquear servicios", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp)) }</ID>
+    <ID>MaxLineLength:ProfileStore.kt:require</ID>
+    <ID>MaxLineLength:ProfileStore.kt:youtube = YoutubeMode.entries.firstOrNull { it.uciValue != null &amp;&amp; it.uciValue == s.text("youtube") } ?: YoutubeMode.Off</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:Column</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:Text("No hay dispositivos esperando.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:TextButton(onClick = { manualMac?.let(onApproveMac); manual = "" }, enabled = !busy &amp;&amp; manualMac != null) { Text("Aprobar") }</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:if (mac in phoneMacs) Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:mac in admins -&gt; Text("Teléfono con la app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)</ID>
+    <ID>MaxLineLength:ProtectionCards.kt:mac in phoneMacs -&gt; Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)</ID>
+    <ID>MaxLineLength:RouterTransport.kt:RouterTransport.&lt;no name provided&gt;$override fun createSocket: Socket</ID>
+    <ID>MaxLineLength:RouterTransport.kt:RouterTransport.RoutedSocket$config?.enabled == true -&gt; super.connect(endpoint, if (timeout == 0) DIRECT_TIMEOUT_MS else minOf(timeout, DIRECT_TIMEOUT_MS))</ID>
+    <ID>MaxLineLength:Services.kt:internal</ID>
+    <ID>MaxLineLength:Services.kt:listOf("tiktok.com", "tiktokv.com", "tiktokcdn.com", "tiktokcdn-us.com", "ttwstatic.com", "byteoversea.com", "ibytedtos.com", "ibyteimg.com", "musical.ly")</ID>
+    <ID>MaxLineLength:Services.kt:listOf("youtube.com", "youtu.be", "youtube-nocookie.com", "ytimg.com", "googlevideo.com", "youtubei.googleapis.com", "youtube.googleapis.com")</ID>
+    <ID>MultilineLoop:FakeRouter.kt:when { escaped -&gt; { cur.append(c); escaped = false } c == '\\' -&gt; escaped = true c.isWhitespace() -&gt; { if (cur.isNotEmpty()) out += cur.toString(); cur.clear() } else -&gt; cur.append(c) }</ID>
+    <ID>MultilineLoop:ParentalApi.kt:when (change) { is UciChange.Delete -&gt; uciDelete(config, change.section) is UciChange.Add -&gt; uciAdd(config, change.section) }</ID>
+    <ID>MultilineLoop:Uci.kt:UciSection$when (value) { is UciValue.Text -&gt; put(key, value.value) is UciValue.Items -&gt; putJsonArray(key) { value.values.forEach { add(it) } } }</ID>
+    <ID>NoConsecutiveBlankLines:FakeOpenWrt.kt:FakeOpenWrt$ </ID>
+    <ID>NoConsecutiveBlankLines:UbusClientTest.kt:UbusClientTest$ </ID>
+    <ID>NoUnusedImports:AddonsScreen.kt:dev.angel.wrtcontrol.ui.addons.AddonsScreen.kt</ID>
+    <ID>NoUnusedImports:RemoteAccessTest.kt:dev.angel.wrtcontrol.addons.RemoteAccessTest.kt</ID>
+    <ID>PropertyName:ProtectionCompilerTest.kt:ProtectionCompilerTest$private val NFT_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")</ID>
+    <ID>ReturnCount:Backup.kt:fun parseBackup: ParentalConfig?</ID>
+    <ID>ReturnCount:Devices.kt:fun ipv4InSubnet: Boolean</ID>
+    <ID>ReturnCount:Devices.kt:private fun ipv4ToLong: Long?</ID>
+    <ID>ReturnCount:FakeAddons.kt:FakeAddons$private fun cgi: Reply</ID>
+    <ID>ReturnCount:FakeOpenWrt.kt:FakeOpenWrt$private fun apply: Reply</ID>
+    <ID>ReturnCount:FakeOpenWrt.kt:FakeOpenWrt$private fun includedRules: List&lt;Pair&lt;String, String&gt;&gt;</ID>
+    <ID>ReturnCount:FakeOpenWrt.kt:FakeOpenWrt$private fun nslookup: String</ID>
+    <ID>ReturnCount:FakeOpenWrt.kt:FakeOpenWrt$private fun posixOffset: Long?</ID>
+    <ID>ReturnCount:FirewallCompiler.kt:private fun markMask: Long?</ID>
+    <ID>ReturnCount:LoadedFirewall.kt:suspend fun UbusCaller.loadedFirewall: LoadedFirewall?</ID>
+    <ID>ReturnCount:Model.kt:fun Profile.access: Access</ID>
+    <ID>ReturnCount:NftInclude.kt:private fun Profile.filterHardenedFrom: Boolean</ID>
+    <ID>ReturnCount:ParentalApi.kt:DnsCheck$private suspend fun filtersUpstream: Boolean</ID>
+    <ID>ReturnCount:ParentalApi.kt:DnsCheck$suspend fun ready: Boolean</ID>
+    <ID>ReturnCount:PhoneInfo.kt:fun phoneAddresses: Set&lt;String&gt;</ID>
+    <ID>ReturnCount:ProfileStore.kt:fun normalizeMac: String?</ID>
+    <ID>ReturnCount:ProfileStore.kt:private fun parseCutWindow: CutWindow?</ID>
+    <ID>ReturnCount:ProfileStore.kt:private fun parsePause: Pause?</ID>
+    <ID>ReturnCount:ProfileStore.kt:private fun parseSchedule: Schedule?</ID>
+    <ID>ReturnCount:RemoteAccess.kt:internal fun isGlobalIpv6: Boolean</ID>
+    <ID>ReturnCount:RemoteAccess.kt:internal fun parseRemoteServer: RemoteServer?</ID>
+    <ID>ReturnCount:RemoteAccess.kt:internal fun webTarget: WebTarget</ID>
+    <ID>ReturnCount:RouterClock.kt:fun fixedPosixTz: String?</ID>
+    <ID>ReturnCount:RouterStore.kt:RouterStore$suspend fun load: SavedRouter?</ID>
+    <ID>ReturnCount:RouterTransport.kt:RouterTransport.Companion$internal fun ipText: String</ID>
+    <ID>ReturnCount:Services.kt:fun normalizeDomain: String?</ID>
+    <ID>ReturnCount:UbusClient.kt:UbusClient$private suspend fun hasPhantomChanges: Boolean</ID>
+    <ID>ReturnCount:Uci.kt:internal fun parseNslookup: Resolution</ID>
+    <ID>ReturnCount:Uci.kt:suspend fun UbusCaller.fileList: List&lt;String&gt;?</ID>
+    <ID>ReturnCount:Uci.kt:suspend fun UbusCaller.resolve: Resolution</ID>
+    <ID>ReturnCount:Uci.kt:suspend fun UbusCaller.serviceInstances: Map&lt;String, Boolean&gt;?</ID>
+    <ID>SpacingBetweenDeclarationsWithComments:FirewallCompiler.kt:// Una zona sin ningún dispositivo ahora (p. ej. el Wi-Fi de invitados apagado) haría que fw4</ID>
+    <ID>SpacingBetweenDeclarationsWithComments:UbusClient.kt:UbusClient$/** Cambia las credenciales para los próximos inicios de sesión (p. ej. tras cambiar la contraseña). */</ID>
+    <ID>SwallowedException:Addons.kt:AddonsApi$e: UbusException.Network</ID>
+    <ID>SwallowedException:Packages.kt:e: Exception</ID>
+    <ID>SwallowedException:Packages.kt:e: UbusException.AccessDenied</ID>
+    <ID>SwallowedException:UbusClient.kt:UbusClient$e: IllegalArgumentException</ID>
+    <ID>ThrowsCount:Packages.kt:private suspend fun UbusClient.run</ID>
+    <ID>ThrowsCount:RouterRepository.kt:RouterRepository$suspend fun &lt;T&gt; use: T</ID>
+    <ID>ThrowsCount:RouterRepository.kt:RouterRepository$suspend fun changePassword</ID>
+    <ID>ThrowsCount:SafeApply.kt:internal suspend fun UbusSession.applySafely</ID>
+    <ID>ThrowsCount:SafeApply.kt:internal suspend fun UbusSession.ensureNoPendingApply</ID>
+    <ID>ThrowsCount:UbusClient.kt:UbusClient$private suspend fun rawCall: JsonElement?</ID>
+    <ID>ThrowsCount:UbusClient.kt:UbusClient$private suspend fun rawCgiExec: String</ID>
+    <ID>TooGenericExceptionCaught:AddonsViewModel.kt:AddonsViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:Loadable.kt:e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LoginScreen.kt:LoginViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:Packages.kt:e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ParentalApi.kt:ParentalApi$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ParentalViewModel.kt:ParentalViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:UbusClient.kt:UbusClient$e: Exception</ID>
+    <ID>TooManyFunctions:Addons.kt:AddonsApi</ID>
+    <ID>TooManyFunctions:AddonsScreen.kt:dev.angel.wrtcontrol.ui.addons.AddonsScreen.kt</ID>
+    <ID>TooManyFunctions:FirewallCompiler.kt:dev.angel.wrtcontrol.parental.FirewallCompiler.kt</ID>
+    <ID>TooManyFunctions:NftInclude.kt:dev.angel.wrtcontrol.parental.NftInclude.kt</ID>
+    <ID>TooManyFunctions:ParentalFormat.kt:dev.angel.wrtcontrol.ui.parental.ParentalFormat.kt</ID>
+    <ID>TooManyFunctions:ParentalViewModel.kt:ParentalViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:ProfileStore.kt:dev.angel.wrtcontrol.parental.ProfileStore.kt</ID>
+    <ID>TooManyFunctions:RemoteAccess.kt:dev.angel.wrtcontrol.addons.RemoteAccess.kt</ID>
+    <ID>TooManyFunctions:RouterRepository.kt:RouterRepository</ID>
+    <ID>TooManyFunctions:UbusClient.kt:UbusClient : UbusCaller</ID>
+    <ID>TooManyFunctions:Uci.kt:dev.angel.wrtcontrol.openwrt.Uci.kt</ID>
+    <ID>TooManyFunctions:X25519.kt:X25519</ID>
+    <ID>TrailingCommaOnCallSite:AddonsApiTest.kt:AddonsApiTest$("num" to "1", "proto" to "UDP", "extport" to 3074, "intaddr" to "192.168.1.20", "intport" to 3074, "descr" to "Xbox ", "expires" to 3500, "host_hint" to "xbox")</ID>
+    <ID>TrailingCommaOnCallSite:AddonsScreen.kt:(Addon.Ddns, status(Addon.Ddns), canInstall = tool != null, busy = busy, onInstall = { installing = Addon.Ddns }, onFinish = {})</ID>
+    <ID>TrailingCommaOnCallSite:AddonsScreen.kt:(Addon.Sqm, status(Addon.Sqm), canInstall = tool != null, busy = busy, onInstall = { installing = Addon.Sqm }, onFinish = {})</ID>
+    <ID>TrailingCommaOnCallSite:AddonsScreen.kt:(Addon.Upnp, status(Addon.Upnp), canInstall = tool != null, busy = busy, onInstall = { installing = Addon.Upnp }, onFinish = {})</ID>
+    <ID>TrailingCommaOnCallSite:AddonsScreen.kt:(Addon.WireGuard, status(Addon.WireGuard), canInstall = tool != null, busy = busy, onInstall = { vm.error = null; installing = Addon.WireGuard }, onFinish = vm::finishWireGuard)</ID>
+    <ID>VariableNaming:ProtectionCompilerTest.kt:ProtectionCompilerTest$private val NFT_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -9,6 +9,8 @@ NS=wrtc_client
 MAC=02:00:00:00:00:99
 IP=192.168.56.99
 GW=192.168.56.2
+# Para comprobar la salida: en la CI, el PC (los runners de GitHub no dejan salir ICMP a internet).
+PING_TARGET=${PING_TARGET:-1.1.1.1}
 # Con setsid u otros PATH, `ip` puede resolver al applet de BusyBox, que no tiene `netns`.
 IPF=/usr/libexec/ip-full
 [ -x "$IPF" ] || IPF=ip
@@ -24,7 +26,7 @@ up)
 	$IPF netns exec $NS $IPF link set wrtc_v1 address $MAC up
 	$IPF netns exec $NS $IPF addr add $IP/24 dev wrtc_v1
 	$IPF netns exec $NS $IPF route add default via $GW
-	$IPF netns exec $NS ping -c 2 -W 2 1.1.1.1 >/dev/null && echo "cliente $MAC ($IP) con internet"
+	$IPF netns exec $NS ping -c 2 -W 2 "$PING_TARGET" >/dev/null && echo "cliente $MAC ($IP) con salida a $PING_TARGET"
 	;;
 down)
 	$IPF link del wrtc_v0 2>/dev/null

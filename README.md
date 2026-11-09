@@ -15,7 +15,14 @@ básico no hay que instalar nada en el router: basta con LuCI.
 ```sh
 gradlew testDebugUnitTest   # pruebas unitarias (JVM, sin emulador)
 gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
+gradlew detekt lintDebug    # análisis estático y estilo (ktlint va dentro de detekt)
+gradlew koverHtmlReportDebug  # cobertura: app/build/reports/kover/htmlDebug/index.html
 ```
+
+La CI (`.github/workflows/ci.yml`) ejecuta todo esto y `go test` del túnel en cada PR. Lo que ya
+había al activar detekt y lint está en `app/detekt-baseline.xml` y `app/lint-baseline.xml`: la CI
+solo falla por problemas nuevos. Al arreglar algo de la línea base, se regenera con
+`gradlew detektBaseline` o `gradlew updateLintBaseline`.
 
 El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
 `app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar
@@ -63,6 +70,17 @@ WrtControl y en UTC.
   las secciones del acceso remoto.
 - DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
   le envía el nombre, la IP y el token.
+
+**En la CI** (`.github/workflows/vm.yml`) las dos pruebas se ejecutan cada noche contra 24.10, 25.12
+y snapshot (la última versión de cada serie), y en los PR que tocan `parental/`, `addons/`,
+`openwrt/`, `ubus/` o estas pruebas. `tools/vm/openwrt-qemu.sh` hace la imagen con el Image
+Builder oficial (con la clave SSH y los paquetes ya puestos) y la arranca en QEMU con la misma red
+que la VM de VirtualBox, así que las pruebas no cambian. Vale en cualquier Linux con KVM:
+
+```sh
+sh tools/vm/openwrt-qemu.sh build 25.12 vm ~/.ssh/id_ed25519.pub
+sh tools/vm/openwrt-qemu.sh up vm/openwrt.img      # LAN por tap (sudo): el router queda en 192.168.56.2
+```
 
 Si en la VM está el `nft` de OpenWrt 22.03 en `/tmp/nft102` (paquetes `nftables-json`,
 `libnftnl11`, `libmnl0` y `jansson4` de 22.03.7 para x86_64), la prueba pasa también el fichero
@@ -238,7 +256,10 @@ desfase con el que las escribió (`time_offset`) y, si la zona cambia, también 
 en el siguiente cambio para que sigan siendo el mismo instante.
 
 **Compatibilidad comprobada** en el código de fw4, rpcd y nftables de 22.03 (fw4 de 2022-10-18,
-nftables 1.0.2) y probada en la VM con 25.12.
+nftables 1.0.2), probada en la VM con 25.12 y cada noche en la CI con 24.10, 25.12 y snapshot.
+En 24.10 el ACL de LuCI no deja ver `service list`: la app no sabe si el DNS de un perfil o
+miniupnpd están en marcha (lo muestra como desconocido; el DNS sí se comprueba al aplicar, con
+`nslookup`), y si miniupnpd no arranca tras activarlo, no lo deshace.
 
 **Límites conocidos.**
 - Se identifica a cada dispositivo por su MAC. Si un teléfono usa una MAC aleatoria que cambia
