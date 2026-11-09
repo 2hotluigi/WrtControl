@@ -399,7 +399,7 @@ Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.
 
 ## Licencia
 
-Copyright © 2026 Luis Angel Abrego Hererra.
+Copyright © 2026 Luis Angel Abrego Herrera.
 
 WrtControl es software libre: se puede redistribuir y modificar bajo los términos de la
 [GNU General Public License](LICENSE), versión 3 o (a elección de quien lo use) cualquier versión
