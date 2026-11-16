@@ -16,24 +16,23 @@ import dev.angel.wrtcontrol.addons.RemotePeer
 import dev.angel.wrtcontrol.addons.SqmEdit
 import dev.angel.wrtcontrol.addons.UpnpMapping
 import dev.angel.wrtcontrol.addons.X25519
+import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.data.TunnelConfig
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.PackageTool
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ui.Loadable
-import dev.angel.wrtcontrol.ui.pollingFlow
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -49,7 +48,9 @@ data class AddonsData(val state: AddonsState, val packages: InstalledPackages?, 
 private const val TAG = "WrtControl"
 
 /** Cada cuánto se vuelve a pedir el listado de paquetes aunque no se haya instalado nada. */
-private const val PACKAGES_MAX_AGE_MS = 5 * 60_000L
+private val PACKAGES_REFRESH = 5.minutes
+
+private val ADDONS_REFRESH = 15.seconds
 
 /** Identificador del teléfono en el router (parte del nombre de su sección): 10 letras y cifras. */
 private fun newPeerId(): String {
@@ -60,56 +61,18 @@ private fun newPeerId(): String {
 
 class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
 
-    private val refresh = Channel<Unit>(Channel.CONFLATED)
+    private val monitor = repo.monitor
 
-    /** El listado de paquetes pesa cientos de KB: se pide al entrar y después de instalar algo. */
-    @Volatile
-    private var packages: InstalledPackages? = null
-
-    /** Sesión con la que se pidió [packages]; si cambia (otro router), se vuelve a pedir. */
-    @Volatile
-    private var packagesFrom: OpenWrtApi? = null
-
-    @Volatile
-    private var packagesStale = true
-
-    /** Cuándo se pidió [packages]: se vuelve a pedir pasado un rato (pudo cambiar desde LuCI). */
-    @Volatile
-    private var packagesAt = 0L
-
-    /** Modelo y MAC de la LAN del router: el acceso remoto guardado solo vale para ese. */
-    @Volatile
-    private var routerId: String? = null
-
-    @Volatile
-    private var routerIdFrom: OpenWrtApi? = null
-
-    val state: StateFlow<Loadable<AddonsData>> = pollingFlow(15.seconds, refresh) {
-        repo.use { api ->
-            coroutineScope {
-                val state = async { api.addons.state() }
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (packagesStale || packagesFrom !== api || now - packagesAt > PACKAGES_MAX_AGE_MS) {
-                    packages = api.addons.packages()
-                    packagesFrom = api
-                    packagesAt = now
-                    packagesStale = false
-                }
-                if (routerIdFrom !== api) {
-                    routerId = api.routerId().also { repo.rememberRouterId(it) }
-                    routerIdFrom = api
-                }
-                val s = state.await()
-                // Lo que usará fuera de casa: el nombre del DNS dinámico (si se pudo leer) y las
-                // direcciones públicas de ahora.
-                repo.refreshTunnelAddresses(s.publicAddresses, s.ddnsDomain, hostnameKnown = s.ddns != null)
-                AddonsData(s, packages, repo.loadTunnel())
-            }
+    val state: StateFlow<Loadable<AddonsData>> =
+        combine(monitor.addons.watch(ADDONS_REFRESH), monitor.packages.watch(PACKAGES_REFRESH), repo.tunnel) { addons, packages, tunnel ->
+            val state = addons.data
+            val listing = packages.data
+            val error = addons.error ?: packages.error
+            if (state == null || listing == null) Loadable(error = error) else Loadable(AddonsData(state, listing.installed, tunnel), error)
         }
-    }
-        // Al volver a la pantalla (o a la app), el listado de paquetes se pide de nuevo.
-        .onStart { packagesStale = true }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
+            // Al volver a la pantalla (o a la app), el listado de paquetes se pide de nuevo.
+            .onStart { monitor.packages.refresh() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
 
     /** Qué se está haciendo en el router ahora mismo (null si nada). */
     var busy by mutableStateOf<Txt?>(null)
@@ -139,7 +102,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
      * tocar el router: si la app se cierra a mitad, al repetir se usa la misma.
      */
     fun enableRemoteAccess(phoneName: String) = run(txt(R.string.addons_busy_remote_on)) { api ->
-        val id = routerId ?: api.routerId().also { repo.rememberRouterId(it) }
+        val id = monitor.identity.fresh(Duration.INFINITE).also { repo.rememberRouterId(it) }
         val old = repo.loadTunnel()?.takeIf { it.routerId == id }
         val config = old ?: TunnelConfig(
             routerId = id,
@@ -218,9 +181,9 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
                 error = e.userMessage()
             } finally {
                 // Aunque falle, la instalación pudo quedar a medias: se vuelve a mirar qué hay.
-                if (packagesChanged) packagesStale = true
+                if (packagesChanged) monitor.packages.refresh()
                 busy = null
-                refresh.trySend(Unit)
+                monitor.addons.refresh()
             }
         }
     }

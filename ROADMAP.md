@@ -53,6 +53,10 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 
 Cambiar la cara, no el motor.
 
+Orden: ~~una sola fuente de estado~~ → detección de capacidades → sistema de diseño → navegación
+nueva e Inicio → salud del cable → dispositivos con identidad → motor de transacciones → puesta en
+marcha guiada. Cada uno se apoya en los anteriores.
+
 - **Navegación nueva:** Inicio · Dispositivos · Familia · Seguridad · Más. Desaparece "Paquetes"
   como pestaña; kernel, carga e interfaces pasan a "Router → Detalles técnicos".
 - **Inicio = salud de la red:** internet sí/no y desde cuándo, dispositivos conectados, avisos
@@ -90,8 +94,12 @@ Cambiar la cara, no el motor.
   router vuelve atrás solo".
 - **Detección de capacidades:** objetos de ubus, ACL, paquetes, radios, RAM y flash. Cada función se
   muestra como disponible, "se instalará" o no compatible.
-- **Una sola fuente de estado del router:** un repositorio que sondea de forma coordinada en lugar
-  de un `pollingFlow` por pantalla, y sin efectos secundarios dentro del sondeo de Estado.
+- ~~**Una sola fuente de estado del router:** un repositorio que sondea de forma coordinada en lugar
+  de un `pollingFlow` por pantalla, y sin efectos secundarios dentro del sondeo de Estado.~~
+  Hecho: `RouterMonitor`, con una lectura compartida (`Feed`) por dato. Cada una se pide una vez
+  aunque la miren varias pantallas, guarda lo último leído y aprovecha las que ya hay (los equipos
+  usan las redes que leyó Estado). Apuntar qué router es y sus direcciones públicas sale del sondeo
+  (`followRouter`). Una lectura que venía de la sesión anterior ya no cierra la nueva.
 
 ## Hito 2 · Lo que se espera de un router (P1)
 

@@ -24,14 +24,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 import dev.angel.wrtcontrol.ui.parental.ParentalScreen
+import dev.angel.wrtcontrol.ui.watchAsState
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
+
+/** El nombre del router, arriba: casi nunca cambia. */
+private val NAME_REFRESH = 1.minutes
 
 private enum class Tab(@StringRes val label: Int, val icon: Int) {
     Status(R.string.home_tab_status, R.drawable.ic_dashboard),
@@ -45,9 +49,7 @@ private enum class Tab(@StringRes val label: Int, val icon: Int) {
 fun HomeScreen(connection: Connection.SignedIn) {
     val repo = LocalRepository.current
     val scope = rememberCoroutineScope()
-    // Clave por router: si se conecta a otro, no se mezclan datos del anterior.
-    val statusVm: StatusViewModel = viewModel(key = "status:${connection.address}") { StatusViewModel(repo) }
-    val status by statusVm.state.collectAsStateWithLifecycle()
+    val board by repo.monitor.board.watchAsState(NAME_REFRESH)
     var tab by rememberSaveable { mutableIntStateOf(Tab.Status.ordinal) }
     val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
 
@@ -56,7 +58,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
             TopAppBar(
                 title = {
                     Column {
-                        Text(status.data?.board?.hostname ?: stringResource(R.string.home_router_fallback))
+                        Text(board.data?.hostname ?: stringResource(R.string.home_router_fallback))
                         Text(
                             when (link) {
                                 Link.Direct -> connection.address
@@ -91,8 +93,8 @@ fun HomeScreen(connection: Connection.SignedIn) {
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (Tab.entries[tab]) {
-                Tab.Status -> StatusScreen(status)
-                Tab.Devices -> DevicesScreen(connection.address)
+                Tab.Status -> StatusScreen()
+                Tab.Devices -> DevicesScreen()
                 Tab.Parental -> ParentalScreen(connection)
                 Tab.Addons -> AddonsScreen(connection.address)
             }

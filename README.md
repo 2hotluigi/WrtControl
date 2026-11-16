@@ -144,11 +144,31 @@ bien: basta con que llegue al final del fichero sin errores.
 | `openwrt` | Modelos y llamadas tipadas (`system`, `network.interface`, `luci-rpc`, `uci`, `file`). `buildDeviceList` combina vecinos y concesiones DHCP, incluido el caso de Windows, que usa en DHCPv6 la MAC de otra tarjeta. |
 | `parental` | Perfiles, pausas, horarios y filtro de contenido: cómo se guardan, qué configuración de fw4 y dnsmasq generan y cómo se aplican sin arriesgar el acceso (ver abajo). |
 | `addons` | Paquetes opcionales: instalarlos (como la página Software de LuCI), SQM, UPnP, DNS dinámico, el servidor WireGuard del acceso remoto y las claves (X25519 en Kotlin). |
-| `data` | Router guardado en DataStore. La contraseña y la clave del acceso remoto se guardan cifradas con AES-GCM y una clave del Android Keystore. `RouterTransport` decide si cada conexión va directa o por el túnel. |
+| `data` | Router guardado en DataStore. La contraseña y la clave del acceso remoto se guardan cifradas con AES-GCM y una clave del Android Keystore. `RouterTransport` decide si cada conexión va directa o por el túnel. `RouterMonitor` es la única fuente de lo que se lee del router para enseñarlo (ver "Lo que se lee del router"). |
 | (raíz) | `Txt.kt`: un texto para el usuario sin `Context` (recurso y datos), que devuelve la lógica y resuelve la interfaz; en las pruebas JVM, `TestStrings` lo lee de `values/`. |
 | (raíz) | `Errors.kt`: el texto de cualquier error para el usuario (qué pasó y qué hacer), sin nombres de clase ni códigos. Los errores escritos para el usuario implementan `UserFacing` y se muestran tal cual. |
 | `res/values*` | Textos de la interfaz: español en `values/strings_<área>.xml` (el idioma por defecto, `tools:locale="es"`) e inglés en `values-en/`. `HardcodedTextTest` falla si una pantalla vuelve a llevar un texto fijo; la lógica devuelve `Txt`. |
-| `ui` | Compose + Material 3. Los datos se recargan periódicamente y la recarga se detiene cuando la app pasa a segundo plano. |
+| `ui` | Compose + Material 3. Las pantallas miran las lecturas de `RouterMonitor` (`watchAsState`), que se detienen cuando la app pasa a segundo plano. |
+
+### Lo que se lee del router
+
+Cada dato que enseña la app (el aparato, la carga, las redes, los equipos, los perfiles, los
+paquetes) es una lectura compartida, un `Feed` de `RouterMonitor`:
+
+- **Se pide una vez aunque lo miren varias pantallas**, al ritmo de la que lo quiere más a menudo, y
+  solo mientras alguna lo mira (`watch`). Con la app en segundo plano no se llama al router.
+- **Lo último leído se guarda**: al cambiar de pestaña se ve al momento y solo se vuelve a pedir si
+  ya es viejo.
+- **Unas lecturas aprovechan otras** (`fresh`): los equipos necesitan las redes y usan las que
+  acaba de leer "Estado" en vez de pedirlas otra vez.
+- **Tras un cambio** se marca lo leído como caducado (`refresh`) y se vuelve a leer ya. Si había
+  una lectura a medias, es de antes del cambio y se repite.
+- **Al cambiar de sesión** (se sale, o se entra en otro router) se olvida todo (`reset`) y lo que
+  viniera de la sesión anterior no se publica.
+
+Leer no tiene efectos. Lo que la app apunta a partir de lo leído (qué router es y por qué
+direcciones se llega a él desde fuera, para el acceso remoto) va aparte, en `followRouter`, que
+reacciona a las lecturas las haya pedido la pantalla que las haya pedido.
 
 ## Control parental: qué hace en el router
 

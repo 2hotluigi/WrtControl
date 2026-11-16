@@ -3,6 +3,7 @@ package dev.angel.wrtcontrol
 import android.app.Application
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.SystemClock
 import dev.angel.wrtcontrol.data.AppSettings
 import dev.angel.wrtcontrol.data.OkHttpDdns
 import dev.angel.wrtcontrol.data.RouterRepository
@@ -11,6 +12,7 @@ import dev.angel.wrtcontrol.data.RouterTransport
 import dev.angel.wrtcontrol.data.SecretBox
 import dev.angel.wrtcontrol.data.outsideNetwork
 import dev.angel.wrtcontrol.data.tunnelEngine
+import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,7 +58,17 @@ class WrtApp : Application() {
             .connectTimeout(10, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
             .build()
-        repository = RouterRepository(RouterStore(this, SecretBox()), http, transport, OkHttpDdns(direct), outsideNetwork(connectivity))
+        repository = RouterRepository(
+            appScope,
+            RouterStore(this, SecretBox()),
+            http,
+            transport,
+            OkHttpDdns(direct),
+            outsideNetwork(connectivity),
+            describe = { it.userMessage() },
+            // Cuenta también el tiempo con el teléfono dormido: al volver, lo leído se sabe viejo.
+            clock = SystemClock::elapsedRealtime,
+        )
         // Con el túnel puesto: quitarlo si lleva un rato sin usarse o si ya no contesta el router.
         appScope.launch(Dispatchers.IO) {
             while (true) {
