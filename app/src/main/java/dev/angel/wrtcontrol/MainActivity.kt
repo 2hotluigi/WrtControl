@@ -6,6 +6,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
 import dev.angel.wrtcontrol.ui.AppLockGate
 import dev.angel.wrtcontrol.ui.AppRoot
+import dev.angel.wrtcontrol.ui.LocalNetworkGate
 import dev.angel.wrtcontrol.ui.WrtTheme
 
 /** FragmentActivity: la pide BiometricPrompt para el bloqueo con huella o PIN. */
@@ -16,7 +17,7 @@ class MainActivity : FragmentActivity() {
         val app = application as WrtApp
         setContent {
             WrtTheme {
-                AppLockGate(app.settings) { AppRoot(app.repository, app.settings) }
+                AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings) } }
             }
         }
     }
