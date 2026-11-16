@@ -17,16 +17,7 @@ class HardcodedTextTest {
     private val uiDir = listOf("src/main/java/dev/angel/wrtcontrol/ui", "app/src/main/java/dev/angel/wrtcontrol/ui")
         .map(::File).first { it.isDirectory }
 
-    private val pending = setOf(
-        "addons/AddonsViewModel.kt",
-        "addons/OutsideCheckViewModel.kt",
-    )
-
-    /** Llamadas que muestran texto, con el literal que les llega. */
-    private val shown = Regex(
-        """\b(?:Text|InfoCard|InfoRow|NoticeCard|ErrorBanner|StatusPill|OutlinedButton|TextButton)\(\s*"([^"]*)"""" +
-            """|\b(?:contentDescription|label|title|text|placeholder|supportingText)\s*=\s*"([^"]*)"""",
-    )
+    private val pending = emptySet<String>()
 
     /** Nombres técnicos que no se traducen. */
     private val technical = Regex("""\b(?:IPv4|IPv6|DNS|MAC|IP|DHCP|WireGuard|OpenWrt|LuCI|SQM|UPnP|WrtControl)\b""")

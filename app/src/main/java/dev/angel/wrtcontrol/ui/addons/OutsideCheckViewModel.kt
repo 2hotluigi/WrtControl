@@ -1,12 +1,12 @@
 package dev.angel.wrtcontrol.ui.addons
 
-import dev.angel.wrtcontrol.Txt
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.addons.IpFamily
 import dev.angel.wrtcontrol.addons.ReachabilityAdvice
 import dev.angel.wrtcontrol.addons.RouterReachContext

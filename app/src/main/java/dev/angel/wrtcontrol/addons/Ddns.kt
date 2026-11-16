@@ -1,8 +1,12 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
+import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.txt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -37,28 +41,25 @@ private const val CA_CERTS = "/etc/ssl/certs/ca-certificates.crt"
  */
 enum class DdnsProvider(
     val service: String?,
-    val title: String,
-    val help: String,
+    val title: Txt,
+    val help: Txt,
     val suffix: String? = null,
     val usernameIsDomain: Boolean = false,
 ) {
     DuckDns(
-        "duckdns.org", "DuckDNS",
-        "Gratis. En duckdns.org entras con tu cuenta de Google o GitHub, eliges un nombre y copias el token.",
+        "duckdns.org", raw("DuckDNS"), txt(R.string.addons_ddns_help_duckdns),
         suffix = ".duckdns.org",
     ),
     Dynv6(
-        "dynv6.com", "dynv6",
-        "Gratis y con buen soporte de IPv6. En dynv6.com creas una zona (p. ej. micasa.dynv6.net) y copias su token.",
+        "dynv6.com", raw("dynv6"), txt(R.string.addons_ddns_help_dynv6),
     ),
     Desec(
-        "desec.io", "deSEC",
-        "Gratis y sin publicidad. En desec.io registras un nombre dedyn.io y creas un token.",
+        "desec.io", raw("deSEC"), txt(R.string.addons_ddns_help_desec),
         suffix = ".dedyn.io", usernameIsDomain = true,
     ),
 
     /** Otro proveedor: la URL de actualización de ddns-scripts, con [DOMAIN], [USERNAME], [PASSWORD] e [IP]. */
-    Custom(null, "Otro", "La URL de actualización de tu proveedor, con [DOMAIN], [USERNAME], [PASSWORD] e [IP] donde vayan. La app los rellena con el nombre, el usuario, el token y la dirección del router."),
+    Custom(null, txt(R.string.addons_ddns_provider_other), txt(R.string.addons_ddns_help_custom)),
     ;
 
     companion object {
@@ -100,7 +101,7 @@ data class DdnsService(
     /** El actualizador está en marcha. */
     val running: Boolean,
     /** Qué falló desde la última actualización buena, explicado; null si nada. */
-    val lastError: String? = null,
+    val lastError: Txt? = null,
     /** Última dirección que el router envió al proveedor con éxito. */
     val lastSentIp: String? = null,
 ) {
@@ -134,18 +135,24 @@ fun DdnsEdit.fullDomain(): String {
 }
 
 /** Motivo por el que [edit] no vale, o null. */
-fun ddnsProblem(edit: DdnsEdit): String? {
+fun ddnsProblem(edit: DdnsEdit): Txt? {
     val domain = edit.fullDomain()
     return when {
-        !Regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$").matches(domain) -> "Escribe un nombre válido (p. ej. micasa${edit.provider.suffix ?: ".dynv6.net"})."
-        edit.token.isBlank() -> "Falta el token (la clave que te da el proveedor)."
-        edit.token.any { it.isWhitespace() || it == '\'' } -> "El token no puede llevar espacios ni comillas."
-        edit.provider == DdnsProvider.Custom && edit.updateUrl.isNullOrBlank() -> "Falta la URL de actualización."
-        edit.provider == DdnsProvider.Custom && !edit.updateUrl!!.trim().let { it.startsWith("http://") || it.startsWith("https://") } ->
-            "La URL tiene que empezar por http:// o https://."
-        edit.provider == DdnsProvider.Custom && "[IP]" !in edit.updateUrl!! -> "La URL tiene que llevar [IP], donde va la dirección."
+        !Regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$").matches(domain) ->
+            txt(R.string.addons_ddns_invalid_name, "micasa" + (edit.provider.suffix ?: ".dynv6.net"))
+        edit.token.isBlank() -> txt(R.string.addons_ddns_missing_token)
+        edit.token.any { it.isWhitespace() || it == '\'' } -> txt(R.string.addons_ddns_token_chars)
+        edit.provider == DdnsProvider.Custom -> updateUrlProblem(edit.updateUrl)
         else -> null
     }
+}
+
+/** Motivo por el que la URL de un proveedor propio no vale, o null. */
+private fun updateUrlProblem(url: String?): Txt? = when {
+    url.isNullOrBlank() -> txt(R.string.addons_ddns_missing_url)
+    !url.trim().let { it.startsWith("http://") || it.startsWith("https://") } -> txt(R.string.addons_ddns_url_scheme)
+    "[IP]" !in url -> txt(R.string.addons_ddns_url_no_ip)
+    else -> null
 }
 
 /**
@@ -200,7 +207,7 @@ internal fun ddnsSection(edit: DdnsEdit, iface: String, family: IpFamily): UciSe
 }
 
 /** Lo que interesa del registro de un servicio (/var/log/ddns/<sección>.log). */
-data class DdnsLog(val lastError: String?, val lastSentIp: String?)
+data class DdnsLog(val lastError: Txt?, val lastSentIp: String?)
 
 /**
  * Registro de ddns-scripts: "<uptime> <nivel> : <mensaje>", con nivel ERROR (3), WARN (4), note,
@@ -220,14 +227,12 @@ internal fun parseDdnsLog(log: String?): DdnsLog {
     return DdnsLog(failure?.let(::explainDdnsError), sent)
 }
 
-private fun explainDdnsError(message: String): String = when {
-    "not accepted by DDNS Provider" in message || "No update send" in message ->
-        "El proveedor rechazó la actualización: revisa el nombre y el token."
-    "private or invalid IP" in message ->
-        "El router no tiene una dirección pública que publicar (¿CGNAT sin IPv6?)."
-    "No valid certificate" in message ->
-        "Faltan los certificados para HTTPS en el router (paquete ca-bundle)."
+private fun explainDdnsError(message: String): Txt = when {
+    "not accepted by DDNS Provider" in message || "No update send" in message -> txt(R.string.addons_ddns_log_rejected)
+    "private or invalid IP" in message -> txt(R.string.addons_ddns_log_no_public_ip)
+    "No valid certificate" in message -> txt(R.string.addons_ddns_log_no_certificates)
     "Error:" in message || "error:" in message || "Transfer failed" in message || "provider failed" in message ->
-        "El router no pudo conectar con el proveedor: $message"
-    else -> message
+        txt(R.string.addons_ddns_log_connect_failed, message)
+    // Lo que escribe ddns-scripts, tal cual.
+    else -> raw(message)
 }

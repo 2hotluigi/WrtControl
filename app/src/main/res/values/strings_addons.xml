@@ -120,4 +120,84 @@
     <string name="addons_upnp_no_ports">Ningún dispositivo ha abierto puertos.</string>
     <string name="addons_upnp_expires_in">caduca en %1$s</string>
     <string name="addons_upnp_close_port">Cerrar el puerto %1$d</string>
+
+    <!-- Paquetes opcionales: lo que hacen -->
+    <string name="addons_wireguard_description">Túnel cifrado para que la app llegue al router cuando no estás en casa.</string>
+    <string name="addons_ddns_description">Un nombre fijo para el router, aunque tu proveedor le cambie la dirección.</string>
+    <string name="addons_sqm_title">SQM (calidad de la conexión)</string>
+    <string name="addons_sqm_description">Evita que la conexión se atasque cuando alguien descarga: videollamadas y juegos siguen fluidos.</string>
+    <string name="addons_upnp_description">Deja que consolas y juegos abran puertos solos (NAT abierto). Es cómodo, pero cualquier dispositivo de casa puede abrirlos.</string>
+
+    <!-- Lo que se está haciendo en el router -->
+    <string name="addons_busy_installing">Instalando %1$s… Puede tardar hasta un minuto.</string>
+    <string name="addons_busy_restarting_network">Reiniciando la red del router…</string>
+    <string name="addons_busy_sqm">Aplicando el SQM…</string>
+    <string name="addons_busy_upnp_on">Activando UPnP…</string>
+    <string name="addons_busy_upnp_off">Desactivando UPnP…</string>
+    <string name="addons_busy_upnp_secure">Cambiando el modo seguro de UPnP…</string>
+    <string name="addons_busy_remote_on">Configurando el acceso remoto…</string>
+    <string name="addons_busy_remote_off">Quitando el acceso remoto de %1$s…</string>
+    <string name="addons_busy_ddns_on">Configurando el DNS dinámico…</string>
+    <string name="addons_busy_ddns_off">Quitando el DNS dinámico…</string>
+    <string name="addons_busy_closing_port">Cerrando el puerto %1$d…</string>
+
+    <!-- Errores al configurar -->
+    <string name="addons_protocol_not_loaded">El router instaló el paquete pero no lo cargó. Reinícialo para terminar.</string>
+    <string name="addons_sqm_conflict">Ya hay otra cola de SQM activa en %1$s. Desactívala antes.</string>
+    <string name="addons_sqm_queue_gone">Esa cola de SQM ya no existe en el router: alguien la quitó desde LuCI. Recarga la pantalla.</string>
+    <string name="addons_upnp_no_config">UPnP no tiene configuración en el router. Reinstálalo.</string>
+    <string name="addons_upnp_close_failed">El router no pudo cerrar ese puerto. Recarga la pantalla y vuelve a intentarlo.</string>
+    <string name="addons_remote_no_free_address">No quedan direcciones libres en el acceso remoto del router: quita algún teléfono que ya no uses.</string>
+    <string name="addons_remote_web_unreachable">La web del router (uhttpd) solo escucha en %1$s. Para el acceso remoto tiene que escuchar en todas las IPv4 (0.0.0.0) o en la dirección de la LAN.</string>
+    <string name="addons_remove_remote_from_home">Ahora la app entra al router por el acceso remoto de este teléfono: quitarlo cortaría la conexión. Quítalo desde casa.</string>
+
+    <!-- SQM: datos que no valen -->
+    <string name="addons_sqm_pick_device">Elige la conexión a internet.</string>
+    <string name="addons_sqm_invalid_device">Ese nombre de dispositivo no es válido.</string>
+    <string name="addons_sqm_negative_speed">Las velocidades no pueden ser negativas.</string>
+    <string name="addons_sqm_no_speed">Indica al menos una de las dos velocidades.</string>
+    <string name="addons_sqm_too_slow">Con menos de %1$s kbit/s el router se quedaría casi sin conexión.</string>
+
+    <!-- DNS dinámico: proveedores -->
+    <string name="addons_ddns_provider_other">Otro</string>
+    <string name="addons_ddns_help_duckdns">Gratis. En duckdns.org entras con tu cuenta de Google o GitHub, eliges un nombre y copias el token.</string>
+    <string name="addons_ddns_help_dynv6">Gratis y con buen soporte de IPv6. En dynv6.com creas una zona (p. ej. micasa.dynv6.net) y copias su token.</string>
+    <string name="addons_ddns_help_desec">Gratis y sin publicidad. En desec.io registras un nombre dedyn.io y creas un token.</string>
+    <string name="addons_ddns_help_custom">La URL de actualización de tu proveedor, con [DOMAIN], [USERNAME], [PASSWORD] e [IP] donde vayan. La app los rellena con el nombre, el usuario, el token y la dirección del router.</string>
+
+    <!-- DNS dinámico: datos que no valen -->
+    <string name="addons_ddns_invalid_name">Escribe un nombre válido (p. ej. %1$s).</string>
+    <string name="addons_ddns_missing_token">Falta el token (la clave que te da el proveedor).</string>
+    <string name="addons_ddns_token_chars">El token no puede llevar espacios ni comillas.</string>
+    <string name="addons_ddns_missing_url">Falta la URL de actualización.</string>
+    <string name="addons_ddns_url_scheme">La URL tiene que empezar por http:// o https://.</string>
+    <string name="addons_ddns_url_no_ip">La URL tiene que llevar [IP], donde va la dirección.</string>
+
+    <!-- DNS dinámico: lo que dice el registro del router -->
+    <string name="addons_ddns_log_rejected">El proveedor rechazó la actualización: revisa el nombre y el token.</string>
+    <string name="addons_ddns_log_no_public_ip">El router no tiene una dirección pública que publicar (¿CGNAT sin IPv6?).</string>
+    <string name="addons_ddns_log_no_certificates">Faltan los certificados para HTTPS en el router (paquete ca-bundle).</string>
+    <string name="addons_ddns_log_connect_failed">El router no pudo conectar con el proveedor: %1$s</string>
+
+    <!-- DNS dinámico: el aviso al proveedor desde el teléfono -->
+    <string name="addons_ddns_sync_unreachable">No se pudo avisar a %1$s desde el teléfono (sin conexión con su servidor). El router publicará su dirección en unos minutos, pero puede quedar publicada una dirección antigua.</string>
+    <string name="addons_ddns_sync_rejected">%1$s rechazó el nombre o el token: revisa que el nombre sea tuyo y el token esté bien copiado.</string>
+    <string name="addons_ddns_sync_server_error">El servidor de %1$s falló. El router lo volverá a intentar en unos minutos.</string>
+    <string name="addons_ddns_sync_dynv6_ipv6">dynv6 no deja borrar la dirección IPv6 desde aquí: si el nombre tenía una antigua, quítala en dynv6.com.</string>
+
+    <!-- ¿Se llega desde fuera? -->
+    <string name="addons_reach_no_mobile_data">No se pudo usar los datos móviles. Actívalos (puedes seguir en el Wi-Fi: la prueba solo gasta unos KB) y repite.</string>
+    <string name="addons_reach_reached">%1$s (%2$s): se llega.</string>
+    <string name="addons_reach_v6_no_reply">IPv6 (%1$s): el router no contestó. Casi siempre es el módem del proveedor, que descarta lo que entra por IPv6: en su página, baja el nivel del cortafuegos IPv6 o pon el router en su DMZ.</string>
+    <string name="addons_reach_v6_cannot_send">IPv6: tus datos móviles no tienen IPv6, así que no se ha podido probar. Desde redes con IPv6 puede que sí se llegue.</string>
+    <string name="addons_reach_v6_none">IPv6: el router no tiene una IPv6 pública. Si tu proveedor da IPv6, revisa la WAN6 del router.</string>
+    <string name="addons_reach_v4_no_reply_behind">IPv4 (%1$s): no entra. El router está detrás de otro aparato (su WAN tiene %2$s): en ese aparato, abre el puerto UDP %3$d hacia el router o ponlo en su DMZ.</string>
+    <string name="addons_reach_v4_no_reply">IPv4 (%1$s): el router no contestó. Puede que algo delante descarte lo que entra.</string>
+    <string name="addons_reach_v4_cannot_send">IPv4: tus datos móviles no tienen IPv4, así que no se ha podido probar.</string>
+    <string name="addons_reach_v4_behind">IPv4: el router está detrás de otro aparato o de un CGNAT (su WAN tiene %1$s), así que por IPv4 no se llega.</string>
+    <string name="addons_reach_v4_none">IPv4: el router no tiene una IPv4 pública.</string>
+    <string name="addons_reach_no_ddns">Sin DNS dinámico, si tu proveedor le cambia la dirección al router, la app no lo encontrará: configúralo abajo.</string>
+    <string name="addons_reach_ddns_stale">El DNS dinámico aún da %1$s, que ya no es del router (se actualiza cada pocos minutos).</string>
+    <string name="addons_reach_ddns_dead">El DNS dinámico publica %1$s, que no entra: algunos programas la prueban primero y no conectan (WireGuard en Windows, p. ej.). Mejor publicar solo %2$s.</string>
+    <string name="addons_reach_ddns_empty">Desde fuera, el nombre del DNS dinámico aún no da ninguna dirección: el proveedor puede tardar unos minutos.</string>
 </resources>

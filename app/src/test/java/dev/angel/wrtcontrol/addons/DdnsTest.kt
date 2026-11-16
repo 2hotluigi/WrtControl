@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.PrefixAssignment
@@ -27,14 +28,14 @@ class DdnsTest {
     @Test
     fun `explica lo que falta o sobra`() {
         assertNull(ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "micasa", "abc-123")))
-        assertEquals("Falta el token (la clave que te da el proveedor).", ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "micasa", " ")))
-        assertTrue(ddnsProblem(DdnsEdit(DdnsProvider.Dynv6, "micasa", "t"))!!.startsWith("Escribe un nombre válido"))
-        assertTrue(ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "mi casa", "t"))!!.startsWith("Escribe un nombre válido"))
-        assertEquals("El token no puede llevar espacios ni comillas.", ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "micasa", "a'b")))
-        assertEquals("Falta la URL de actualización.", ddnsProblem(DdnsEdit(DdnsProvider.Custom, "a.example.org", "t")))
+        assertEquals("Falta el token (la clave que te da el proveedor).", ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "micasa", " "))?.es)
+        assertTrue(ddnsProblem(DdnsEdit(DdnsProvider.Dynv6, "micasa", "t"))!!.es.startsWith("Escribe un nombre válido"))
+        assertTrue(ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "mi casa", "t"))!!.es.startsWith("Escribe un nombre válido"))
+        assertEquals("El token no puede llevar espacios ni comillas.", ddnsProblem(DdnsEdit(DdnsProvider.DuckDns, "micasa", "a'b"))?.es)
+        assertEquals("Falta la URL de actualización.", ddnsProblem(DdnsEdit(DdnsProvider.Custom, "a.example.org", "t"))?.es)
         assertEquals(
             "La URL tiene que llevar [IP], donde va la dirección.",
-            ddnsProblem(DdnsEdit(DdnsProvider.Custom, "a.example.org", "t", updateUrl = "https://x.org/u?h=[DOMAIN]")),
+            ddnsProblem(DdnsEdit(DdnsProvider.Custom, "a.example.org", "t", updateUrl = "https://x.org/u?h=[DOMAIN]"))?.es,
         )
     }
 
@@ -117,9 +118,11 @@ class DdnsTest {
             KO
              181113 ERROR : IP update not accepted by DDNS Provider
         """.trimIndent()
-        assertEquals(DdnsLog("El proveedor rechazó la actualización: revisa el nombre y el token.", "10.0.3.15"), parseDdnsLog(rejected))
+        val rejectedLog = parseDdnsLog(rejected)
+        assertEquals("El proveedor rechazó la actualización: revisa el nombre y el token.", rejectedLog.lastError?.es)
+        assertEquals("10.0.3.15", rejectedLog.lastSentIp)
         val offline = " 1 ERROR : uclient-fetch Error: '4'\n 1  WARN : Updating IP at DDNS provider failed"
-        assertTrue(parseDdnsLog(offline).lastError!!.startsWith("El router no pudo conectar con el proveedor"))
+        assertTrue(parseDdnsLog(offline).lastError!!.es.startsWith("El router no pudo conectar con el proveedor"))
         assertEquals(DdnsLog(null, null), parseDdnsLog(null))
     }
 
@@ -152,7 +155,7 @@ class DdnsTest {
             DdnsEdit(DdnsProvider.Dynv6, "micasa.dynv6.net", "t"),
             DdnsRecords("203.0.113.5", null),
         )
-        assertTrue(notice!!.contains("quítala en dynv6.com"))
+        assertTrue(notice!!.es.contains("quítala en dynv6.com"))
     }
 
     // ---------- contra el router simulado ----------
@@ -222,7 +225,7 @@ class DdnsTest {
         val e = runCatching { api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "malo")) }.exceptionOrNull()
 
         assertTrue(e is DdnsRejectedException)
-        assertTrue(e!!.message!!.contains("rechazó el nombre o el token"))
+        assertTrue((e as DdnsRejectedException).text.es.contains("DuckDNS rechazó el nombre o el token"))
         assertEquals(1, provider.urls.size)
         assertNull(f.fake.committed[DDNS_SECTION6])
     }
@@ -236,7 +239,7 @@ class DdnsTest {
 
         val notice = api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "tok"))
 
-        assertTrue(notice!!.startsWith("No se pudo avisar a DuckDNS desde el teléfono"))
+        assertTrue(notice!!.es.startsWith("No se pudo avisar a DuckDNS desde el teléfono"))
         assertEquals("1", f.fake.option(DDNS_SECTION6, "use_ipv6"))
     }
 

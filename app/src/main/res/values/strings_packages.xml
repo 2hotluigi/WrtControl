@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Instalar paquetes: cada fallo, al actualizar las listas o al instalar (%1$s: los paquetes) -->
+    <string name="packages_update_denied">El router no deja actualizar la lista de paquetes desde la app (permisos de LuCI).</string>
+    <string name="packages_install_denied">El router no deja instalar %1$s desde la app (permisos de LuCI).</string>
+    <string name="packages_update_unexpected">Respuesta inesperada del gestor de paquetes al actualizar la lista de paquetes.</string>
+    <string name="packages_install_unexpected">Respuesta inesperada del gestor de paquetes al instalar %1$s.</string>
+    <string name="packages_update_no_space">El router no tiene espacio libre suficiente para actualizar la lista de paquetes.</string>
+    <string name="packages_install_no_space">El router no tiene espacio libre suficiente para instalar %1$s.</string>
+    <string name="packages_update_failed">El gestor de paquetes del router no pudo actualizar la lista de paquetes (código %1$d).</string>
+    <string name="packages_install_failed">El gestor de paquetes del router no pudo instalar %1$s (código %2$d).</string>
+
+    <!-- Fallos típicos de opkg y apk -->
+    <string name="packages_locked">Otro programa está instalando paquetes en el router (quizá LuCI). Espera un poco y vuelve a intentarlo.</string>
+    <string name="packages_kernel_mismatch">El paquete no es compatible con el kernel de este firmware (pasa con versiones de desarrollo o firmware de fabricante). Actualiza el router a una versión estable de OpenWrt.</string>
+    <string name="packages_download_failed">El router no pudo descargar los paquetes: comprueba que tiene internet.</string>
+    <string name="packages_not_available">El paquete no está disponible para este router.</string>
+</resources>
