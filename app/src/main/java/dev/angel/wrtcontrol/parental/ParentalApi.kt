@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.Lookup
 import dev.angel.wrtcontrol.openwrt.UciSection
@@ -19,6 +20,7 @@ import dev.angel.wrtcontrol.openwrt.uciAdd
 import dev.angel.wrtcontrol.openwrt.uciDelete
 import dev.angel.wrtcontrol.openwrt.uciSections
 import dev.angel.wrtcontrol.openwrt.uciSet
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusCaller
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
@@ -190,7 +192,7 @@ class ParentalApi(
         val zones = tx.routerTimezones() + ("UTC" to "GMT0")
         val wanted = if (zoneId in UTC_ALIASES) "UTC" else zoneId
         val zone = zones.keys.firstOrNull { sameZone(it, wanted) }
-            ?: throw UserFacingException("El router no conoce la zona horaria $zoneId. Elígela a mano en LuCI (Sistema → Sistema).")
+            ?: throw UserFacingException(txt(R.string.parental_error_unknown_zone, zoneId))
         val system = tx.systemSection() ?: throw UbusException.Protocol("El router no tiene sección system")
         val oldOffset = tx.offsetSeconds()
         // Si el router trae horario de verano para una zona que ya no lo tiene, manda el teléfono.
@@ -200,7 +202,7 @@ class ParentalApi(
 
         tx.uciSet("system", system.name, mapOf("zonename" to zone, "timezone" to tz))
         tx.applySafely(
-            failure = "El router no tomó la hora de esa zona (${formatUtcOffset(expectedOffsetSeconds)}), así que se dejó como estaba.",
+            failure = txt(R.string.parental_error_zone_not_applied, formatUtcOffset(expectedOffsetSeconds)),
             isReverted = { fresh -> fresh.systemSection()?.text("zonename") == system.text("zonename") },
             isLive = { tx.offsetSeconds() == expectedOffsetSeconds },
         )
@@ -217,10 +219,7 @@ class ParentalApi(
         try {
             applyPlan(tx, state, plan, force = true)
         } catch (_: ChangeRevertedException) {
-            throw ChangeRevertedException(
-                "La zona horaria ya cambió, pero el router no volvió a cargar las reglas de los horarios: " +
-                    "pueden ir desfasadas. Vuelve a guardar cualquier perfil para recargarlas.",
-            )
+            throw ChangeRevertedException(txt(R.string.parental_error_zone_rules_stale))
         }
     }
 
@@ -272,7 +271,7 @@ class ParentalApi(
         val dns = DnsCheck(tx, plan, log)
         var waited = 0
         tx.applySafely(
-            failure = "El router no cargó los cambios (firewall o DNS), así que se restauró la configuración anterior.",
+            failure = txt(R.string.parental_error_not_applied),
             isReverted = { fresh -> fresh.readState().ownSections() == before.ownSections() },
         ) {
             val firewallOk = if (firewallBefore == null) {
@@ -300,7 +299,7 @@ class ParentalApi(
             tx.fileWrite(include.path, include.content, mode = FILE_MODE)
         } catch (e: UbusException.Status) {
             throw if (e.code == 6) {
-                UbusException.Refused("El router no deja a la app guardar las reglas del control parental. ¿Tiene LuCI completo instalado?")
+                UbusException.Refused(txt(R.string.parental_error_include_refused))
             } else {
                 e
             }
@@ -363,8 +362,7 @@ private class DnsCheck(private val tx: UbusSession, private val plan: RouterPlan
                 if (tx.lookup(UPSTREAM_PROBE) != Lookup.Resolved) continue
                 if (++upstreamFailures >= 3) {
                     throw VerificationFailed(
-                        "El DNS para familias (${profile.filter.level.upstreams().first()}) no responde desde el router, " +
-                            "así que no se activó el filtro. Prueba otro nivel o revisa si tu proveedor lo bloquea.",
+                        txt(R.string.parental_error_family_dns_down, profile.filter.level.upstreams().first()),
                     )
                 }
                 return false
@@ -413,19 +411,14 @@ private class DnsCheck(private val tx: UbusSession, private val plan: RouterPlan
             // culpa del filtro) o el DNS para familias no contesta.
             if (tx.lookup(UPSTREAM_PROBE) != Lookup.Resolved) return true
             if (++upstreamFailures >= 3) {
-                throw VerificationFailed(
-                    "El DNS para familias (${(if (f.level != FilterLevel.None) f.level else FilterLevel.Adult).upstreams().first()}) no responde " +
-                        "desde el router, así que no se activó el filtro. Revisa si tu proveedor lo bloquea.",
-                )
+                val level = if (f.level != FilterLevel.None) f.level else FilterLevel.Adult
+                throw VerificationFailed(txt(R.string.parental_error_family_dns_down_provider, level.upstreams().first()))
             }
             return false
         }
         log("dns: ${dnsInstance(profile)} no da las respuestas filtradas del DNS para familias")
         if (++filteringFailures >= 3) {
-            throw VerificationFailed(
-                "El DNS para familias no está filtrando desde tu router: parece que tu proveedor de internet " +
-                    "intercepta las consultas DNS. No se activó el filtro.",
-            )
+            throw VerificationFailed(txt(R.string.parental_error_dns_intercepted))
         }
         return false
     }

@@ -1,9 +1,13 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.openwrt.uciApply
 import dev.angel.wrtcontrol.openwrt.uciConfirm
 import dev.angel.wrtcontrol.openwrt.uciRollback
+import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusSession
 import kotlinx.coroutines.CancellationException
@@ -39,28 +43,37 @@ private const val UBUS_NO_DATA = 5
 private const val UBUS_PERMISSION_DENIED = 6
 
 /** Otra sesión tiene un `uci apply` pendiente de confirmar. */
-class PendingChangeException : UserFacing, Exception(
-    "El router tiene otro cambio pendiente de confirmar (quizá desde LuCI u otro teléfono). " +
-        "Espera un minuto y vuelve a intentarlo.",
-)
+class PendingChangeException : Exception(PENDING_CHANGE.toString()), UserFacing {
+    override val text: Txt get() = PENDING_CHANGE
+}
+
+private val PENDING_CHANGE = txt(R.string.parental_error_pending_change)
 
 /** El router lo configuró una versión más nueva de la app, con un formato que esta no sabe escribir. */
-class NewerSchemaException : UserFacing, Exception(
-    "El control parental de este router lo configuró una versión más nueva de WrtControl. Actualiza la app " +
-        "para cambiarlo desde este teléfono; mientras, solo puedes verlo.",
-)
+class NewerSchemaException : Exception(NEWER_SCHEMA.toString()), UserFacing {
+    override val text: Txt get() = NEWER_SCHEMA
+}
+
+private val NEWER_SCHEMA = txt(R.string.parental_error_newer_schema)
 
 /** El cambio se aplicó pero no funcionó como se esperaba, y se deshizo. */
-class ChangeRevertedException(message: String) : Exception(message), UserFacing
+class ChangeRevertedException(override val text: Txt) : Exception(logMessage(text)), UserFacing {
+    // TRANSITORIO (fase 2 de los textos): mientras los complementos pasen el fallo en español.
+    constructor(message: String) : this(raw(message))
+}
 
 /** Lo lanza la comprobación cuando el fallo es definitivo y no vale la pena seguir esperando. */
-class VerificationFailed(message: String) : Exception(message)
+class VerificationFailed(val text: Txt) : Exception(text.toString())
 
 /** No se pudo comprobar el cambio y tampoco que se deshiciera: hay que mirar cómo quedó el router. */
-class ChangeUncertainException : UserFacing, Exception(
-    "No se pudo comprobar que el cambio funcionara y el router no confirmó que lo deshiciera. " +
-        "Revisa cómo quedó antes de volver a intentarlo.",
-)
+class ChangeUncertainException : Exception(UNCERTAIN.toString()), UserFacing {
+    override val text: Txt get() = UNCERTAIN
+}
+
+private val UNCERTAIN = txt(R.string.parental_error_uncertain)
+
+/** Para el registro: el texto tal cual si no se traduce; si no, el recurso y sus datos. */
+private fun logMessage(text: Txt): String = (text as? Txt.Raw)?.text ?: text.toString()
 
 /** Falla si hay un `uci apply` pendiente de otra sesión (ver punto 2). No aplica nada. */
 internal suspend fun UbusSession.ensureNoPendingApply() {
@@ -90,7 +103,7 @@ internal suspend fun UbusSession.ensureNoPendingApply() {
  * Si se cancela la corrutina a mitad, no se confirma nada y el router lo revierte solo.
  */
 internal suspend fun UbusSession.applySafely(
-    failure: String,
+    failure: Txt,
     isReverted: suspend (fresh: UbusSession) -> Boolean,
     /** Lo que haya que hacer nada más aplicar (p. ej. reiniciar una interfaz); si falla, decide [isLive]. */
     afterApply: suspend () -> Unit = {},
@@ -117,7 +130,7 @@ internal suspend fun UbusSession.applySafely(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: VerificationFailed) {
-                reason = e.message ?: failure
+                reason = e.text
                 return@withTimeoutOrNull false
             } catch (_: Exception) {
                 false
@@ -139,6 +152,15 @@ internal suspend fun UbusSession.applySafely(
     }
     uciConfirm()
 }
+
+// TRANSITORIO (fase 2 de los textos): mientras los complementos pasen el fallo en español.
+internal suspend fun UbusSession.applySafely(
+    failure: String,
+    isReverted: suspend (fresh: UbusSession) -> Boolean,
+    afterApply: suspend () -> Unit = {},
+    afterRevert: suspend () -> Unit = {},
+    isLive: suspend () -> Boolean,
+) = applySafely(raw(failure), isReverted, afterApply, afterRevert, isLive)
 
 /**
  * Mientras el apply sigue pendiente, rpcd da esta misma sesión a cualquier login del usuario: hasta

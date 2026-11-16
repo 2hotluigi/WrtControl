@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.parental.Access
 import dev.angel.wrtcontrol.parental.ContentFilter
 import dev.angel.wrtcontrol.parental.FilterLevel
@@ -13,7 +14,7 @@ import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.effectiveBlocks
 import dev.angel.wrtcontrol.parental.nextBlock
 import dev.angel.wrtcontrol.parental.withoutExpired
-import dev.angel.wrtcontrol.ui.parental.AccessText
+import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ui.parental.ExtraOption
 import dev.angel.wrtcontrol.ui.parental.accessText
 import dev.angel.wrtcontrol.ui.parental.extraTimeOptions
@@ -112,28 +113,29 @@ class ExtraTimeTest {
 
     @Test
     fun `estado con tiempo extra`() {
+        val extra = accessText(juan.copy(extraUntil = at(4, 23)), now)
         assertEquals(
-            AccessText("Tiempo extra", false, "Con internet hasta las 23:00; después vuelve su horario."),
-            accessText(juan.copy(extraUntil = at(4, 23)), now),
+            Triple("Tiempo extra", false, "Con internet hasta las 23:00; después vuelve su horario."),
+            Triple(extra.pill.es, extra.blocked, extra.detail?.es),
         )
         assertEquals(
             "Con internet hasta mañana a las 07:00; después vuelve su horario.",
-            accessText(juan.copy(extraUntil = at(5, 7)), now).detail,
+            accessText(juan.copy(extraUntil = at(5, 7)), now).detail?.es,
         )
         // Al vencer vuelve a estar fuera de horario.
-        assertEquals("Fuera de horario", accessText(juan.copy(extraUntil = at(4, 22)), now).pill)
+        assertEquals("Fuera de horario", accessText(juan.copy(extraUntil = at(4, 22)), now).pill.es)
     }
 
     @Test
     fun `opciones de tiempo extra en mitad del horario`() {
         assertEquals(
             listOf(
-                ExtraOption(at(4, 22, 50), "30 minutos más", 30),
-                ExtraOption(at(4, 23, 20), "1 hora más", 60),
-                ExtraOption(at(5, 0, 20), "2 horas más", 120),
-                ExtraOption(at(5, 7), "Hasta mañana a las 07:00, fin del horario"),
+                Triple(at(4, 22, 50), "30 minutos más", 30L),
+                Triple(at(4, 23, 20), "1 hora más", 60L),
+                Triple(at(5, 0, 20), "2 horas más", 120L),
+                Triple(at(5, 7), "Hasta mañana a las 07:00, fin del horario", null),
             ),
-            extraTimeOptions(juan, now),
+            extraTimeOptions(juan, now).es(),
         )
     }
 
@@ -141,18 +143,18 @@ class ExtraTimeTest {
     fun `opciones de tiempo extra - solo las que caben antes del fin del horario`() {
         assertEquals(
             listOf(
-                ExtraOption(at(5, 6), "30 minutos más", 30),
-                ExtraOption(at(5, 6, 30), "1 hora más", 60),
-                ExtraOption(at(5, 7), "Hasta las 07:00, fin del horario"),
+                Triple(at(5, 6), "30 minutos más", 30L),
+                Triple(at(5, 6, 30), "1 hora más", 60L),
+                Triple(at(5, 7), "Hasta las 07:00, fin del horario", null),
             ),
-            extraTimeOptions(juan, at(5, 5, 30)),
+            extraTimeOptions(juan, at(5, 5, 30)).es(),
         )
         assertEquals(
-            listOf(ExtraOption(at(5, 6, 45), "30 minutos más", 30), ExtraOption(at(5, 7), "Hasta las 07:00, fin del horario")),
-            extraTimeOptions(juan, at(5, 6, 15)),
+            listOf(Triple(at(5, 6, 45), "30 minutos más", 30L), Triple(at(5, 7), "Hasta las 07:00, fin del horario", null)),
+            extraTimeOptions(juan, at(5, 6, 15)).es(),
         )
         // Justo 30 minutos antes ya no tiene sentido "30 minutos más": coincide con el fin.
-        assertEquals(listOf(ExtraOption(at(5, 7), "Hasta las 07:00, fin del horario")), extraTimeOptions(juan, at(5, 6, 30)))
+        assertEquals(listOf(Triple(at(5, 7), "Hasta las 07:00, fin del horario", null)), extraTimeOptions(juan, at(5, 6, 30)).es())
     }
 
     @Test
@@ -168,7 +170,7 @@ class ExtraTimeTest {
     fun `opciones de tiempo extra - horarios que se tocan cuentan como uno y sin fracciones de segundo`() {
         val morning = Schedule("m", setOf(THURSDAY), LocalTime.of(7, 0), LocalTime.of(8, 0))
         val p = juan.copy(schedules = listOf(nights, morning))
-        assertEquals(ExtraOption(at(5, 8), "Hasta mañana a las 08:00, fin del horario"), extraTimeOptions(p, now).last())
+        assertEquals(Triple(at(5, 8), "Hasta mañana a las 08:00, fin del horario", null), extraTimeOptions(p, now).es().last())
 
         val options = extraTimeOptions(juan, now.withSecond(15).withNano(500_000_000))
         assertEquals(at(4, 22, 50, 15), options.first().until)
@@ -181,29 +183,29 @@ class ExtraTimeTest {
         assertEquals(listOf(30L, 60L, 120L, null), options.map { it.minutes })
         // Las cortas cuentan desde ahora; al aplicar se recalculan con la hora del router de ese momento.
         for (o in options.filter { it.minutes != null }) assertEquals(now.plusMinutes(o.minutes!!), o.until)
-        assertNull(options.single { it.label.endsWith("fin del horario") }.minutes)
+        assertNull(options.single { it.label.es.endsWith("fin del horario") }.minutes)
         // Por defecto (p. ej. una opción construida a mano), hasta el fin del horario.
-        assertNull(ExtraOption(at(5, 7), "Hasta las 07:00, fin del horario").minutes)
+        assertNull(ExtraOption(at(5, 7), raw("Hasta las 07:00, fin del horario")).minutes)
     }
 
     @Test
     fun `opciones de tiempo extra - un horario que no acaba no ofrece fin del horario`() {
         val always = Schedule("a", DayOfWeek.entries.toSet(), LocalTime.MIDNIGHT, LocalTime.MIDNIGHT)
         val options = extraTimeOptions(juan.copy(schedules = listOf(always)), now)
-        assertTrue(options.toString(), options.none { it.label.endsWith("fin del horario") })
+        assertTrue(options.toString(), options.none { it.label.es.endsWith("fin del horario") })
     }
 
     @Test
     fun `filtro con busqueda segura y YouTube restringido`() {
-        assertEquals("Filtro: búsqueda segura", formatFilter(ContentFilter(safeSearch = true)))
-        assertEquals("el nivel ya la incluye", "Filtro: contenido para adultos", formatFilter(ContentFilter(FilterLevel.Adult, safeSearch = true)))
-        assertEquals("Filtro: YouTube restringido", formatFilter(ContentFilter(youtube = YoutubeMode.Moderate)))
-        assertEquals("YouTube bloqueado del todo", "Filtro: YouTube", formatFilter(ContentFilter(services = setOf("youtube"), youtube = YoutubeMode.Strict)))
+        assertEquals("Filtro: búsqueda segura", formatFilter(ContentFilter(safeSearch = true))?.es)
+        assertEquals("el nivel ya la incluye", "Filtro: contenido para adultos", formatFilter(ContentFilter(FilterLevel.Adult, safeSearch = true))?.es)
+        assertEquals("Filtro: YouTube restringido", formatFilter(ContentFilter(youtube = YoutubeMode.Moderate))?.es)
+        assertEquals("YouTube bloqueado del todo", "Filtro: YouTube", formatFilter(ContentFilter(services = setOf("youtube"), youtube = YoutubeMode.Strict))?.es)
         assertEquals(
             "Filtro: búsqueda segura · YouTube restringido · TikTok · 2 sitios",
-            formatFilter(ContentFilter(services = setOf("tiktok"), domains = listOf("a.com", "b.com"), safeSearch = true, youtube = YoutubeMode.Strict)),
+            formatFilter(ContentFilter(services = setOf("tiktok"), domains = listOf("a.com", "b.com"), safeSearch = true, youtube = YoutubeMode.Strict))?.es,
         )
-        assertEquals("Filtro: estricto · YouTube restringido", formatFilter(ContentFilter(FilterLevel.Strict, youtube = YoutubeMode.Strict)))
+        assertEquals("Filtro: estricto · YouTube restringido", formatFilter(ContentFilter(FilterLevel.Strict, youtube = YoutubeMode.Strict))?.es)
         assertNull(formatFilter(ContentFilter()))
     }
 
@@ -219,3 +221,6 @@ class ExtraTimeTest {
         assertEquals("bloqueado del todo", YoutubeMode.Off, ContentFilter(services = setOf("youtube"), youtube = YoutubeMode.Strict).effectiveYoutube)
     }
 }
+
+/** Las opciones como (hasta, texto en español, minutos), para compararlas. */
+private fun List<ExtraOption>.es() = map { Triple(it.until, it.label.es, it.minutes) }

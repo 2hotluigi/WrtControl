@@ -1,12 +1,13 @@
 package dev.angel.wrtcontrol.ui.parental
 
-import dev.angel.wrtcontrol.Txt
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
@@ -19,6 +20,7 @@ import dev.angel.wrtcontrol.parental.backupJson
 import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.parental.parseBackup
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.Loadable
 import dev.angel.wrtcontrol.ui.pollingFlow
 import dev.angel.wrtcontrol.ui.userMessage
@@ -107,7 +109,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
 
     /** Qué se está aplicando ahora mismo en el router (null si nada). */
-    var busy by mutableStateOf<String?>(null)
+    var busy by mutableStateOf<Txt?>(null)
         private set
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
@@ -121,7 +123,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
      * perfil, pasa a este: cada dispositivo pertenece a un solo perfil. Del editor solo se toma lo
      * que edita: la pausa y el tiempo extra pueden haber cambiado mientras estaba abierto.
      */
-    fun save(profile: Profile, onSaved: () -> Unit) = run("Guardando «${profile.name}»…", onSaved) { api ->
+    fun save(profile: Profile, onSaved: () -> Unit) = run(txt(R.string.parental_busy_saving, profile.name), onSaved) { api ->
         val moved = profile.macs.toSet()
         api.parental.updateProfiles(phoneMacs()) { profiles, _ ->
             val current = profiles.firstOrNull { it.id == profile.id }
@@ -136,12 +138,12 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         }
     }
 
-    fun delete(profile: Profile, onDeleted: () -> Unit) = run("Eliminando «${profile.name}»…", onDeleted) { api ->
+    fun delete(profile: Profile, onDeleted: () -> Unit) = run(txt(R.string.parental_busy_deleting, profile.name), onDeleted) { api ->
         api.parental.updateProfiles(phoneMacs()) { profiles, _ -> profiles.filter { it.id != profile.id } }
     }
 
     /** [minutes] null: hasta que se reanude a mano. La hora de fin se calcula con el reloj del router. */
-    fun pause(profile: Profile, minutes: Long?) = run("Pausando internet de «${profile.name}»…") { api ->
+    fun pause(profile: Profile, minutes: Long?) = run(txt(R.string.parental_busy_pausing, profile.name)) { api ->
         api.parental.updateProfiles(phoneMacs()) { profiles, now ->
             profiles.map {
                 if (it.id != profile.id) it
@@ -150,7 +152,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         }
     }
 
-    fun resume(profile: Profile) = run("Reanudando internet de «${profile.name}»…") { api ->
+    fun resume(profile: Profile) = run(txt(R.string.parental_busy_resuming, profile.name)) { api ->
         api.parental.updateProfiles(phoneMacs()) { profiles, _ -> profiles.map { if (it.id == profile.id) it.copy(pause = null) else it } }
     }
 
@@ -159,7 +161,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
      * en curso, y se calcula con la hora del router al aplicar. null lo quita.
      */
     fun extraTime(profile: Profile, option: ExtraOption?) {
-        val label = if (option == null) "Quitando el tiempo extra de «${profile.name}»…" else "Dando tiempo extra a «${profile.name}»…"
+        val label = txt(if (option == null) R.string.parental_busy_extra_removing else R.string.parental_busy_extra_giving, profile.name)
         run(label) { api ->
             api.parental.updateProfiles(phoneMacs()) { profiles, now ->
                 profiles.map { p ->
@@ -183,7 +185,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
      */
     fun setQuarantine(on: Boolean) {
         val known = devices.map { it.mac }
-        run(if (on) "Activando la cuarentena de dispositivos nuevos…" else "Desactivando la cuarentena…") { api ->
+        run(txt(if (on) R.string.parental_busy_quarantine_on else R.string.parental_busy_quarantine_off)) { api ->
             api.parental.update(phoneMacs()) { config, _ ->
                 val first = config.settings.approved.isEmpty()
                 val approved = if (on && first) (config.settings.approved + known).distinct().sorted() else config.settings.approved
@@ -197,7 +199,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     /** Aprueba una MAC escrita a mano (un equipo que no aparece en la lista). */
     fun approveMac(mac: String, label: String = mac) {
         val clean = normalizeMac(mac) ?: return
-        run("Aprobando «$label»…") { api ->
+        run(txt(R.string.parental_busy_approving, label)) { api ->
             api.parental.update(phoneMacs()) { config, _ ->
                 config.copy(settings = config.settings.copy(approved = (config.settings.approved + clean).distinct().sorted()))
             }
@@ -207,7 +209,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     /** Marca [mac] como teléfono con la app (p. ej. el de otro padre que está en un perfil protegido). */
     fun addAdmin(mac: String) {
         val clean = normalizeMac(mac) ?: return
-        run("Añadiendo el teléfono…") { api ->
+        run(txt(R.string.parental_busy_adding_phone)) { api ->
             api.parental.update(phoneMacs()) { config, _ ->
                 config.copy(settings = config.settings.copy(admins = (config.settings.admins + clean).distinct().sorted()))
             }
@@ -215,26 +217,28 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     /** Quita la aprobación de [mac] (o deja de tratarlo como teléfono con la app): con la cuarentena, se queda sin internet. */
-    fun unapprove(mac: String) = run("Quitando la aprobación…") { api ->
+    fun unapprove(mac: String) = run(txt(R.string.parental_busy_unapproving)) { api ->
         api.parental.update(phoneMacs()) { config, _ ->
             config.copy(settings = config.settings.copy(approved = config.settings.approved - mac, admins = config.settings.admins - mac))
         }
     }
 
     /** Pasa [device] a [profile] (y deja de estar en cuarentena). */
-    fun assign(device: Device, profile: Profile) = run("Pasando «${device.name ?: device.mac}» a «${profile.name}»…") { api ->
-        api.parental.updateProfiles(phoneMacs()) { profiles, _ ->
-            profiles.map {
-                when (it.id) {
-                    profile.id -> it.copy(macs = (it.macs + device.mac).distinct().sorted())
-                    else -> it.copy(macs = it.macs - device.mac)
+    fun assign(device: Device, profile: Profile) {
+        run(txt(R.string.parental_busy_assigning, device.name ?: device.mac, profile.name)) { api ->
+            api.parental.updateProfiles(phoneMacs()) { profiles, _ ->
+                profiles.map {
+                    when (it.id) {
+                        profile.id -> it.copy(macs = (it.macs + device.mac).distinct().sorted())
+                        else -> it.copy(macs = it.macs - device.mac)
+                    }
                 }
             }
         }
     }
 
     /** Sustituye lo que haya en el router por la copia. */
-    fun restore(backup: ParentalConfig) = run("Restaurando los perfiles…") { api ->
+    fun restore(backup: ParentalConfig) = run(txt(R.string.parental_busy_restoring)) { api ->
         val result = api.parental.update(phoneMacs()) { _, _ -> backup }
         routerKey?.let { repo.setBackupPending(it, false) }
         result
@@ -252,18 +256,18 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     /** Vuelve a escribir y cargar las reglas aunque la configuración no haya cambiado. */
-    fun reapply() = run("Volviendo a aplicar las reglas…") { api ->
+    fun reapply() = run(txt(R.string.parental_busy_reapplying)) { api ->
         api.parental.update(phoneMacs(), force = true) { config, _ -> config }
     }
 
-    fun useZone(zone: ZoneId) = run("Cambiando la zona horaria del router…") { api ->
+    fun useZone(zone: ZoneId) = run(txt(R.string.parental_busy_timezone)) { api ->
         api.parental.setTimezone(zone.id, zone.rules.getOffset(Instant.now()).totalSeconds, phoneMacs())
         null
     }
 
     fun changePassword(password: String, onDone: () -> Unit) {
         if (busy != null) return
-        busy = "Cambiando la contraseña del router…"
+        busy = txt(R.string.parental_busy_password)
         error = null
         viewModelScope.launch {
             try {
@@ -290,7 +294,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     /** [block] devuelve la configuración que quedó en el router (para la copia), o null. */
-    private fun run(label: String, onSuccess: () -> Unit = {}, block: suspend (OpenWrtApi) -> ParentalConfig?) {
+    private fun run(label: Txt, onSuccess: () -> Unit = {}, block: suspend (OpenWrtApi) -> ParentalConfig?) {
         if (busy != null) return
         busy = label
         error = null

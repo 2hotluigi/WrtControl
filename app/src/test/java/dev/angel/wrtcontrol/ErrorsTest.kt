@@ -69,7 +69,7 @@ class ErrorsTest {
     fun `los errores escritos para el usuario se muestran tal cual`() {
         val reverted = ChangeRevertedException("El cliente perdió internet, así que se deshizo.")
         assertEquals(reverted.message, describeError(reverted).es)
-        assertEquals(PendingChangeException().message, describeError(PendingChangeException()).es)
+        assertTrue(describeError(PendingChangeException()).es.contains("otro cambio pendiente"))
         assertEquals("Hola.", describeError(UbusException.Refused("Hola.")).es)
         assertEquals("Escribe algo.", describeError(UserFacingException("Escribe algo.")).es)
         // También envueltos en un fallo de red (p. ej. el acceso remoto que no conecta).

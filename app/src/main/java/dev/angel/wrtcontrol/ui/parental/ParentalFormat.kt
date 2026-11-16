@@ -1,5 +1,9 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import androidx.annotation.StringRes
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.joinTxt
 import dev.angel.wrtcontrol.parental.Access
 import dev.angel.wrtcontrol.parental.ContentFilter
 import dev.angel.wrtcontrol.parental.FilterLevel
@@ -10,6 +14,9 @@ import dev.angel.wrtcontrol.parental.YoutubeMode
 import dev.angel.wrtcontrol.parental.access
 import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.nextBlock
+import dev.angel.wrtcontrol.plural
+import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.txt
 import java.time.DayOfWeek
 import java.time.DayOfWeek.FRIDAY
 import java.time.DayOfWeek.MONDAY
@@ -33,122 +40,170 @@ private val SCHOOL_NIGHTS = setOf(SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY)
 
 private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 
-/** Inicial del día (la del miércoles es X para no confundirla con la del martes). */
-fun DayOfWeek.letter(): String = when (this) {
-    MONDAY -> "L"
-    TUESDAY -> "M"
-    WEDNESDAY -> "X"
-    THURSDAY -> "J"
-    FRIDAY -> "V"
-    SATURDAY -> "S"
-    SUNDAY -> "D"
+/** Inicial del día (en español, la del miércoles es X para no confundirla con la del martes). */
+fun DayOfWeek.letter(): Txt = txt(
+    when (this) {
+        MONDAY -> R.string.parental_day_letter_monday
+        TUESDAY -> R.string.parental_day_letter_tuesday
+        WEDNESDAY -> R.string.parental_day_letter_wednesday
+        THURSDAY -> R.string.parental_day_letter_thursday
+        FRIDAY -> R.string.parental_day_letter_friday
+        SATURDAY -> R.string.parental_day_letter_saturday
+        SUNDAY -> R.string.parental_day_letter_sunday
+    },
+)
+
+/** "sábado" (en español en minúscula, como va en mitad de una frase). */
+fun DayOfWeek.dayName(): Txt = txt(
+    when (this) {
+        MONDAY -> R.string.parental_day_monday
+        TUESDAY -> R.string.parental_day_tuesday
+        WEDNESDAY -> R.string.parental_day_wednesday
+        THURSDAY -> R.string.parental_day_thursday
+        FRIDAY -> R.string.parental_day_friday
+        SATURDAY -> R.string.parental_day_saturday
+        SUNDAY -> R.string.parental_day_sunday
+    },
+)
+
+/** lun, mar, mié...; con [first], como empieza una lista (Lun). */
+private fun DayOfWeek.short(first: Boolean): Txt = txt(if (first) shortFirstRes() else shortRes())
+
+private fun DayOfWeek.shortRes(): Int = when (this) {
+    MONDAY -> R.string.parental_day_short_monday
+    TUESDAY -> R.string.parental_day_short_tuesday
+    WEDNESDAY -> R.string.parental_day_short_wednesday
+    THURSDAY -> R.string.parental_day_short_thursday
+    FRIDAY -> R.string.parental_day_short_friday
+    SATURDAY -> R.string.parental_day_short_saturday
+    SUNDAY -> R.string.parental_day_short_sunday
 }
 
-fun DayOfWeek.spanishName(): String = when (this) {
-    MONDAY -> "lunes"
-    TUESDAY -> "martes"
-    WEDNESDAY -> "miércoles"
-    THURSDAY -> "jueves"
-    FRIDAY -> "viernes"
-    SATURDAY -> "sábado"
-    SUNDAY -> "domingo"
+private fun DayOfWeek.shortFirstRes(): Int = when (this) {
+    MONDAY -> R.string.parental_day_short_first_monday
+    TUESDAY -> R.string.parental_day_short_first_tuesday
+    WEDNESDAY -> R.string.parental_day_short_first_wednesday
+    THURSDAY -> R.string.parental_day_short_first_thursday
+    FRIDAY -> R.string.parental_day_short_first_friday
+    SATURDAY -> R.string.parental_day_short_first_saturday
+    SUNDAY -> R.string.parental_day_short_first_sunday
 }
 
-private fun DayOfWeek.short(): String = spanishName().take(3) // lun, mar, mié, jue, vie, sáb, dom
-
-fun formatDays(days: Set<DayOfWeek>): String = when (days) {
-    WEEK.toSet() -> "Todos los días"
-    WEEKDAYS -> "Lunes a viernes"
-    WEEKEND -> "Fin de semana"
-    SCHOOL_NIGHTS -> "Domingo a jueves"
-    else -> WEEK.filter { it in days }.joinToString(", ") { it.short() }.replaceFirstChar { it.titlecase(Locale.ROOT) }
+fun formatDays(days: Set<DayOfWeek>): Txt = when (days) {
+    WEEK.toSet() -> txt(R.string.parental_days_every)
+    WEEKDAYS -> txt(R.string.parental_days_weekdays)
+    WEEKEND -> txt(R.string.parental_days_weekend)
+    SCHOOL_NIGHTS -> txt(R.string.parental_days_school_nights)
+    else -> WEEK.filter { it in days }.mapIndexed { i, day -> day.short(first = i == 0) }.joinTxt(", ")
 }
 
 fun formatHour(time: LocalTime): String = time.format(HOUR)
 
 /** "Lunes a viernes · 21:00 → 07:00 del día siguiente" */
-fun formatSchedule(s: Schedule): String {
+fun formatSchedule(s: Schedule): Txt {
     val hours = when {
-        s.allDay -> "todo el día"
-        s.overnight -> "${formatHour(s.start)} → ${formatHour(s.end)} del día siguiente"
-        else -> "${formatHour(s.start)} → ${formatHour(s.end)}"
+        s.allDay -> txt(R.string.parental_hours_all_day)
+        s.overnight -> txt(R.string.parental_hours_overnight, formatHour(s.start), formatHour(s.end))
+        else -> raw("${formatHour(s.start)} → ${formatHour(s.end)}")
     }
-    return "${formatDays(s.days)} · $hours"
+    return listOf(formatDays(s.days), hours).joinTxt(" · ")
 }
 
 /** "hoy a las 21:00", "mañana a las 07:00", "el sábado a las 09:00" (respecto a [now]). */
-fun formatWhen(target: LocalDateTime, now: LocalDateTime): String {
-    val hour = "las ${formatHour(target.toLocalTime())}"
-    return when (val days = ChronoUnit.DAYS.between(now.toLocalDate(), target.toLocalDate())) {
-        0L -> "hoy a $hour"
-        1L -> "mañana a $hour"
-        in 2L..6L -> "el ${target.dayOfWeek.spanishName()} a $hour"
-        else -> "el ${target.toLocalDate()} a $hour" // no debería pasar: los bloqueos se miran a una semana
+fun formatWhen(target: LocalDateTime, now: LocalDateTime): Txt =
+    relative(target, now, R.string.parental_when_today, R.string.parental_when_tomorrow, R.string.parental_when_day)
+
+/** Para "hasta …": "las 19:30" si es hoy, "mañana a las 07:00", "el sábado a las 09:00". */
+fun formatUntil(target: LocalDateTime, now: LocalDateTime): Txt =
+    relative(target, now, R.string.parental_until_today, R.string.parental_until_tomorrow, R.string.parental_until_day)
+
+private fun relative(
+    target: LocalDateTime,
+    now: LocalDateTime,
+    @StringRes today: Int,
+    @StringRes tomorrow: Int,
+    @StringRes day: Int,
+): Txt {
+    val hour = formatHour(target.toLocalTime())
+    return when (ChronoUnit.DAYS.between(now.toLocalDate(), target.toLocalDate())) {
+        0L -> txt(today, hour)
+        1L -> txt(tomorrow, hour)
+        in 2L..6L -> txt(day, target.dayOfWeek.dayName(), hour)
+        else -> txt(day, target.toLocalDate().toString(), hour) // no debería pasar: los bloqueos se miran a una semana
     }
 }
 
-/** Para "hasta …": "las 19:30" si es hoy; si no, como [formatWhen]. */
-fun formatUntil(target: LocalDateTime, now: LocalDateTime): String =
-    if (target.toLocalDate() == now.toLocalDate()) "las ${formatHour(target.toLocalTime())}" else formatWhen(target, now)
+fun FilterLevel.title(): Txt = txt(
+    when (this) {
+        FilterLevel.None -> R.string.parental_filter_none
+        FilterLevel.Adult -> R.string.parental_filter_adult
+        FilterLevel.Strict -> R.string.parental_filter_strict
+    },
+)
 
-fun FilterLevel.title(): String = when (this) {
-    FilterLevel.None -> "Sin filtro"
-    FilterLevel.Adult -> "Contenido para adultos"
-    FilterLevel.Strict -> "Estricto"
-}
-
-fun FilterLevel.description(): String = when (this) {
-    FilterLevel.None -> "Solo se bloquean los servicios y sitios que elijas abajo."
-    FilterLevel.Adult ->
-        "Bloquea sitios para adultos y de malware, y fuerza la búsqueda segura de Google, Bing y DuckDuckGo. Usa el DNS para familias de Cloudflare."
-    FilterLevel.Strict ->
-        "Además fuerza el modo restringido de YouTube y bloquea VPN y proxys. Usa CleanBrowsing."
-}
+fun FilterLevel.description(): Txt = txt(
+    when (this) {
+        FilterLevel.None -> R.string.parental_filter_none_description
+        FilterLevel.Adult -> R.string.parental_filter_adult_description
+        FilterLevel.Strict -> R.string.parental_filter_strict_description
+    },
+)
 
 /** "Filtro: contenido para adultos · TikTok, Roblox · 2 sitios", o null sin filtro. */
-fun formatFilter(filter: ContentFilter): String? {
+fun formatFilter(filter: ContentFilter): Txt? {
     if (!filter.active) return null
     val parts = buildList {
-        if (filter.level != FilterLevel.None) add(filter.level.title().lowercase(Locale.ROOT))
-        if (filter.safeSearch && filter.level == FilterLevel.None) add("búsqueda segura")
-        if (filter.youtube != YoutubeMode.Off && "youtube" !in filter.services) add("YouTube restringido")
-        val names = SERVICES.filter { it.id in filter.services }.map { it.name }
-        if (names.isNotEmpty()) add(names.joinToString(", "))
-        when (val n = filter.domains.size) {
-            0 -> {}
-            1 -> add("1 sitio")
-            else -> add("$n sitios")
+        when (filter.level) {
+            FilterLevel.None -> if (filter.safeSearch) add(txt(R.string.parental_filter_summary_safe_search))
+            FilterLevel.Adult -> add(txt(R.string.parental_filter_summary_adult))
+            FilterLevel.Strict -> add(txt(R.string.parental_filter_summary_strict))
         }
+        if (filter.youtube != YoutubeMode.Off && "youtube" !in filter.services) add(txt(R.string.parental_filter_summary_youtube))
+        // Nombres propios: no se traducen.
+        val names = SERVICES.filter { it.id in filter.services }.map { it.name }
+        if (names.isNotEmpty()) add(raw(names.joinToString(", ")))
+        val sites = filter.domains.size
+        if (sites > 0) add(plural(R.plurals.parental_filter_summary_sites, sites, sites))
     }
-    return "Filtro: " + parts.joinToString(" · ")
+    return txt(R.string.parental_filter_summary, parts.joinTxt(" · "))
 }
 
 /** Etiqueta corta, si bloquea (null: no aplica) y frase con el detalle. */
-data class AccessText(val pill: String, val blocked: Boolean?, val detail: String?)
+data class AccessText(val pill: Txt, val blocked: Boolean?, val detail: Txt?)
 
 fun accessText(profile: Profile, now: LocalDateTime): AccessText = when (val a = profile.access(now)) {
-    Access.NoDevices -> AccessText("Sin dispositivos", null, "Asígnale dispositivos para que las reglas tengan efecto.")
+    Access.NoDevices -> AccessText(txt(R.string.parental_access_no_devices), null, txt(R.string.parental_access_no_devices_detail))
     is Access.Paused -> AccessText(
-        "En pausa", true,
-        a.until?.let { "Sin internet hasta ${formatUntil(it, now)}." } ?: "Sin internet hasta que lo reanudes.",
+        txt(R.string.parental_access_paused),
+        true,
+        a.until?.let { txt(R.string.parental_access_offline_until, formatUntil(it, now)) }
+            ?: txt(R.string.parental_access_paused_indefinite),
     )
-    is Access.Blocked -> AccessText("Fuera de horario", true, "Sin internet hasta ${formatUntil(a.until, now)}.")
-    is Access.ExtraTime -> AccessText("Tiempo extra", false, "Con internet hasta ${formatUntil(a.until, now)}; después vuelve su horario.")
-    Access.Allowed -> AccessText("Con internet", false, profile.nextBlock(now)?.let { "Próximo bloqueo: ${formatWhen(it, now)}." })
+    is Access.Blocked ->
+        AccessText(txt(R.string.parental_access_blocked), true, txt(R.string.parental_access_offline_until, formatUntil(a.until, now)))
+    is Access.ExtraTime ->
+        AccessText(txt(R.string.parental_access_extra), false, txt(R.string.parental_access_extra_detail, formatUntil(a.until, now)))
+    Access.Allowed -> AccessText(
+        txt(R.string.parental_access_allowed),
+        false,
+        profile.nextBlock(now)?.let { txt(R.string.parental_access_next_block, formatWhen(it, now)) },
+    )
 }
 
-fun YoutubeMode.title(): String = when (this) {
-    YoutubeMode.Off -> "Sin restricción"
-    YoutubeMode.Moderate -> "Moderado"
-    YoutubeMode.Strict -> "Estricto"
-}
+fun YoutubeMode.title(): Txt = txt(
+    when (this) {
+        YoutubeMode.Off -> R.string.parental_youtube_off
+        YoutubeMode.Moderate -> R.string.parental_youtube_moderate
+        YoutubeMode.Strict -> R.string.parental_youtube_strict
+    },
+)
 
 /**
  * Opción del diálogo de tiempo extra: hasta cuándo (hora del router, para mostrar), [minutes]
  * desde ahora o, si es null, hasta el final del horario en curso. Al aplicar se recalcula con la
  * hora del router en ese momento.
  */
-data class ExtraOption(val until: LocalDateTime, val label: String, val minutes: Long? = null)
+data class ExtraOption(val until: LocalDateTime, val label: Txt, val minutes: Long? = null)
 
 /**
  * Tiempo extra que se puede dar ahora: 30 min, 1 h o 2 h (si caben antes de que acabe el
@@ -157,11 +212,19 @@ data class ExtraOption(val until: LocalDateTime, val label: String, val minutes:
 fun extraTimeOptions(profile: Profile, now: LocalDateTime): List<ExtraOption> {
     val end = profile.blockedIntervals(now.toLocalDate()).firstOrNull { !now.isBefore(it.start) && now.isBefore(it.end) }?.end
         ?: return emptyList()
-    val short = listOf(30L to "30 minutos más", 60L to "1 hora más", 120L to "2 horas más")
+    val short = listOf(
+        30L to plural(R.plurals.parental_extra_minutes, 30, 30),
+        60L to plural(R.plurals.parental_extra_hours, 1, 1),
+        120L to plural(R.plurals.parental_extra_hours, 2, 2),
+    )
         .map { (minutes, label) -> ExtraOption(now.plusMinutes(minutes).withNano(0), label, minutes) }
         .filter { it.until.isBefore(end) }
     // Un horario que no acaba (todos los días, todo el día) "termina" en el límite de lo que se
     // calcula: ofrecerlo daría días de internet presentados como el fin del horario.
-    val untilEnd = if (end.isAfter(now.plusDays(1))) emptyList() else listOf(ExtraOption(end, "Hasta ${formatUntil(end, now)}, fin del horario"))
+    val untilEnd = if (end.isAfter(now.plusDays(1))) {
+        emptyList()
+    } else {
+        listOf(ExtraOption(end, txt(R.string.parental_extra_until_end, formatUntil(end, now))))
+    }
     return short + untilEnd
 }
