@@ -88,6 +88,8 @@ cambia respecto a la VM:
   (`WRTCONTROL_SSH_OPTS=-i ~/.ssh/clave -o IdentitiesOnly=yes`).
 - A distancia, por un WireGuard propio del router: si el router tiene un túnel WireGuard que no es
   el de la app, la prueba que desinstala WireGuard se salta (dejaría fuera a quien la lanza).
+- Las pruebas dejan cada función como al instalar el paquete. Si el router ya usa el DNS dinámico,
+  el acceso remoto o UPnP de la app, esas pruebas se saltan para no borrar la configuración de verdad.
 
 ```sh
 ssh root@192.168.8.1 'apk add ip-full kmod-veth socat miniupnpc'
@@ -388,6 +390,15 @@ con CGNAT solo queda la IPv6. Se publica la dirección de la interfaz que la ten
 hay prefijo delegado, la de la LAN, que netifd da en `ipv6-prefix-assignment`). Hasta 24.10 ddns no
 es un servicio de procd: aplicar no lo recarga, así que la app lo reinicia y mira el pid en
 `luci.ddns`. Del registro de ddns-scripts se sacan la última IP enviada y el último fallo posterior.
+
+ddns-scripts solo actualiza la familia de cada sección: el otro registro se queda como estuviera
+(DuckDNS pone un A con la IPv4 de quien crea el nombre; tras pasar a CGNAT queda la IPv4 de antes), y
+los clientes que prefieren IPv4, como WireGuard en Windows, van a una dirección que no es la de casa.
+Por eso, al guardar, el teléfono avisa él mismo al proveedor por internet (no por el túnel) con las
+direcciones que va a publicar el router y borra la otra familia: DuckDNS con `clear=true` y después
+las buenas, deSEC con el valor vacío (`myipv4=`) y dynv6 con `ipv4=-` (el AAAA no se puede borrar por
+su API: se avisa). Si el proveedor rechaza el nombre o el token, no se toca el router; si no se llega
+a él, se configura igual y se avisa. Con una URL propia no se sabe cómo, y no se hace.
 
 **El túnel en la app.** `tunnel/` es wireguard-go con la pila TCP/IP de gVisor (netstack): no hay
 interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y solo la app pasa por

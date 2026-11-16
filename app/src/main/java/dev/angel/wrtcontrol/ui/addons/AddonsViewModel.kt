@@ -114,6 +114,9 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     /** Error de la última acción, hasta que el usuario lo cierre o haga otra. */
     var error by mutableStateOf<String?>(null)
 
+    /** Aviso de una acción que salió bien pero con algo que saber (p. ej. del DNS dinámico). */
+    var notice by mutableStateOf<String?>(null)
+
     fun install(addon: Addon, tool: PackageTool) =
         run("Instalando ${addon.title}… Puede tardar hasta un minuto.", packagesChanged = true) { it.addons.install(addon, tool) }
 
@@ -186,7 +189,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     fun saveDdns(edit: DdnsEdit, onDone: () -> Unit = {}) =
-        run("Configurando el DNS dinámico…", onSuccess = onDone) { it.addons.saveDdns(edit) }
+        run("Configurando el DNS dinámico…", onSuccess = onDone) { notice = it.addons.saveDdns(edit) }
 
     fun removeDdns() = run("Quitando el DNS dinámico…") { it.addons.removeDdns() }
 
@@ -202,6 +205,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
         if (busy != null) return
         busy = label
         error = null
+        notice = null
         viewModelScope.launch {
             try {
                 repo.use { block(it) }

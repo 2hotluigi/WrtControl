@@ -57,6 +57,10 @@ Cambiar la cara, no el motor.
 - **Inicio = salud de la red:** internet sí/no y desde cuándo, dispositivos conectados, avisos
   (dispositivos nuevos en cuarentena, router sin contraseña, reglas no activas) y accesos rápidos
   ("Pausar a…", "Wi-Fi de invitados").
+- **Salud del cable de internet:** caídas del enlace WAN y velocidad negociada (netifd por ubus:
+  `carrier`, `speed`; el registro del sistema para contarlas). En el GL-MT6000 un cable con un par
+  dañado tiraba la WAN cada pocos minutos y la dejaba a 100 Mbps, y parecía un fallo de la app:
+  "tu cable de internet se desconectó 13 veces en 10 minutos y va a 100 Mbps: cámbialo".
 - **Sistema de diseño propio** en lugar del color dinámico: paleta y tipografía de marca, iconos por
   tipo de dispositivo, animaciones de aplicar/verificar/confirmar, estados vacíos ilustrados.
   Pruebas de capturas (Roborazzi o Paparazzi) desde el primer componente.
@@ -80,12 +84,29 @@ Cambiar la cara, no el motor.
 - **Centro de seguridad:** contraseña del router, servicios abiertos hacia la WAN, puertos abiertos
   por UPnP, firmware antiguo, reglas activas. Una puntuación y acciones de un toque.
 - **Funciones por resultado** en lugar de paquetes: "Entrar desde fuera de casa" (WireGuard),
-  "Juegos y videollamadas sin lag" (SQM, midiendo la velocidad en vez de pedirla), "Nombre fijo
+  "Juegos y videollamadas sin lag" (SQM, midiendo la velocidad en vez de pedirla, desde el
+  teléfono: medida desde el propio router la limita su CPU, 189 Mbit/s en una línea de 300), "Nombre fijo
   para tu casa" (DDNS), "Bloquear anuncios en toda la red".
 - **Copia de seguridad y restauración** de la configuración del router.
 - **Control parental:** categorías, plantillas por edad, "permitir este sitio", diagnóstico de
   "¿por qué no carga?", dificultar VPN, horarios por servicio y modo tareas.
-- **Acceso remoto:** probarlo con un teléfono de verdad en datos móviles con IPv6.
+- **Acceso remoto, que valga para cualquier conexión** (no solo IPv6 tras un módem):
+  - ~~El DNS dinámico borra en el proveedor la familia que no publica: DuckDNS deja un A con la IPv4
+    de quien crea el nombre, y WireGuard en Windows prefiere ese A viejo~~ (hecho: el teléfono avisa
+    al proveedor al guardar; dynv6 no deja borrar el AAAA y se avisa).
+  - **"¿Se llega desde fuera?":** saludo de WireGuard por IPv6 y por IPv4 desde los datos móviles
+    (`requestNetwork` con `TRANSPORT_CELLULAR`) sin salir del Wi-Fi de casa. Decide qué familias
+    publicar y explica el fallo. Sustituye a "probarlo con un teléfono en datos móviles".
+  - **Módem del proveedor que filtra lo que entra** (el ONT de Megacable con el cortafuegos por
+    defecto descarta todo el IPv6 entrante): detectarlo con la prueba anterior y explicar qué tocar
+    (nivel del cortafuegos IPv6, DMZ hacia el router).
+  - **Doble NAT** (el router detrás de otro, con la WAN en 192.168.x): hoy no publica IPv4. Si el de
+    arriba tiene DMZ o el puerto abierto, publicar la IPv4 pública vista desde internet
+    (`ip_source=web`) solo cuando la prueba desde fuera confirme que entra. Con CGNAT, IPv6 o el
+    servidor intermedio del Hito 3.
+- **IPv6 sin delegación de prefijo** (Megacable y otros dan una sola /64 en la WAN): detectarlo y
+  ofrecer relay de la /64 a la LAN (odhcpd ra/dhcpv6/ndp relay y `sourcefilter=0` en wan6), con
+  NAT66 de respaldo. Probado a mano en el GL-MT6000.
 - **Claves:** generar la del teléfono en el AAR de Go (curve25519 de wireguard-go) en lugar del
   X25519 propio en Kotlin.
 
@@ -109,4 +130,7 @@ Cambiar la cara, no el motor.
   Multiplatform.
 - Widgets y accesos directos (pausar internet, compartir el Wi-Fi de invitados).
 - Laboratorio de hardware: un MT7621 de 128 MB, un Filogic (OpenWrt One, AX3000T o GL.iNet) y un
-  x86, para probar instalación de paquetes, memoria y rendimiento.
+  x86, para probar instalación de paquetes, memoria y rendimiento. Ya hay un GL-MT6000 (Filogic,
+  25.12.6) en uso en una casa, al que se llega por un túnel de desarrollo: las pruebas de VM valen
+  para él y se saltan lo que borraría una configuración en uso (WireGuard, DNS dinámico, acceso
+  remoto, UPnP).

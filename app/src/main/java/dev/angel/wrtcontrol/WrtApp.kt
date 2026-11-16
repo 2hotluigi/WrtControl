@@ -4,15 +4,16 @@ import android.app.Application
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import dev.angel.wrtcontrol.data.AppSettings
+import dev.angel.wrtcontrol.data.OkHttpDdns
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.data.RouterStore
 import dev.angel.wrtcontrol.data.RouterTransport
-import dev.angel.wrtcontrol.data.tunnelEngine
-import kotlinx.coroutines.delay
 import dev.angel.wrtcontrol.data.SecretBox
+import dev.angel.wrtcontrol.data.tunnelEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -49,7 +50,12 @@ class WrtApp : Application() {
             .dns(transport.dns)
             .addInterceptor(transport.interceptor)
             .build()
-        repository = RouterRepository(RouterStore(this, SecretBox()), http, transport)
+        // Directo a internet, sin el túnel: para el proveedor del DNS dinámico.
+        val direct = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
+        repository = RouterRepository(RouterStore(this, SecretBox()), http, transport, OkHttpDdns(direct))
         // Con el túnel puesto: quitarlo si lleva un rato sin usarse o si ya no contesta el router.
         appScope.launch(Dispatchers.IO) {
             while (true) {

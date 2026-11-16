@@ -102,6 +102,11 @@ fun AddonsScreen(address: String) {
                 vm.busy?.let { item { BusyBanner(it) } }
                 if (installing == null && editingSqm == null && !newSqm && !editingDdns) {
                     vm.error?.let { item { DismissibleError(it) { vm.error = null } } }
+                    vm.notice?.let { notice ->
+                        item {
+                            NoticeCard("DNS dinámico", notice) { TextButton(onClick = { vm.notice = null }) { Text("Entendido") } }
+                        }
+                    }
                 }
                 if (tool == null) item {
                     NoticeCard(

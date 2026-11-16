@@ -335,6 +335,29 @@ class VmIntegrationTest {
     }
 
     /**
+     * El eco de las conexiones largas y su "host puerto": el de [echoTarget] o uno en este PC, al que
+     * el router llega por su pasarela WAN. El ServerSocket es null si el eco no es de aquí.
+     */
+    private fun openEcho(): Pair<ServerSocket?, String> {
+        echoTarget?.let { return null to it }
+        val echo = startEcho()
+        val gateway = ssh("ip -4 route show default").substringAfter("via ").substringBefore(' ').trim()
+        return echo to "$gateway ${echo.localPort}"
+    }
+
+    /** En un router de verdad, con más tráfico, fw4 puede tardar unos segundos más en dejarlo pasar. */
+    private fun internetBackWithin(ms: Long): Boolean {
+        val start = System.currentTimeMillis()
+        var back = newConnectionWorks()
+        while (!back && System.currentTimeMillis() - start < ms) {
+            Thread.sleep(1000)
+            back = newConnectionWorks()
+        }
+        log("internet de vuelta tras ${System.currentTimeMillis() - start} ms")
+        return back
+    }
+
+    /**
      * Servidor de eco en este PC, para conexiones largas: la VM llega a él por su pasarela WAN
      * (en la NAT de VirtualBox, 10.0.x.2 es el propio PC). Los servidores públicos cierran las
      * conexiones inactivas al minuto, y aquí hacen falta más de 90 s. Responde "OK <línea>".
@@ -381,10 +404,8 @@ class VmIntegrationTest {
         // http://1.1.1.1 redirige a https://1.1.1.1, que es un resolutor DNS cifrado: con filtro se
         // bloquea a propósito. Para "la web sigue" se usa openwrt.org.
         val web = webIp()
-        val echo = if (echoTarget == null) startEcho() else null
-        val echoPort = echo?.localPort ?: echoTarget!!.substringAfter(' ').toInt()
-        val gateway = ssh("ip -4 route show default").substringAfter("via ").substringBefore(' ').trim()
-        val echoAddress = echoTarget ?: "$gateway $echoPort"
+        val (echo, echoAddress) = openEcho()
+        val echoPort = echoAddress.substringAfter(' ').toInt()
 
         try {
             // 1. Cuarentena: sin aprobar no sale a internet, pero el router le sigue dando DNS.
@@ -538,15 +559,7 @@ class VmIntegrationTest {
         }
         assertTrue("sin ficheros de reglas al terminar", ssh("ls $INCLUDE_DIR/ | grep -c wrtcontrol || true").lines().last() == "0")
         assertTrue("sin secciones de WrtControl", ssh("uci show firewall | grep -c wrtc_ || true").lines().last() == "0")
-        // En un router de verdad, con más tráfico, fw4 puede tardar unos segundos más en dejarlo pasar.
-        val backAt = System.currentTimeMillis()
-        var back = newConnectionWorks()
-        while (!back && System.currentTimeMillis() - backAt < 15_000) {
-            Thread.sleep(1000)
-            back = newConnectionWorks()
-        }
-        log("internet de vuelta tras ${System.currentTimeMillis() - backAt} ms")
-        assertTrue("el cliente vuelve a tener internet", back)
+        assertTrue("el cliente vuelve a tener internet", internetBackWithin(15_000))
     }
 
     private companion object {

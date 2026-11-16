@@ -67,6 +67,16 @@ class AddonsVmTest {
 
     private fun log(msg: String) = println("[${LocalTime.now().withNano(0)}] $msg")
 
+    /**
+     * Las pruebas dejan la función como al instalar el paquete. En un router que ya la usa (el de
+     * casa, al que se llega por el túnel de desarrollo) se saltan, para no borrar lo de verdad.
+     * [check]: un comando que solo escribe algo si está en uso.
+     */
+    private fun assumeNotInUse(what: String, check: String) {
+        val inUse = ssh("$check || true").trim()
+        assumeTrue("El router ya usa $what ($inUse): la prueba lo borraría", inUse.isEmpty())
+    }
+
     /** UPnP como lo deja el paquete: desactivado, sin dirección externa forzada y sin puertos. */
     private fun resetUpnp() = ssh(
         "uci set upnpd.config.enabled=0; uci set upnpd.config.secure_mode=1; uci -q delete upnpd.config.external_ip; " +
@@ -108,6 +118,7 @@ class AddonsVmTest {
     @Test
     fun `UPnP abre un puerto desde el cliente y la app lo ve y lo cierra`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("UPnP", "uci -q get upnpd.config.enabled | grep -x 1")
         assumeTrue("Hace falta el cliente de pruebas (tools/vm/netns-client.sh up)", ssh("/usr/libexec/ip-full netns list").contains("wrtc_client"))
         val (_, api) = api()
         resetUpnp()
@@ -153,6 +164,7 @@ class AddonsVmTest {
     @Test
     fun `si UPnP no arranca el router lo deshace solo y la app lo dice`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("UPnP", "uci -q get upnpd.config.enabled | grep -x 1")
         val (_, api) = api()
         resetUpnp()
         assertEquals(false, api.state().upnp!!.enabled)
@@ -183,6 +195,7 @@ class AddonsVmTest {
     @Test
     fun `acceso remoto con un WireGuard de verdad desde el cliente`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("el acceso remoto de la app", "uci -q get network.$VPN_INTERFACE")
         assumeTrue("Hace falta el cliente de pruebas (tools/vm/netns-client.sh up)", ssh("/usr/libexec/ip-full netns list").contains("wrtc_client"))
         ssh("/usr/libexec/ip-full link set wrtc_v0 master br-lan up; sleep 2")
         val (client, api) = api()
@@ -271,6 +284,7 @@ class AddonsVmTest {
     @Test
     fun `DNS dinamico avisa al proveedor con el nombre, la IP y el token`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("el DNS dinámico de la app", "uci show ddns | grep -E '^ddns.$DDNS_SECTION6?.domain=' | grep -v vmtest.example.org")
         val (_, api) = api()
         assertEquals(AddonStatus.Installed, api.state().status(Addon.Ddns, api.packages()))
 
@@ -290,16 +304,12 @@ class AddonsVmTest {
         }
         val provider = ddnsTarget ?: "$pcAddress:${server!!.address.port}"
         if (ddnsTarget != null) ssh(": > $ROUTER_DDNS_LOG")
-        fun nextRequest(): String? {
-            if (server != null) return requests.poll(60, TimeUnit.SECONDS)
-            repeat(60) {
-                // "GET /nic/update?... HTTP/1.1"
-                val line = ssh("head -1 $ROUTER_DDNS_LOG").lines().lastOrNull { it.startsWith("GET ") }
-                if (line != null) return line.split(' ')[1]
-                Thread.sleep(1000)
-            }
-            return null
-        }
+        // En el router, la primera línea de la petición: "GET /nic/update?... HTTP/1.1".
+        fun routerRequest(): String? =
+            ssh("head -1 $ROUTER_DDNS_LOG").lines().lastOrNull { it.startsWith("GET ") }?.split(' ')?.get(1)
+        fun nextRequest(): String? =
+            if (server != null) requests.poll(60, TimeUnit.SECONDS) else
+                (1..60).asSequence().map { routerRequest().also { if (it == null) Thread.sleep(1000) } }.firstOrNull { it != null }
         // La WAN de la VM tiene IP privada: ddns-scripts no la envía salvo que se le permita.
         ssh("uci set ddns.global.upd_privateip=1; uci commit ddns")
         // Antes de avisar, ddns-scripts mira qué IP tiene registrada el nombre y, si no la saca,
