@@ -69,6 +69,7 @@ class CellularOutsideNetwork(private val connectivity: ConnectivityManager) : Ou
      * así: con 464XLAT no aparece entre las direcciones y aun así funciona.
      */
     private class MobileLink(private val network: Network, private val hasIpv6: Boolean) : OutsideLink {
+        // Sin IPv6 en los datos móviles, Android no da las direcciones IPv6 del nombre.
         override fun resolve(host: String): List<InetAddress> = network.getAllByName(host).toList()
 
         override fun probe(config: TunnelConfig, endpoint: String): ProbeOutcome {

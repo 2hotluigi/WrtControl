@@ -90,10 +90,17 @@ suspend fun checkFromOutside(
 }
 
 /**
- * Qué decirle al usuario. [ok]: se llega por alguna familia. [publishOnly]: las familias que
- * convendría publicar en el DNS dinámico (las que entran), si no son las que publica ahora.
+ * Qué decirle al usuario. [ok]: se llega por alguna familia. [untested]: no se llega, pero porque
+ * los datos móviles no pudieron probar ninguna familia que el router tenga, no porque el router no
+ * conteste. [publishOnly]: las familias que convendría publicar en el DNS dinámico (las que
+ * entran), si no son las que publica ahora.
  */
-data class ReachabilityAdvice(val ok: Boolean, val lines: List<String>, val publishOnly: Set<IpFamily>? = null)
+data class ReachabilityAdvice(
+    val ok: Boolean,
+    val lines: List<String>,
+    val publishOnly: Set<IpFamily>? = null,
+    val untested: Boolean = false,
+)
 
 /** Lo que se sabe del router para explicar el resultado. */
 data class RouterReachContext(
@@ -117,7 +124,8 @@ fun adviseReachability(report: ReachabilityReport, router: RouterReachContext): 
     if (router.ddnsFamilies == null && reached.isNotEmpty()) {
         lines += "Sin DNS dinámico, si tu proveedor le cambia la dirección al router, la app no lo encontrará: configúralo abajo."
     }
-    return ReachabilityAdvice(ok = reached.isNotEmpty(), lines = lines, publishOnly = publishOnly)
+    val untested = reached.isEmpty() && report.probes.none { it.outcome == ProbeOutcome.NoReply }
+    return ReachabilityAdvice(ok = reached.isNotEmpty(), lines = lines, publishOnly = publishOnly, untested = untested)
 }
 
 private fun ipv6Line(p: FamilyProbe?): String = when (p?.outcome) {
@@ -153,7 +161,10 @@ private fun ddnsAdvice(report: ReachabilityReport, router: RouterReachContext): 
     val families = router.ddnsFamilies
     val published = report.published
     if (families == null || published.isNullOrEmpty()) {
-        val empty = published?.isEmpty() == true && families != null
+        // Android no da las direcciones de una familia que la red no tiene: sin IPv6 en los datos
+        // móviles, un nombre que solo publica IPv6 parece vacío.
+        val untestable = report.probes.filter { it.outcome == ProbeOutcome.CannotSend }.map { it.family }.toSet()
+        val empty = published?.isEmpty() == true && families != null && !untestable.containsAll(families)
         return listOfNotNull(EMPTY_NAME.takeIf { empty }) to null
     }
     val lines = mutableListOf<String>()

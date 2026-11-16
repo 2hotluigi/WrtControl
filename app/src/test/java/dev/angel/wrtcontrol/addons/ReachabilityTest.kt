@@ -126,4 +126,23 @@ class ReachabilityTest {
         val advice = adviseReachability(report, ctx(ddns = null, privateWan = "192.168.1.2"))
         assertTrue(advice.lines[1], "detrás de otro aparato o de un CGNAT" in advice.lines[1])
     }
+
+    // Lo que pasó en un teléfono real: datos móviles solo IPv4, router detrás del módem y un nombre
+    // que solo publica IPv6 (que Android no da en esa red).
+    @Test
+    fun `sin IPv6 en los datos no se da por perdido el router ni el nombre`() {
+        val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.CannotSend)), emptyList())
+        val advice = adviseReachability(report, ctx(privateWan = "192.168.1.2"))
+        assertFalse(advice.ok)
+        assertTrue(advice.untested)
+        assertFalse(advice.lines.joinToString(), advice.lines.any { "no da ninguna dirección" in it })
+    }
+
+    @Test
+    fun `un router que no contesta no es una prueba pendiente`() {
+        val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.NoReply)), emptyList())
+        val advice = adviseReachability(report, ctx())
+        assertFalse(advice.untested)
+        assertTrue(advice.lines.joinToString(), advice.lines.any { "no da ninguna dirección" in it })
+    }
 }
