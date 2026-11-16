@@ -53,7 +53,7 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 
 Cambiar la cara, no el motor.
 
-Orden: ~~una sola fuente de estado~~ → detección de capacidades → sistema de diseño → navegación
+Orden: ~~una sola fuente de estado~~ → ~~detección de capacidades~~ → sistema de diseño → navegación
 nueva e Inicio → salud del cable → dispositivos con identidad → motor de transacciones → puesta en
 marcha guiada. Cada uno se apoya en los anteriores.
 
@@ -92,8 +92,14 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - **Motor de transacciones genérico:** `SafeApply` como plan → vista previa → aplicar → verificar →
   confirmar, para cualquier función, con un único componente de "Aplicando… si algo falla el
   router vuelve atrás solo".
-- **Detección de capacidades:** objetos de ubus, ACL, paquetes, radios, RAM y flash. Cada función se
-  muestra como disponible, "se instalará" o no compatible.
+- ~~**Detección de capacidades:** objetos de ubus, ACL, paquetes, radios, RAM y flash. Cada función se
+  muestra como disponible, "se instalará" o no compatible.~~
+  Hecho: `Capabilities`, con los permisos de la sesión (los devuelve el login de rpcd), los objetos
+  de ubus, `luci.getFeatures`, las radios, la memoria y el espacio libre; sin el listado de
+  paquetes. "Estado" enseña cada función con su motivo si no es compatible. Probado en las VM de
+  24.10, 25.12 y snapshot (antes y después de instalar WireGuard) y en el GL-MT6000. Queda usarlo
+  en la puesta en marcha y en las pantallas nuevas, y avisar con poca memoria cuando haya funciones
+  que la necesiten (bloqueo de anuncios).
 - ~~**Una sola fuente de estado del router:** un repositorio que sondea de forma coordinada en lugar
   de un `pollingFlow` por pantalla, y sin efectos secundarios dentro del sondeo de Estado.~~
   Hecho: `RouterMonitor`, con una lectura compartida (`Feed`) por dato. Cada una se pide una vez

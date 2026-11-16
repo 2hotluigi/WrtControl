@@ -15,6 +15,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
+import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.SystemInfo
@@ -32,19 +33,25 @@ import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.formatLoad
 import dev.angel.wrtcontrol.ui.fraction
 import dev.angel.wrtcontrol.ui.watchAsState
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** Carga y memoria cambian a cada momento. */
 private val STATUS_REFRESH = 5.seconds
 
+/** Solo cambia al instalar paquetes (y entonces se vuelve a mirar al momento). */
+private val CAPABILITIES_REFRESH = 5.minutes
+
 @Composable
 fun StatusScreen() {
-    val state by LocalRepository.current.monitor.status.watchAsState(STATUS_REFRESH)
-    StatusContent(state)
+    val monitor = LocalRepository.current.monitor
+    val state by monitor.status.watchAsState(STATUS_REFRESH)
+    val capabilities by monitor.capabilities.watchAsState(CAPABILITIES_REFRESH)
+    StatusContent(state, capabilities.data)
 }
 
 @Composable
-fun StatusContent(state: Loadable<StatusData>) {
+fun StatusContent(state: Loadable<StatusData>, capabilities: Capabilities? = null) {
     LoadableContent(state) { data, error ->
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
@@ -56,6 +63,8 @@ fun StatusContent(state: Loadable<StatusData>) {
             }
             item { SystemCard(data.board, data.info) }
             item { ResourcesCard(data.info) }
+            // Si no se pudo averiguar, no se enseña: lo demás de la pantalla no depende de ello.
+            if (capabilities != null) item { CapabilitiesCard(capabilities) }
             items(data.interfaces, key = { it.name }) { InterfaceCard(it) }
         }
     }

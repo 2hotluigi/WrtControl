@@ -63,6 +63,35 @@ class OpenWrtApi(
     suspend fun interfaces(): List<NetInterface> =
         ubus.callAs<InterfaceDump>("network.interface", "dump").interfaces.filter { it.name != "loopback" }
 
+    /** Qué puede hacer este router con la app (ver [Capabilities]). [board] e [info], ya leídos. */
+    suspend fun capabilities(board: BoardInfo, info: SystemInfo): Capabilities = coroutineScope {
+        val acl = async { ubus.acl() }
+        val objects = async { optional { ubus.objects() } }
+        val features = async { optional { ubus.callAs<LuciFeatures>("luci", "getFeatures") } }
+        val radios = async { optional { ubus.callAs<Map<String, WirelessDeviceJson>>("luci-rpc", "getWirelessDevices") } }
+        Capabilities(
+            version = board.release.version,
+            target = board.release.target,
+            memoryBytes = info.memory.total,
+            freeStorageKiB = info.root?.avail,
+            objects = objects.await(),
+            acl = acl.await(),
+            features = features.await(),
+            radios = parseRadios(radios.await().orEmpty()),
+        )
+    }
+
+    /** Lo que el router puede no tener o no dejar ver: null en vez de error. Si no se llega a él, sí falla. */
+    private suspend fun <T> optional(block: suspend () -> T): T? = try {
+        block()
+    } catch (_: UbusException.AccessDenied) {
+        null
+    } catch (_: UbusException.Status) {
+        null
+    } catch (_: UbusException.Protocol) {
+        null
+    }
+
     /** Los equipos de casa. [knownInterfaces], si ya se han leído, ahorra pedirlas otra vez. */
     suspend fun devices(knownInterfaces: List<NetInterface>? = null): List<Device> = coroutineScope {
         val hints = async { ubus.callAs<Map<String, HostHint>>("luci-rpc", "getHostHints") }

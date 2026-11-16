@@ -5,6 +5,7 @@ import dev.angel.wrtcontrol.addons.AddonsState
 import dev.angel.wrtcontrol.addons.publicAddresses
 import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.openwrt.BoardInfo
+import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
@@ -79,6 +80,16 @@ class RouterMonitor(
             val networks = async { interfaces.fresh(STABLE_MAX_AGE) }
             val (knownBoard, knownInterfaces) = about.await() to networks.await()
             router.use { it.routerId(knownBoard, knownInterfaces) }
+        }
+    }
+
+    /** Qué puede hacer este router con la app. Cambia al instalar paquetes. */
+    val capabilities: Feed<Capabilities> = feed {
+        coroutineScope {
+            val about = async { board.fresh(STABLE_MAX_AGE) }
+            val info = async { system.fresh(STABLE_MAX_AGE) }
+            val (knownBoard, knownInfo) = about.await() to info.await()
+            router.use { it.capabilities(knownBoard, knownInfo) }
         }
     }
 
