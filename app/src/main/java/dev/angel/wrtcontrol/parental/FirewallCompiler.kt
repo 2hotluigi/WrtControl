@@ -171,7 +171,7 @@ fun compileRouter(config: ParentalConfig, now: LocalDateTime, env: RouterEnv = R
     }
     val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) } + quarantineRules(settings, env)
     val include = if (current.isEmpty() && !settings.quarantine) null else buildInclude(current, settings, env, appMacs)
-    val data = configSections(ParentalConfig(current, settings))
+    val data = configSections(config.copy(profiles = current, settings = settings))
     return RouterPlan(
         firewall = data + rules + listOfNotNull(include?.let(::includeSection)),
         ruleLabels = rules.map { it.text("name")!! },

@@ -47,13 +47,14 @@ data class UciSection(val name: String, val type: String, val options: Map<Strin
     }
 }
 
-/** Atajo para construir secciones: los `List<String>` se guardan como `list`. */
+/** Atajo para construir secciones: los `List<String>` se guardan como `list`; un [UciValue], tal cual. */
 fun uciSection(name: String, type: String, vararg options: Pair<String, Any?>): UciSection =
     UciSection(
         name, type,
         options.mapNotNull { (key, value) ->
             when (value) {
                 null -> null
+                is UciValue -> key to value
                 is String -> key to UciValue.Text(value)
                 is List<*> -> key to UciValue.Items(value.map { it.toString() })
                 else -> key to UciValue.Text(value.toString())

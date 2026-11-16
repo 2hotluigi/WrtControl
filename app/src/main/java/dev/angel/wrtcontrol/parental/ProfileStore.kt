@@ -1,6 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
 import dev.angel.wrtcontrol.openwrt.UciSection
+import dev.angel.wrtcontrol.openwrt.UciValue
 import dev.angel.wrtcontrol.openwrt.uciSection
 import dev.angel.wrtcontrol.userRequire
 import java.time.DayOfWeek
@@ -39,14 +40,29 @@ import kotlin.random.Random
  *       option stop '07:00'
  *       option enabled '1'
  *
- *   config wrtcontrol_settings 'wrtc_settings'
+    config wrtcontrol_settings 'wrtc_settings'
+ *       option schema '1'                          # versión del formato (ver SCHEMA_VERSION)
  *       option quarantine '1'                      # dispositivos nuevos sin internet
  *       list approved 'AA:BB:CC:DD:EE:01'          # aprobados fuera de los perfiles
  *       list admin 'AA:BB:CC:DD:EE:02'             # teléfonos desde los que se usó la app
  *       option time_offset '-21600'                # desfase con el que se escribieron las horas
  *
  * Cualquier sección cuyo nombre empiece por "wrtc_" es de la app y se regenera al guardar.
+ *
+ * Compatibilidad entre versiones de la app (varios teléfonos, o uno sin actualizar):
+ * - Una opción que esta versión no conoce, en un perfil, un horario o los ajustes, se conserva
+ *   tal cual al guardar. Igual con una sección de datos de un tipo `wrtcontrol_*` desconocido.
+ *   Así, añadir opciones que una versión anterior puede ignorar no rompe nada.
+ * - Lo que una versión anterior no puede ignorar (cambiar el significado de una opción, o reglas
+ *   generadas que no sabría rehacer) sube [SCHEMA_VERSION]. Una versión con un esquema menor que
+ *   el del router no escribe: solo lee, y pide actualizar la app.
  */
+
+/**
+ * Versión del formato de las secciones de la app en el router. Ver arriba cuándo subirla. Sin
+ * `schema` (lo que escribían las versiones de antes de esta opción) es la 1.
+ */
+const val SCHEMA_VERSION = 1
 
 const val SECTION_PREFIX = "wrtc_"
 internal const val PROFILE_TYPE = "wrtcontrol_profile"
@@ -59,6 +75,18 @@ private const val SCHEDULE_PREFIX = "wrtc_s_"
 const val MAX_PROFILE_NAME = 32
 
 private val ID_PATTERN = Regex("^[a-z0-9]{1,16}$")
+
+/** Opciones que escribe esta versión; las demás se conservan como [Profile.extra] y similares. */
+private val PROFILE_KEYS = setOf(
+    "name", "mac", "pause", "pause_until", "filter", "block_service", "block_domain", "dns_port", "safe_search",
+    "youtube", "extra_until", "protect_router", "cut_epoch", "cut_window", "cut_until",
+)
+private val SCHEDULE_KEYS = setOf("profile", "days", "start", "stop", "enabled")
+private val SETTINGS_KEYS = setOf("schema", "quarantine", "approved", "admin", "time_offset")
+private val KNOWN_TYPES = setOf(PROFILE_TYPE, SCHEDULE_TYPE, SETTINGS_TYPE)
+private const val DATA_TYPE_PREFIX = "wrtcontrol_"
+
+private fun UciSection.extra(known: Set<String>): Map<String, UciValue> = options.filterKeys { it !in known }
 internal val HH_MM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 internal val HH_MM_SS: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT)
 internal val STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT)
@@ -95,7 +123,21 @@ fun cleanProfileName(text: String): String =
 private val scheduleOrder = compareBy<Schedule>({ it.start }, { it.days.minOrNull() }, { it.id })
 
 /** Lee perfiles y ajustes de las secciones del firewall. */
-fun readConfig(sections: List<UciSection>): ParentalConfig = ParentalConfig(readProfiles(sections), readSettings(sections))
+fun readConfig(sections: List<UciSection>): ParentalConfig = ParentalConfig(
+    profiles = readProfiles(sections),
+    settings = readSettings(sections),
+    schema = readSchema(sections),
+    preserved = sections.filter {
+        it.name.startsWith(SECTION_PREFIX) && it.type.startsWith(DATA_TYPE_PREFIX) && it.type !in KNOWN_TYPES
+    },
+)
+
+/** La versión del formato guardado. Si no se entiende, se supone más nueva: mejor no escribir. */
+private fun readSchema(sections: List<UciSection>): Int {
+    val text = sections.firstOrNull { it.type == SETTINGS_TYPE && it.name == SETTINGS_SECTION }?.text("schema")
+        ?: return 1
+    return text.trim().toIntOrNull()?.takeIf { it >= 1 } ?: Int.MAX_VALUE
+}
 
 fun readSettings(sections: List<UciSection>): ParentalSettings {
     val s = sections.firstOrNull { it.type == SETTINGS_TYPE && it.name == SETTINGS_SECTION } ?: return ParentalSettings()
@@ -104,6 +146,7 @@ fun readSettings(sections: List<UciSection>): ParentalSettings {
         approved = s.items("approved").mapNotNull(::normalizeMac).distinct().sorted(),
         admins = s.items("admin").mapNotNull(::normalizeMac).distinct().sorted(),
         timeOffset = s.text("time_offset")?.toIntOrNull(),
+        extra = s.extra(SETTINGS_KEYS),
     )
 }
 
@@ -136,6 +179,7 @@ fun readProfiles(sections: List<UciSection>): List<Profile> {
                 protectRouter = s.text("protect_router") == "1",
                 cutEpoch = s.text("cut_epoch")?.toIntOrNull()?.takeIf { it in CUT_EPOCHS } ?: 0,
                 cutWindow = parseCutWindow(s),
+                extra = s.extra(PROFILE_KEYS),
             )
         }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -146,7 +190,7 @@ private fun parseSchedule(s: UciSection): Schedule? {
     val days = s.items("days").mapNotNull(::parseDay).toSet().ifEmpty { return null }
     val start = s.text("start")?.let(::parseTime) ?: return null
     val end = s.text("stop")?.let(::parseTime) ?: return null
-    return Schedule(id, days, start, end, enabled = s.text("enabled") != "0")
+    return Schedule(id, days, start, end, enabled = s.text("enabled") != "0", extra = s.extra(SCHEDULE_KEYS))
 }
 
 private fun parseTime(text: String): LocalTime? = try {
@@ -173,26 +217,32 @@ private fun parseStamp(text: String): LocalDateTime? = try {
     null
 }
 
-/** Secciones de datos de [config]: ajustes (si no son los de por defecto), perfiles y horarios. */
+/**
+ * Secciones de datos de [config]: ajustes, perfiles, horarios y las secciones de datos de otras
+ * versiones. Un router sin nada que guardar no lleva ninguna; con algo, los ajustes llevan la
+ * versión del formato.
+ */
 internal fun configSections(config: ParentalConfig): List<UciSection> {
-    // El desfase solo hace falta si hay horas guardadas: sin ellas, un router sin nada que
-    // guardar no lleva sección de ajustes.
+    // El desfase solo hace falta si hay horas guardadas.
     val times = config.profiles.any { it.pause is Pause.Until || it.extraUntil != null || it.cutWindow != null }
     val s = if (times) config.settings else config.settings.copy(timeOffset = null)
-    val settings = if (s == ParentalSettings()) {
+    val empty = s == ParentalSettings() && config.profiles.isEmpty() && config.preserved.isEmpty()
+    val settings = if (empty) {
         emptyList()
     } else {
         listOf(
             uciSection(
                 SETTINGS_SECTION, SETTINGS_TYPE,
+                "schema" to SCHEMA_VERSION.toString(),
                 "quarantine" to if (s.quarantine) "1" else null,
                 "approved" to s.approved.ifEmpty { null },
                 "admin" to s.admins.ifEmpty { null },
                 "time_offset" to s.timeOffset?.toString(),
+                *s.extra.toList().toTypedArray(),
             ),
         )
     }
-    return settings + profileSections(config.profiles)
+    return settings + profileSections(config.profiles) + config.preserved
 }
 
 /** Secciones de datos (perfiles y horarios) que representan a [profiles]. */
@@ -214,6 +264,7 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
         "cut_epoch" to p.cutEpoch.takeIf { it in CUT_EPOCHS }?.toString(),
         "cut_window" to p.cutWindow?.value?.toString(),
         "cut_until" to p.cutWindow?.until?.format(STAMP),
+        *p.extra.toList().toTypedArray(),
     )
     listOf(profile) + p.schedules.map { s ->
         uciSection(
@@ -223,6 +274,7 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
             "start" to s.start.format(HH_MM),
             "stop" to s.end.format(HH_MM),
             "enabled" to if (s.enabled) "1" else "0",
+            *s.extra.toList().toTypedArray(),
         )
     }
 }

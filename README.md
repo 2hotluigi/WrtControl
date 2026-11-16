@@ -142,6 +142,15 @@ cuarentena.
 `wrtcontrol_schedule` y `wrtcontrol_settings` que fw4 y LuCI ignoran. Así los datos y las reglas se aplican y se
 revierten juntos. Todo lo de la app empieza por `wrtc_`.
 
+**Varias versiones de la app** (varios teléfonos, o uno sin actualizar):
+- Los ajustes llevan la versión del formato (`option schema`). Si falta, es la 1: así lo
+  escribían las versiones anteriores.
+- Al guardar, se conserva tal cual lo que la versión no conoce: opciones de perfiles, horarios y
+  ajustes, y secciones de datos `wrtcontrol_*` de otros tipos.
+- Si el router lo configuró una versión con un esquema más nuevo, la app solo lee: no guarda,
+  no cambia la zona horaria ni restaura copias, y pide actualizarla. Se sube el esquema solo
+  cuando una versión anterior no puede ignorar lo nuevo.
+
 **Cómo bloquea.**
 1. Reglas MARK de fw4 por MAC (`src '*'`, `dest '*'`, `proto all`): marcan el tráfico reenviado
    de esos dispositivos durante la pausa (`stop_date` si tiene fin) o en la franja horaria
