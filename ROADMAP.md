@@ -106,7 +106,13 @@ Cambiar la cara, no el motor.
     servidor intermedio del Hito 3.
 - **IPv6 sin delegación de prefijo** (Megacable y otros dan una sola /64 en la WAN): detectarlo y
   ofrecer relay de la /64 a la LAN (odhcpd ra/dhcpv6/ndp relay y `sourcefilter=0` en wan6), con
-  NAT66 de respaldo. Probado a mano en el GL-MT6000.
+  NAT66 de respaldo. Probado a mano en el GL-MT6000. El DNS por IPv6 necesita dos ajustes más:
+  - El relay reenvía el RDNSS del módem tal cual (en Megacable `fe80::1`, que en la LAN no
+    existe): poner `dhcp.lan.dns` con la ULA del router para que odhcpd lo reescriba. Si no, los
+    equipos esperan a que falle antes de usar el DNS de IPv4 y las consultas se saltan dnsmasq.
+  - Con `localservice=1`, dnsmasq ignora las consultas desde la /64 relayada (no es una subred
+    suya): `localservice=0` con `notinterface=wan`, comprobando antes que la zona wan rechaza la
+    entrada. Probado en la casa el 2026-11-16: desde internet el 53 sigue sin responder.
 - **Claves:** generar la del teléfono en el AAR de Go (curve25519 de wireguard-go) en lugar del
   X25519 propio en Kotlin.
 
