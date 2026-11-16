@@ -31,6 +31,9 @@ sealed class UbusException(message: String, cause: Throwable? = null) : Exceptio
     /** ubus respondió con un código de error. */
     class Status(val code: Int, val target: String) : UbusException("$target: ${ubusStatusText(code)}")
 
+    /** El router no pudo o no quiso hacer algo, y el mensaje ya explica qué hacer (se muestra tal cual). */
+    class Refused(message: String) : UbusException(message)
+
     /** Error JSON-RPC inesperado o respuesta con un formato que no esperamos. */
     class Protocol(message: String, cause: Throwable? = null) : UbusException(message, cause)
 

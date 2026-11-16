@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.UserFacingException
+import dev.angel.wrtcontrol.userRequire
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
@@ -10,14 +12,16 @@ object RouterAddress {
      */
     fun endpoint(address: String): HttpUrl {
         var a = address.trim()
-        require(a.isNotEmpty()) { "Escribe la dirección del router" }
+        userRequire(a.isNotEmpty()) { "Escribe la dirección del router (por ejemplo, 192.168.1.1)." }
         if ("://" !in a) {
             a = a.trimEnd('/')
             // Una IPv6 sin corchetes tiene varios ':'; con corchetes ya trae el puerto aparte.
             if (a.count { it == ':' } >= 2 && !a.startsWith("[")) a = "[$a]"
             a = "http://$a"
         }
-        val base = a.toHttpUrlOrNull() ?: throw IllegalArgumentException("Dirección no válida: $address")
+        val base = a.toHttpUrlOrNull() ?: throw UserFacingException(
+            "\"$address\" no es una dirección válida. Escribe la IP del router, por ejemplo 192.168.1.1.",
+        )
         return base.newBuilder().encodedPath("/ubus").query(null).fragment(null).build()
     }
 }

@@ -3,6 +3,7 @@ package dev.angel.wrtcontrol.parental
 import dev.angel.wrtcontrol.addons.VPN_ZONE
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
+import dev.angel.wrtcontrol.userRequire
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -159,12 +160,14 @@ fun compileRouter(config: ParentalConfig, now: LocalDateTime, env: RouterEnv = R
     val current = assignDnsPorts(config.profiles.map { it.withoutExpired(now) }).map { p ->
         if (p.needsDns && p.cutEpoch !in CUT_EPOCHS) p.copy(cutEpoch = CUT_EPOCHS.first) else p
     }
-    require(current.none { it.needsDns } || env.lanZones.isNotEmpty()) {
-        "No se encontró la zona LAN del firewall, así que no se puede aplicar el filtro de contenido"
+    userRequire(current.none { it.needsDns } || env.lanZones.isNotEmpty()) {
+        "No se encontró la zona LAN del firewall, así que no se puede aplicar el filtro de contenido. Revisa las " +
+            "zonas del firewall en LuCI."
     }
     val settings = config.settings
-    require(!settings.quarantine || env.homeZones.isNotEmpty()) {
-        "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena"
+    userRequire(!settings.quarantine || env.homeZones.isNotEmpty()) {
+        "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena. Revisa " +
+            "las zonas del firewall en LuCI."
     }
     val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) } + quarantineRules(settings, env)
     val include = if (current.isEmpty() && !settings.quarantine) null else buildInclude(current, settings, env, appMacs)

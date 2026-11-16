@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui
 
+import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -49,8 +50,7 @@ fun Throwable.userMessage(): String = when {
     blockedByLocalNetwork() ->
         "No se llega al router. Falta el permiso de red local de Android, y sin él la app no lo ve en casa: " +
             "dáselo en los ajustes de la app (Permisos → Dispositivos cercanos)."
-    this is UbusException -> message ?: "Error del router"
-    else -> message ?: javaClass.simpleName
+    else -> describeError(this)
 }
 
 /**

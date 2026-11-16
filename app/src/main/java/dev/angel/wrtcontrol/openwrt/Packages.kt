@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.openwrt
 
+import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusJson
@@ -36,7 +37,7 @@ data class InstalledPackages(val tool: PackageTool?, val versions: Map<String, S
 }
 
 /** El gestor de paquetes del router respondió con un error; [message] ya va explicado para el usuario. */
-class PackageInstallException(message: String, val output: String = "") : Exception(message)
+class PackageInstallException(message: String, val output: String = "") : Exception(message), UserFacing
 
 @Serializable
 private data class ToolReply(val code: Int = -1, val stdout: String = "", val stderr: String = "")

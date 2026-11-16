@@ -77,7 +77,7 @@ class RemoteAccessTest {
         try {
             nextPeerAddress("10.77.0.1", 30, setOf("10.77.0.2"))
             fail("una /30 solo tiene sitio para el router y un teléfono")
-        } catch (_: IllegalStateException) {
+        } catch (_: dev.angel.wrtcontrol.UserFacingException) {
         }
     }
 
