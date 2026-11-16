@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -20,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,30 +37,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.addons.Addon
 import dev.angel.wrtcontrol.addons.AddonStatus
+import dev.angel.wrtcontrol.addons.DDNS_SECTIONS
+import dev.angel.wrtcontrol.addons.DdnsEdit
+import dev.angel.wrtcontrol.addons.DdnsProvider
+import dev.angel.wrtcontrol.addons.DdnsService
+import dev.angel.wrtcontrol.addons.IpFamily
+import dev.angel.wrtcontrol.addons.RemotePeer
 import dev.angel.wrtcontrol.addons.SqmEdit
 import dev.angel.wrtcontrol.addons.SqmQueue
 import dev.angel.wrtcontrol.addons.UpnpMapping
 import dev.angel.wrtcontrol.addons.UpnpState
-import dev.angel.wrtcontrol.addons.RemotePeer
 import dev.angel.wrtcontrol.addons.VPN_INTERFACE
-import dev.angel.wrtcontrol.addons.DDNS_SECTIONS
-import dev.angel.wrtcontrol.data.Link
-import dev.angel.wrtcontrol.addons.DdnsEdit
-import dev.angel.wrtcontrol.addons.DdnsProvider
-import dev.angel.wrtcontrol.addons.DdnsService
+import dev.angel.wrtcontrol.addons.WireGuardInterface
+import dev.angel.wrtcontrol.addons.ddnsEditWith
 import dev.angel.wrtcontrol.addons.ddnsProblem
 import dev.angel.wrtcontrol.addons.fullDomain
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import dev.angel.wrtcontrol.addons.WireGuardInterface
 import dev.angel.wrtcontrol.addons.sqmProblem
+import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
@@ -77,6 +80,7 @@ import kotlin.math.roundToLong
 fun AddonsScreen(address: String) {
     val repo = LocalRepository.current
     val vm: AddonsViewModel = viewModel(key = "addons:$address") { AddonsViewModel(repo) }
+    val outsideVm: OutsideCheckViewModel = viewModel(key = "outside:$address") { OutsideCheckViewModel(repo) }
     val state by vm.state.collectAsStateWithLifecycle()
     val locked = LocalAppLocked.current
     val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
@@ -121,6 +125,16 @@ fun AddonsScreen(address: String) {
                     AddonCard(Addon.WireGuard, status(Addon.WireGuard), canInstall = tool != null, busy = busy,
                         onInstall = { vm.error = null; installing = Addon.WireGuard }, onFinish = vm::finishWireGuard) {
                         RemoteAccessContent(data, busy, onEnable = { vm.enableRemoteAccess(phoneName()) }, onRemove = { vm.error = null; removingPeer = it })
+                        if (data.phoneHasAccess && outsideVm.available) {
+                            OutsideCheckContent(
+                                check = outsideVm.check,
+                                busy = busy,
+                                onCheck = { outsideVm.run(data) },
+                                onPublishOnly = { families ->
+                                    ddnsEditWith(s, families)?.let { vm.saveDdns(it) { outsideVm.check = null } }
+                                },
+                            )
+                        }
                         WireGuardContent(s.wireguard.orEmpty().filter { it.name != VPN_INTERFACE })
                     }
                 }
@@ -308,6 +322,42 @@ private fun InstallDialog(addon: Addon, freeKiB: Long?, onDismiss: () -> Unit, o
 private fun phoneName(): String =
     listOf(android.os.Build.MANUFACTURER, android.os.Build.MODEL).filter { it.isNotBlank() }.distinct()
         .joinToString(" ").replaceFirstChar { it.uppercase() }
+
+@Composable
+private fun OutsideCheckContent(
+    check: OutsideCheck?,
+    busy: Boolean,
+    onCheck: () -> Unit,
+    onPublishOnly: (Set<IpFamily>) -> Unit,
+) {
+    val running = check == OutsideCheck.Running
+    Text(
+        "Prueba si se llega al router desde internet: la app lo intenta por tus datos móviles, sin salir del Wi-Fi. " +
+            "Gasta unos pocos KB.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedButton(onClick = onCheck, enabled = !running, modifier = Modifier.testTag("check-outside")) {
+        Text(if (running) "Probando desde fuera… (hasta 20 s)" else "¿Se llega desde fuera?")
+    }
+    when (check) {
+        is OutsideCheck.Failed -> Text(check.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        is OutsideCheck.Done -> {
+            val advice = check.advice
+            Text(
+                if (advice.ok) "Desde fuera se llega al router." else "Desde fuera no se llega al router.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (advice.ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            )
+            advice.lines.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+            advice.publishOnly?.let { families ->
+                val names = families.sorted().joinToString(" y ") { if (it == IpFamily.V6) "IPv6" else "IPv4" }
+                Button(onClick = { onPublishOnly(families) }, enabled = !busy) { Text("Publicar solo $names") }
+            }
+        }
+        else -> {}
+    }
+}
 
 @Composable
 private fun RemoteAccessContent(data: AddonsData, busy: Boolean, onEnable: () -> Unit, onRemove: (RemotePeer) -> Unit) {

@@ -9,6 +9,7 @@ import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.data.RouterStore
 import dev.angel.wrtcontrol.data.RouterTransport
 import dev.angel.wrtcontrol.data.SecretBox
+import dev.angel.wrtcontrol.data.outsideNetwork
 import dev.angel.wrtcontrol.data.tunnelEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,7 @@ class WrtApp : Application() {
             .connectTimeout(10, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
             .build()
-        repository = RouterRepository(RouterStore(this, SecretBox()), http, transport, OkHttpDdns(direct))
+        repository = RouterRepository(RouterStore(this, SecretBox()), http, transport, OkHttpDdns(direct), outsideNetwork(connectivity))
         // Con el túnel puesto: quitarlo si lleva un rato sin usarse o si ya no contesta el router.
         appScope.launch(Dispatchers.IO) {
             while (true) {

@@ -423,6 +423,22 @@ interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y s
 - El acceso remoto guardado va con el router para el que se creó (modelo y MAC de la LAN), no solo
   con su dirección: otro router en 192.168.1.1 tiene su propia clave.
 
+**¿Se llega desde fuera?** Con el acceso remoto puesto, la app lo comprueba sin salir de casa: pide
+los datos móviles con `requestNetwork` (Android los levanta aunque el Wi-Fi siga siendo la red por
+defecto), ata un socket UDP a ellos con `bindSocket` y le pasa el descriptor a wireguard-go
+(`tunnel/probe.go`, un `conn.Bind` sobre ese socket). Saluda al router por su IPv6 y por su IPv4
+públicas (o, si la IPv4 no se sabe, por la que dé el DNS dinámico) con la clave del propio
+teléfono, y explica cada resultado:
+- Contesta: se llega.
+- No contesta: casi siempre es el módem del proveedor, que descarta lo que entra (cortafuegos IPv6,
+  DMZ). Con la WAN en una IPv4 privada, dice qué puerto abrir en el aparato de delante.
+- No se puede probar: los datos móviles no tienen esa familia. Sin una IPv6 global en ellos no se
+  envía, porque Android no da error al mandar a una IPv6 sin ruta.
+- Compara lo que publica el DNS dinámico (resuelto por los datos móviles, como lo ve cualquiera de
+  fuera) con lo que entra. Si publica una familia que no entra, ofrece publicar solo la que sí.
+
+No toca el router y solo gasta unos KB de datos móviles.
+
 Límites del acceso remoto:
 - Sin acceso remoto (o si el túnel no sube), la app habla con el router por HTTP sin cifrar, como
   LuCI: en una red ajena con la misma IP, la contraseña iría a otro aparato.
