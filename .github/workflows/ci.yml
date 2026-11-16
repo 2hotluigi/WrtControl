@@ -31,7 +31,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Pruebas unitarias
-        run: ./gradlew :app:testDebugUnitTest
+        # Las pruebas unitarias y, con ellas, la comparación de las capturas (Roborazzi).
+        run: ./gradlew :app:verifyRoborazziDebug
 
       - name: detekt + ktlint
         run: ./gradlew :app:detekt

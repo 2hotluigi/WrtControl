@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
     alias(libs.plugins.kover)
+    alias(libs.plugins.roborazzi)
 }
 
 /** "1.4.12" → 10412: sube siempre que sube la versión (cada parte, hasta 99). */
@@ -70,6 +71,11 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // Las pruebas de capturas (Roborazzi) pintan con los recursos de la app: tema, textos, fuente.
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         // La CI falla con cualquier aviso nuevo; los que ya había quedan en la línea base
         // (`gradlew updateLintBaseline` la regenera).
@@ -125,6 +131,12 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Pruebas de capturas en la JVM: Robolectric pinta y Roborazzi compara con la imagen guardada.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     detektPlugins(libs.detekt.ktlint)
 }
