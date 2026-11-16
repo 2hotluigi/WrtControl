@@ -46,7 +46,7 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 | Textos a `strings.xml` (español e inglés) | P0 | Sin textos de usuario en el código Kotlin |
 | Versión mínima: soporte probado desde 24.10; 23.05 "puede funcionar"; retirar 22.03 cuando no haya más remedio. En 24.10 el ACL de LuCI no deja ver `service list`: saber si un servicio está en marcha por otro camino (p. ej. `rc list`) y deshacer UPnP si miniupnpd no arranca | P0 | Decidido, documentado en el README y reflejado en la pantalla de conexión. La prueba de UPnP que no arranca pasa en 24.10 |
 | ~~Permiso de red local de Android 17 (`ACCESS_LOCAL_NETWORK`, en tiempo de ejecución, para apps con `targetSdk` 37): sin él, Android corta toda conexión a IPs privadas (EPERM en UDP, TCP que no conecta), así que la app no llega al router en casa. Pedirlo antes de conectar y explicar para qué~~ | P0 | Hecho: pantalla antes de la app (dar permiso, ir a los ajustes si Android ya no pregunta, o seguir sin él), y los fallos de conexión lo explican. Probado en el emulador API 37 y en un teléfono con Android 17 |
-| Usuario rpcd con ACL limitado (no root) que la app crea en la primera conexión | P0 | La app funciona sin la contraseña de root guardada |
+| Usuario rpcd con ACL limitado (no root) que la app crea en la primera conexión | P0 → Hito 3 | **Se hará con el agente.** Comprobado en el GL-MT6000 (25.12.6): root por ubus no puede crearlo. Ningún grupo de LuCI da la config `rpcd` (`uci get rpcd` da "permiso denegado" incluso a root), ni deja escribir en `/usr/share/rpcd/acl.d`. Lo demás ya se sabe: rpcd lee los usuarios en cada login (no hay que reiniciarlo), acepta un hash `$5$` (SHA-256-crypt) calculado en el teléfono, y con los grupos de LuCI basta para todo lo que llama la app. No es una barrera ante quien tenga su contraseña: DNS dinámico (`ip_script`), firewall (includes de script) y dnsmasq (`dhcpscript`) escritos por UCI dejan ejecutar como root |
 | Proceso: PRs pequeños, `versionCode` que suba, firma de release, changelog | P0 | Definición de hecho: pruebas + VM en CI + README + captura de la pantalla nueva |
 
 ## Hito 1 · Que se sienta premium (P1)
@@ -71,6 +71,20 @@ Cambiar la cara, no el motor.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.
+  - **Investigar: fabricante, MAC aleatoria y nombre** (para no mostrar "Sin nombre"). Por
+    comprobar en la investigación:
+    - *Fabricante sin conexión:* los registros públicos del IEEE (MA-L, MA-M y MA-S en
+      `standards-oui.ieee.org`, CSV gratuitos) o el `manuf` de Wireshark, que se deriva de ellos.
+      Revisar la licencia para redistribuirlos, el tamaño en el APK y cómo actualizarlos. Nunca
+      mandar las MAC a una API de terceros: dicen qué aparatos hay en la casa.
+    - *MAC aleatoria:* el segundo bit del primer byte (`x2`, `x6`, `xA`, `xE`). Con ella no hay
+      fabricante: mostrar "MAC privada". Mirar cuándo la rotan Android, iOS y Windows (por red,
+      cada cierto tiempo) y qué pasa entonces con la cuarentena y los perfiles.
+    - *Nombre:* hoy sale de las concesiones DHCP de IPv4 (opción 12), que muchos aparatos no
+      mandan. Otras fuentes: concesiones de DHCPv6 (odhcpd por ubus), mDNS (`umdns` en el router,
+      o `NsdManager` desde el teléfono con el permiso de red local), NetBIOS y el nombre de UPnP o
+      SSDP. Medir en la casa cuántos "Sin nombre" resuelve cada una. Si no hay ninguna, usar el
+      fabricante o el tipo ("Aparato Samsung") hasta que el usuario le ponga nombre.
 - **Motor de transacciones genérico:** `SafeApply` como plan → vista previa → aplicar → verificar →
   confirmar, para cualquier función, con un único componente de "Aplicando… si algo falla el
   router vuelve atrás solo".
@@ -123,8 +137,10 @@ Cambiar la cara, no el motor.
 
 ## Hito 3 · Nivel entusiasta (P2)
 
-- **Agente opcional en el router** (paquete apk/ipk: plugin rpcd en ucode + su ACL). La app sigue
-  funcionando sin él; con él desbloquea historial de dispositivos, historial de caídas de internet,
+- **Agente opcional en el router** (paquete apk/ipk: plugin rpcd en ucode + su ACL). Al instalarlo
+  crea el usuario de la app (uno por teléfono, revocable) para no guardar la contraseña de root, y
+  ese usuario solo llama a métodos del agente que validan cada valor: sin `ip_script`, includes de
+  script ni `dhcpscript`, no puede hacerse root. La app sigue funcionando sin él; con él desbloquea historial de dispositivos, historial de caídas de internet,
   consumo por dispositivo (nlbwmon) y **notificaciones** (dispositivo nuevo, internet caído) por
   ntfy, UnifiedPush o FCM. Con el agente, el aviso de dispositivos nuevos deja de depender de abrir
   la app.

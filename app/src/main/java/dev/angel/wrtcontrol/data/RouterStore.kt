@@ -26,9 +26,9 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
     suspend fun save(router: SavedRouter) {
         val encrypted = router.password?.let(box::encrypt)
         context.routerDataStore.edit { prefs ->
-            prefs[ADDRESS] = router.address
             // Otra dirección es (en principio) otro router: el identificador se vuelve a averiguar.
             if (prefs[ADDRESS] != router.address) prefs.remove(ROUTER_ID)
+            prefs[ADDRESS] = router.address
             prefs[USERNAME] = router.username
             if (encrypted != null) prefs[PASSWORD] = encrypted else prefs.remove(PASSWORD)
             router.routerId?.let { prefs[ROUTER_ID] = it }
