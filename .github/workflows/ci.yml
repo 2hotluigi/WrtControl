@@ -83,6 +83,49 @@ jobs:
             -v "${{ runner.temp }}/nft-samples:/samples:ro" \
             "openwrt/rootfs:x86-64-${{ matrix.openwrt }}" /bin/sh /tools/nft-check.sh
 
+  # El .aar del túnel que va en el repositorio tiene que ser el que sale de tunnel/ con las
+  # versiones fijadas en tools/build-tunnel.sh. Si no coincide, deja el suyo como artefacto
+  # (wrtcvpn-aar) para traerlo con tools/fetch-tunnel-aar.sh.
+  tunnel-aar:
+    name: tunnel-aar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tunnel/go.mod
+          cache-dependency-path: tunnel/go.sum
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: NDK
+        run: |
+          ndk=$(sed -n 's/^NDK_VERSION=//p' tools/build-tunnel.sh)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null
+
+      - name: Compilar el .aar
+        env:
+          WRTC_AAR_OUT: ${{ runner.temp }}/aar/wrtcvpn.aar
+        run: sh tools/build-tunnel.sh
+
+      - name: ¿Coincide con el del repositorio?
+        run: |
+          python3 -I tools/compare-aar.py app/libs/wrtcvpn.aar "$RUNNER_TEMP/aar/wrtcvpn.aar"
+          python3 -I tools/compare-aar.py app/libs/wrtcvpn-sources.jar "$RUNNER_TEMP/aar/wrtcvpn-sources.jar"
+
+      - name: El .aar de la CI
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wrtcvpn-aar
+          path: ${{ runner.temp }}/aar/
+          if-no-files-found: ignore
+
   tunnel:
     name: tunnel
     runs-on: ubuntu-latest
