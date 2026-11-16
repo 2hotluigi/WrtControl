@@ -45,11 +45,18 @@ javac -version
 
 go test ./...
 mkdir -p "$(dirname "$OUT")"
+# Lo que cgo compila con el clang del NDK no debe llevar la carpeta del proyecto (cambia con cada
+# máquina, y en Windows lleva el nombre del usuario) ni la firma del clang (.comment: el NDK de
+# Linux y el de Windows no se compilan con las mismas opciones). Las mismas -O2 -g de siempre.
+here=$(pwd -W 2>/dev/null || pwd)
+win=$(printf '%s' "$here" | tr '/' '\\')
+CGO_CFLAGS="-O2 -g -fno-ident -ffile-prefix-map=$here=. -ffile-prefix-map=$win=."
+export CGO_CFLAGS
 # arm64 y arm para teléfonos; amd64 para el emulador. API 26: la mínima de la app.
 gomobile bind \
 	-target=android/arm64,android/arm,android/amd64 \
 	-androidapi 26 \
 	-javapkg dev.angel.wrtcontrol.go \
-	-trimpath -ldflags="-s -w -buildid=" \
+	-trimpath -ldflags="-s -w -buildid= -X=runtime.modinfo=" \
 	-o "$OUT" .
 ls -l "$OUT"
