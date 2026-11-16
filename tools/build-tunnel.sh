@@ -22,6 +22,10 @@ NDK_VERSION=30.0.16248370
 OUT=${WRTC_AAR_OUT:-../app/libs/wrtcvpn.aar}
 
 : "${ANDROID_HOME:=${ANDROID_SDK_ROOT:-${LOCALAPPDATA:-$HOME/AppData/Local}/Android/Sdk}}"
+# El NDK fijado manda sobre un ANDROID_NDK_HOME que ya venga puesto (los runners de GitHub traen otro).
+if [ -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+	ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION
+fi
 : "${ANDROID_NDK_HOME:=$ANDROID_HOME/ndk/$NDK_VERSION}"
 export ANDROID_HOME ANDROID_NDK_HOME
 [ -d "$ANDROID_NDK_HOME" ] || { echo "No encuentro el NDK $NDK_VERSION en $ANDROID_HOME/ndk" >&2; exit 1; }
