@@ -44,6 +44,12 @@ class PendingChangeException : UserFacing, Exception(
         "Espera un minuto y vuelve a intentarlo.",
 )
 
+/** El router lo configuró una versión más nueva de la app, con un formato que esta no sabe escribir. */
+class NewerSchemaException : UserFacing, Exception(
+    "El control parental de este router lo configuró una versión más nueva de WrtControl. Actualiza la app " +
+        "para cambiarlo desde este teléfono; mientras, solo puedes verlo.",
+)
+
 /** El cambio se aplicó pero no funcionó como se esperaba, y se deshizo. */
 class ChangeRevertedException(message: String) : Exception(message), UserFacing
 

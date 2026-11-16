@@ -53,8 +53,14 @@ data class ParentalSnapshot(
     val expectedInclude: String? = null,
     /** Reglas de fw4 que deberían estar cargadas (null si no se pudo calcular). */
     val expectedRules: Set<String>? = null,
+    /** Versión del formato guardado y secciones de otras versiones (ver ParentalConfig). */
+    val schema: Int = SCHEMA_VERSION,
+    val preserved: List<UciSection> = emptyList(),
 ) {
-    val config: ParentalConfig get() = ParentalConfig(profiles, settings)
+    val config: ParentalConfig get() = ParentalConfig(profiles, settings, schema, preserved)
+
+    /** Lo configuró una versión más nueva de la app: aquí solo se puede ver. */
+    val newerSchema: Boolean get() = config.newerSchema
 
     /** ¿El filtro de este perfil está funcionando en el router? null si no se sabe. */
     fun filterRunning(p: Profile): Boolean? =
@@ -116,6 +122,8 @@ class ParentalApi(
             firewall = loaded.await(),
             expectedInclude = includeVersion(sections.firstOrNull { it.name == INCLUDE_SECTION }?.text("path")),
             expectedRules = expected,
+            schema = config.schema,
+            preserved = config.preserved,
         )
     }
 
@@ -140,7 +148,7 @@ class ParentalApi(
         val now = routerDateTime(tx.routerLocalTime())
         // Si la zona horaria cambió desde que se escribieron las horas guardadas, se mueven primero.
         val offset = tx.offsetSeconds()
-        val before = readConfig(state.firewall).shiftedTo(offset)
+        val before = readConfig(state.firewall).also { if (it.newerSchema) throw NewerSchemaException() }.shiftedTo(offset)
         val changed = change(before, now).let { c ->
             val admins = (c.settings.admins + app).distinct().sorted()
             // Con la cuarentena, un dispositivo que sale de todos los perfiles (al borrar el perfil o
@@ -176,6 +184,8 @@ class ParentalApi(
     suspend fun setTimezone(zoneId: String, expectedOffsetSeconds: Int, appMacs: Set<String> = emptySet()) = writeLock.withLock {
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
+        // Después se reescriben las reglas: no con el formato de una versión más nueva.
+        if (readConfig(tx.uciSections("firewall")).newerSchema) throw NewerSchemaException()
         // LuCI no incluye UTC en su lista: lo trata aparte, como zonename "UTC" y timezone "GMT0".
         val zones = tx.routerTimezones() + ("UTC" to "GMT0")
         val wanted = if (zoneId in UTC_ALIASES) "UTC" else zoneId

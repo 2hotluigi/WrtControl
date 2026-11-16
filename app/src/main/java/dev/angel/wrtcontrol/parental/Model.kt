@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.openwrt.UciSection
+import dev.angel.wrtcontrol.openwrt.UciValue
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -28,6 +30,8 @@ data class Profile(
     val cutEpoch: Int = 0,
     /** Segundo corte tras endurecer el filtro (ver NftInclude.kt), o null. */
     val cutWindow: CutWindow? = null,
+    /** Opciones que esta versión no conoce (de una más nueva): se guardan tal cual. */
+    val extra: Map<String, UciValue> = emptyMap(),
 )
 
 /**
@@ -54,13 +58,22 @@ data class ParentalSettings(
      * cambio se mueven para que sigan siendo el mismo instante.
      */
     val timeOffset: Int? = null,
+    /** Opciones que esta versión no conoce (de una más nueva): se guardan tal cual. */
+    val extra: Map<String, UciValue> = emptyMap(),
 )
 
 /** Todo lo que la app guarda en el router. */
 data class ParentalConfig(
     val profiles: List<Profile>,
     val settings: ParentalSettings = ParentalSettings(),
+    /** Versión del formato con que se guardó (ver [SCHEMA_VERSION]). */
+    val schema: Int = SCHEMA_VERSION,
+    /** Secciones de datos de una versión más nueva que esta no conoce: se guardan tal cual. */
+    val preserved: List<UciSection> = emptyList(),
 ) {
+    /** Lo guardó una versión más nueva de la app, con un formato que esta no sabe escribir. */
+    val newerSchema: Boolean get() = schema > SCHEMA_VERSION
+
     /** Dispositivos con permiso para salir a internet cuando la cuarentena está activa. */
     val approvedMacs: Set<String> get() = settings.approved.toSet() + settings.admins + profiles.flatMap { it.macs }
 }
@@ -133,6 +146,8 @@ data class Schedule(
     val start: LocalTime,
     val end: LocalTime,
     val enabled: Boolean = true,
+    /** Opciones que esta versión no conoce (de una más nueva): se guardan tal cual. */
+    val extra: Map<String, UciValue> = emptyMap(),
 ) {
     val allDay: Boolean get() = start == end
     val overnight: Boolean get() = end < start

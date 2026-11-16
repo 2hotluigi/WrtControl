@@ -124,6 +124,13 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         }
                     }
                 }
+                if (snapshot.newerSchema) item {
+                    NoticeCard(
+                        "Actualiza WrtControl para cambiar esto",
+                        "El control parental de este router lo configuró una versión más nueva de la app (quizá desde otro " +
+                            "teléfono). Desde aquí puedes verlo, pero no cambiarlo: lo que esta versión no conoce se perdería.",
+                    )
+                }
                 if (connection.emptyPassword) item {
                     NoticeCard(
                         "El router no tiene contraseña",
