@@ -71,8 +71,10 @@ marcha guiada. Cada uno se apoya en los anteriores.
   Pruebas de capturas (Roborazzi o Paparazzi) desde el primer componente.
   - ~~Paleta, tipografía y formas de marca~~ (hecho: "Cobalto", elegida entre tres propuestas. Azul
     cobalto, Manrope dentro de la app y colores de estado aparte del de marca, en claro y oscuro).
-  - Falta: pruebas de capturas, iconos por tipo de dispositivo, animaciones de aplicar/verificar/
-    confirmar y estados vacíos ilustrados.
+  - ~~Pruebas de capturas~~ (hecho: Roborazzi; los componentes y Estado, en claro y oscuro, se
+    comparan en la CI con las imágenes guardadas).
+  - Falta: iconos por tipo de dispositivo, animaciones de aplicar/verificar/confirmar y estados
+    vacíos ilustrados. Irán con las pantallas que los usan.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.

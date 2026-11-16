@@ -1,0 +1,122 @@
+package dev.angel.wrtcontrol.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.github.takahirom.roborazzi.RoborazziOptions
+import com.github.takahirom.roborazzi.captureRoboImage
+import dev.angel.wrtcontrol.data.Loadable
+import dev.angel.wrtcontrol.data.StatusData
+import dev.angel.wrtcontrol.openwrt.BoardInfo
+import dev.angel.wrtcontrol.openwrt.Capabilities
+import dev.angel.wrtcontrol.openwrt.IpAddress
+import dev.angel.wrtcontrol.openwrt.LuciFeatures
+import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.openwrt.Radio
+import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.WifiBand
+import dev.angel.wrtcontrol.ubus.SessionAcl
+import dev.angel.wrtcontrol.ui.home.StatusContent
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/**
+ * Capturas de los componentes y de una pantalla con datos de ejemplo, en claro y en oscuro. Se
+ * comparan con las guardadas en `app/src/test/screenshots`: si el aspecto cambia sin querer, falla.
+ *
+ * - Comparar (lo que hace la CI): `gradlew verifyRoborazziDebug`
+ * - Guardar las nuevas tras un cambio de aspecto buscado: `gradlew recordRoborazziDebug`
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "es-w360dp-h800dp-xhdpi")
+class ScreenshotTest {
+
+    private fun capture(name: String, dark: Boolean, content: @Composable () -> Unit) {
+        captureRoboImage("src/test/screenshots/$name-${if (dark) "oscuro" else "claro"}.png", roborazziOptions = options) {
+            WrtTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
+        }
+    }
+
+    /** Windows y Linux no suavizan las letras exactamente igual: se tolera hasta un 1 % de la imagen. */
+    private val options = RoborazziOptions(compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.01f))
+
+    private fun both(name: String, content: @Composable () -> Unit) {
+        capture(name, dark = false, content)
+        capture(name, dark = true, content)
+    }
+
+    @Test
+    fun componentes() = both("componentes") {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Internet funciona", style = MaterialTheme.typography.headlineSmall)
+            Text("Sin cortes desde hace 6 h", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            InfoCard("Sistema", trailing = { StatusPill("activa", true) }) {
+                InfoRow("Modelo", "Router de ejemplo")
+                InfoRow("Encendido", "6 h 26 min")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusPill("disponible", true)
+                StatusPill("se instalará", null)
+                StatusPill("no compatible", false)
+            }
+            NoticeCard("2 dispositivos nuevos", "Esperan tu aprobación para tener internet.")
+            ErrorBanner("El router no responde. Comprueba que estás en la red de casa.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {}) { Text("Pausar a…") }
+                OutlinedButton(onClick = {}) { Text("Wi-Fi de invitados") }
+            }
+        }
+    }
+
+    @Test
+    fun estado() = both("estado") {
+        StatusContent(Loadable(status), capabilities)
+    }
+
+    private val status = StatusData(
+        BoardInfo(
+            hostname = "Casa",
+            model = "Router de ejemplo",
+            kernel = "6.12.0",
+            release = BoardInfo.Release(version = "25.12.0", description = "OpenWrt 25.12.0"),
+        ),
+        SystemInfo(
+            uptime = 23_160,
+            load = listOf(6554, 3277, 1311),
+            memory = SystemInfo.Memory(total = 512L * 1024 * 1024, available = 380L * 1024 * 1024),
+            root = SystemInfo.Disk(total = 100_000, used = 18_000, avail = 82_000),
+        ),
+        listOf(NetInterface("lan", up = true, proto = "static", device = "br-lan", ipv4 = listOf(IpAddress("192.168.1.1", 24)), uptime = 23_100)),
+    )
+
+    // Un router al que le faltan cosas, para que salgan los tres estados: disponible, se instalará y no compatible.
+    private val capabilities = Capabilities(
+        version = "25.12.0",
+        target = "x86/64",
+        memoryBytes = 512L * 1024 * 1024,
+        freeStorageKiB = 82_000,
+        objects = setOf("uci"),
+        acl = SessionAcl(
+            uci = mapOf("firewall" to setOf("write"), "dhcp" to setOf("write"), "ddns" to setOf("write")),
+            file = mapOf("/etc/luci-uploads/*" to setOf("write"), "/usr/libexec/package-manager-call install *" to setOf("exec")),
+        ),
+        features = LuciFeatures(firewall4 = true, wifi = true, dnsmasq = null),
+        radios = listOf(
+            Radio("radio0", WifiBand.Band2, setOf("n", "ax"), enabled = true, networks = 1),
+            Radio("radio1", WifiBand.Band5, setOf("ac", "ax"), enabled = true, networks = 1),
+        ),
+    )
+}

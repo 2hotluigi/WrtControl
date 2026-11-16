@@ -54,6 +54,20 @@ trae el que compiló la CI.
 La versión debug sugiere `192.168.56.2`, que es la VM de OpenWrt en VirtualBox (red host-only).
 El emulador de Android llega a esa red a través del PC.
 
+### Pruebas de capturas
+
+`ScreenshotTest` pinta los componentes y una pantalla con datos de ejemplo, en claro y en oscuro,
+y los compara con las imágenes de `app/src/test/screenshots` (Roborazzi sobre Robolectric: corre en
+la JVM, sin emulador). Si el aspecto cambia sin querer, la CI falla.
+
+```sh
+./gradlew :app:verifyRoborazziDebug   # comparar; es lo que hace la CI
+./gradlew :app:recordRoborazziDebug   # guardar las nuevas tras un cambio de aspecto buscado
+```
+
+Las diferencias quedan en `app/build/outputs/roborazzi`. Se tolera hasta un 1 % de la imagen,
+porque Windows y Linux no suavizan las letras exactamente igual.
+
 ### Prueba contra la VM con tráfico real
 
 `VmIntegrationTest` usa el código real de la app contra la VM:
