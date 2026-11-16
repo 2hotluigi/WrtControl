@@ -7,8 +7,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 
 /* Lo que el router cuenta del enlace de la salida a internet, y cómo se lee (ver LinkHealth.kt). */
 
@@ -75,6 +78,8 @@ internal fun wanLink(
 /** Las líneas del registro que se miran para fechar las caídas del enlace. */
 private const val LOG_LINES = 500
 
+private const val DNS_TIMEOUT_MS = 3000
+
 /** Dos sitios que no suelen fallar a la vez. */
 private val PING_TARGETS = listOf("1.1.1.1", "9.9.9.9")
 
@@ -98,10 +103,25 @@ private suspend fun UbusCaller.linkDropTimes(device: String): List<Long>? {
     return if (now == null || log == null) null else linkDrops(log.log, device, now)
 }
 
-/** Un ping desde el router; null si no deja lanzarlo. */
-private suspend fun UbusCaller.pingInternet(): Boolean? = when (val first = ping(PING_TARGETS.first())) {
-    false -> ping(PING_TARGETS.last())
-    else -> first
+/**
+ * ¿Se llega a internet desde el router? Un ping y, si no contesta, una consulta de DNS: hay redes
+ * que no dejan salir el ping (y no por eso están sin internet). null si no deja probar nada.
+ */
+private suspend fun UbusCaller.pingInternet(): Boolean? {
+    val pinged = ping(PING_TARGETS.first()).let { if (it == false) ping(PING_TARGETS.last()) else it }
+    return if (pinged == true) true else resolves() ?: pinged
+}
+
+/** El DNS del router pone nombre a una dirección de internet: la consulta salió y volvió. */
+private suspend fun UbusCaller.resolves(): Boolean? = optional {
+    callAs<JsonObject>(
+        "network.rrdns",
+        "lookup",
+        buildJsonObject {
+            putJsonArray("addrs") { PING_TARGETS.forEach { add(it) } }
+            put("timeout", DNS_TIMEOUT_MS)
+        },
+    ).isNotEmpty()
 }
 
 private suspend fun UbusCaller.ping(target: String): Boolean? =

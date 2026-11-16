@@ -16,7 +16,8 @@ import dev.angel.wrtcontrol.txt
  * - `network.device.status`: qué velocidades anuncian el router y el aparato del otro lado. Si los
  *   dos anuncian 1000 y el enlace va a 100, el problema es el cable.
  * - `log.read`: cuándo fue cada caída ("eth1: Link is Down"), para decir "13 veces en 10 minutos".
- * - Un ping desde el router, para saber si de verdad se llega a internet.
+ * - Un ping desde el router y, si no contesta, una consulta de DNS (`network.rrdns`), para saber si
+ *   de verdad se llega a internet.
  */
 
 /** Cómo está el enlace de la salida a internet. Lo que el router no dejó leer va a null. */

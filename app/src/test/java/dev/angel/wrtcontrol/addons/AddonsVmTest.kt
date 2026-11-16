@@ -130,9 +130,11 @@ class AddonsVmTest {
         val link = router.wanLink(router.interfaces())
         log("enlace WAN: $link")
         // Una VM puede no dar enlace que mirar; si lo da, está en pie (por él se sale a internet).
+        // (En 24.10 el ACL no deja fechar las caídas con el registro: se cuentan desde el arranque.)
         if (link != null) {
             assertTrue(link.carrier)
-            assertTrue("sin caídas el registro no hace falta; con ellas se tienen que poder fechar", link.dropsAgoSeconds != null)
+            // Los runners de la CI no dejan salir el ping: tiene que valer la consulta de DNS.
+            assertEquals("se llega a internet", true, link.internet)
         }
     }
 
