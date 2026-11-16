@@ -60,15 +60,16 @@ fun InfoRow(label: String, value: String) {
 @Composable
 fun StatusPill(text: String, ok: Boolean?) {
     val colors = MaterialTheme.colorScheme
+    val status = LocalStatusColors.current
     Surface(
         shape = RoundedCornerShape(50),
         color = when (ok) {
-            true -> colors.primaryContainer
+            true -> status.okContainer
             false -> colors.errorContainer
             null -> colors.surfaceVariant
         },
         contentColor = when (ok) {
-            true -> colors.onPrimaryContainer
+            true -> status.onOkContainer
             false -> colors.onErrorContainer
             null -> colors.onSurfaceVariant
         },
