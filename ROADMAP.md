@@ -71,6 +71,20 @@ Cambiar la cara, no el motor.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.
+  - **Investigar: fabricante, MAC aleatoria y nombre** (para no mostrar "Sin nombre"). Por
+    comprobar en la investigación:
+    - *Fabricante sin conexión:* los registros públicos del IEEE (MA-L, MA-M y MA-S en
+      `standards-oui.ieee.org`, CSV gratuitos) o el `manuf` de Wireshark, que se deriva de ellos.
+      Revisar la licencia para redistribuirlos, el tamaño en el APK y cómo actualizarlos. Nunca
+      mandar las MAC a una API de terceros: dicen qué aparatos hay en la casa.
+    - *MAC aleatoria:* el segundo bit del primer byte (`x2`, `x6`, `xA`, `xE`). Con ella no hay
+      fabricante: mostrar "MAC privada". Mirar cuándo la rotan Android, iOS y Windows (por red,
+      cada cierto tiempo) y qué pasa entonces con la cuarentena y los perfiles.
+    - *Nombre:* hoy sale de las concesiones DHCP de IPv4 (opción 12), que muchos aparatos no
+      mandan. Otras fuentes: concesiones de DHCPv6 (odhcpd por ubus), mDNS (`umdns` en el router,
+      o `NsdManager` desde el teléfono con el permiso de red local), NetBIOS y el nombre de UPnP o
+      SSDP. Medir en la casa cuántos "Sin nombre" resuelve cada una. Si no hay ninguna, usar el
+      fabricante o el tipo ("Aparato Samsung") hasta que el usuario le ponga nombre.
 - **Motor de transacciones genérico:** `SafeApply` como plan → vista previa → aplicar → verificar →
   confirmar, para cualquier función, con un único componente de "Aplicando… si algo falla el
   router vuelve atrás solo".
