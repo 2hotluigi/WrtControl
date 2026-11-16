@@ -38,7 +38,7 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 |---|---|---|
 | ~~CI en GitHub Actions: `testDebugUnitTest`, Android lint, detekt/ktlint, kover y `go test ./tunnel`~~ | P0 | Hecho: cada PR los ejecuta y `master` exige `android` y `tunnel` en verde |
 | ~~Matriz de OpenWrt en CI: imágenes x86-64 en QEMU (24.10, 25.12, snapshot) con `VmIntegrationTest` y `AddonsVmTest`~~ | P0 | Hecho: cada noche y en los PR que tocan `parental/`, `addons/`, `openwrt/` o `ubus/` (`.github/workflows/vm.yml`) |
-| Snapshot (la próxima versión): el ACL de LuCI ya no deja `luci.setInitAction`, que la app usa para reiniciar la red tras instalar WireGuard y para arrancar miniupnpd. Usar la alternativa nueva (p. ej. `rc init`) cuando no esté | P0 | `AddonsVmTest` en verde en snapshot |
+| ~~Sin `luci.setInitAction` en el ACL de LuCI (snapshot y ya algunas compilaciones de 25.12.6, como la del GL-MT6000): la app lo usa para reiniciar la red tras instalar WireGuard y para arrancar miniupnpd~~ | P0 | Hecho: si se deniega, `rc init`. Probado en un GL-MT6000 con 25.12.6 |
 | Validar el `.nft` generado con `nft -c` en un contenedor | P0 | Falla la CI si una regla no analiza |
 | Compilación reproducible del AAR del túnel (Go + gomobile en CI) | P0 | El AAR del repo coincide con el que genera la CI |
 | Versión del esquema en el router (`schema_version`), conservar opciones desconocidas y bloquear la escritura si lo configuró una versión más nueva | P0 | Hoy una versión anterior borra los ajustes nuevos al guardar. Pruebas de migración N−1 / N / N+1 |

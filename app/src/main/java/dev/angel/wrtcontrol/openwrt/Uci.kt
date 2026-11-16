@@ -169,12 +169,22 @@ suspend fun UbusCaller.setPassword(username: String, password: String) {
     }
 }
 
-/** Arranca, para, reinicia o habilita un servicio de /etc/init.d (luci.setInitAction, como LuCI). */
+/**
+ * Arranca, para, reinicia o habilita un servicio de /etc/init.d, como LuCI. Primero con
+ * luci.setInitAction; desde 25.12.6 (y en snapshot) el ACL de LuCI ya no lo deja y LuCI usa
+ * `rc init`, que da lo mismo y responde vacío.
+ */
 suspend fun UbusCaller.initAction(service: String, action: String) {
-    val result = callAs<JsonObject>("luci", "setInitAction", buildJsonObject {
+    val args = buildJsonObject {
         put("name", service)
         put("action", action)
-    })
+    }
+    val result = try {
+        callAs<JsonObject>("luci", "setInitAction", args)
+    } catch (_: UbusException.AccessDenied) {
+        call("rc", "init", args)
+        return
+    }
     if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
         throw UbusException.Protocol("El router no pudo hacer \"$action\" con $service")
     }

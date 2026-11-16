@@ -31,6 +31,9 @@ class VmIntegrationTest {
     private val vm: String? = System.getenv("WRTCONTROL_VM")
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
 
+    /** Contraseña de root (la VM y la CI no tienen; un router de verdad, sí). */
+    private val password: String = System.getenv("WRTCONTROL_PASSWORD").orEmpty()
+
     /**
      * A dónde hace ping el cliente: algo al otro lado de la WAN, para que pase por el forward del router.
      * En la CI es el propio PC (10.0.3.2), porque los runners de GitHub no dejan salir ICMP a internet.
@@ -43,6 +46,30 @@ class VmIntegrationTest {
      * seguir; la CI usa un servidor HTTP en el PC, al otro lado de la WAN.
      */
     private val httpTarget: String = System.getenv("WRTCONTROL_HTTP_TARGET") ?: "http://1.1.1.1/cdn-cgi/trace"
+
+    /**
+     * Eco para las conexiones largas ya en marcha al otro lado de la WAN ("host puerto"). Sin
+     * definir, se abre uno en este PC y el router llega por su pasarela WAN (en la NAT de
+     * VirtualBox, el propio PC). Con un router de verdad, el de `netns-client.sh inet-up`:
+     * "198.51.100.2 47101".
+     */
+    private val echoTarget: String? = System.getenv("WRTCONTROL_ECHO_TARGET")
+
+    /**
+     * MAC que las pruebas aprueban siempre al activar la cuarentena (separadas por comas): el PC
+     * que lanza la prueba, si sale a internet por este router.
+     */
+    private val keepMacs: List<String> = System.getenv("WRTCONTROL_KEEP_MACS")?.split(',')
+        ?.map { it.trim().uppercase() }?.filter { it.isNotEmpty() }.orEmpty()
+
+    /** El cliente de pruebas es la .99 de la LAN del router (tools/vm/netns-client.sh). */
+    private val clientIp: String get() = vm!!.substringBeforeLast('.') + ".99"
+
+    /** Dirección ULA del router en la LAN, para preguntarle el DNS por IPv6. */
+    private val routerIpv6: String by lazy {
+        ssh("ip -6 addr show dev br-lan scope global").lines().map { it.trim() }
+            .first { it.startsWith("inet6 fd") }.removePrefix("inet6 ").substringBefore('/')
+    }
 
     /**
      * Ejecuta [command] en la VM. Con muchas conexiones seguidas, dropbear rechaza alguna de vez
@@ -89,8 +116,8 @@ class VmIntegrationTest {
     fun `pausa y horario con trafico real`() = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
-        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
-        client.login(Credentials("root", ""))
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
+        client.login(Credentials("root", password))
         val api = ParentalApi(client, log = ::log)
 
         api.updateProfiles { _, _ -> emptyList() } // punto de partida limpio
@@ -137,7 +164,8 @@ class VmIntegrationTest {
         val later = schedule.copy(start = now.plusHours(2), end = now.plusHours(3))
         api.updateProfiles { profiles, _ -> profiles.map { it.copy(schedules = listOf(later)) } }
         Thread.sleep(1500)
-        assertTrue("fuera del horario hay acceso", repliesDuring(4000) >= 2)
+        // Una segunda ventana por si la recarga del firewall de un router de verdad cae en la primera.
+        assertTrue("fuera del horario hay acceso", repliesDuring(4000) >= 2 || repliesDuring(4000) >= 2)
 
         api.updateProfiles { _, _ -> emptyList() }
         stopPing()
@@ -152,8 +180,8 @@ class VmIntegrationTest {
     fun `horarios con la zona horaria de Mexico`() = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
-        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
-        client.login(Credentials("root", ""))
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
+        client.login(Credentials("root", password))
         val api = ParentalApi(client, log = { if ("recargado=false" !in it) log(it) })
         api.updateProfiles { _, _ -> emptyList() }
 
@@ -203,14 +231,14 @@ class VmIntegrationTest {
     fun `filtro de contenido por perfil`() = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
-        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
-        client.login(Credentials("root", ""))
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
+        client.login(Credentials("root", password))
         val api = ParentalApi(client, log = { if ("recargado=false" !in it) log(it) })
         api.updateProfiles { _, _ -> emptyList() }
-        val routers = listOf("192.168.56.2", "8.8.8.8", "fd27:71c3:f0a8::1") // IPv4, DNS externo e IPv6
+        val routers = listOf(vm!!, "8.8.8.8", routerIpv6) // IPv4, DNS externo e IPv6
 
         try {
-            assertTrue("sin filtro resuelve", resolveFromClient("tiktok.com", "192.168.56.2").first().isDigit())
+            assertTrue("sin filtro resuelve", resolveFromClient("tiktok.com", vm!!).first().isDigit())
 
             val filter = ContentFilter(FilterLevel.Adult, setOf("tiktok"), listOf("wikipedia.org"))
             var t0 = System.currentTimeMillis()
@@ -238,7 +266,7 @@ class VmIntegrationTest {
         } finally {
             api.updateProfiles { _, _ -> emptyList() }
         }
-        val running = ssh("ubus call service list '{\"name\":\"dnsmasq\"}' | grep -c wrtc_dns_ || true").lines().last()
+        val running = ssh("ubus call service list | grep -c wrtc_dns_ || true").lines().last()
         assertEquals("sin servidores DNS de WrtControl al terminar", "0", running)
     }
 
@@ -262,7 +290,7 @@ class VmIntegrationTest {
 
     /** Marca de conntrack de las conexiones del cliente a [port] que contienen [filter] (estado, destino...). */
     private fun clientMarks(port: Int, filter: String): List<Long> =
-        ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=$port ' | grep -F '$filter' || true").lines()
+        ssh("grep 'src=$clientIp ' /proc/net/nf_conntrack | grep ' dport=$port ' | grep -F '$filter' || true").lines()
             .mapNotNull { Regex("mark=(\\d+)").find(it)?.groupValues?.get(1)?.toLong() }
 
     /**
@@ -281,7 +309,7 @@ class VmIntegrationTest {
     }
 
     /** Las entradas de conntrack del cliente, para los mensajes de error. */
-    private fun clientConntrack(): List<String> = ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack || true").lines()
+    private fun clientConntrack(): List<String> = ssh("grep 'src=$clientIp ' /proc/net/nf_conntrack || true").lines()
 
     /**
      * Comprueba el fichero de reglas en uso con el analizador de nftables 1.0.2 de OpenWrt 22.03,
@@ -345,28 +373,29 @@ class VmIntegrationTest {
     fun `proteccion con trafico real`() = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
-        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
-        client.login(Credentials("root", ""))
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
+        client.login(Credentials("root", password))
         val api = ParentalApi(client, log = { if ("recargado=false" !in it) log(it) })
         api.update { _, _ -> ParentalConfig(emptyList()) }
         assertTrue("el cliente debe tener internet al empezar", newConnectionWorks())
         // http://1.1.1.1 redirige a https://1.1.1.1, que es un resolutor DNS cifrado: con filtro se
         // bloquea a propósito. Para "la web sigue" se usa openwrt.org.
         val web = webIp()
-        val echo = startEcho()
+        val echo = if (echoTarget == null) startEcho() else null
+        val echoPort = echo?.localPort ?: echoTarget!!.substringAfter(' ').toInt()
         val gateway = ssh("ip -4 route show default").substringAfter("via ").substringBefore(' ').trim()
-        val echoTarget = "$gateway ${echo.localPort}"
+        val echoAddress = echoTarget ?: "$gateway $echoPort"
 
         try {
             // 1. Cuarentena: sin aprobar no sale a internet, pero el router le sigue dando DNS.
             var t0 = System.currentTimeMillis()
-            api.update { c, _ -> c.copy(settings = ParentalSettings(quarantine = true, approved = listOf("02:00:00:00:00:01"))) }
+            api.update { c, _ -> c.copy(settings = ParentalSettings(quarantine = true, approved = listOf("02:00:00:00:00:01") + keepMacs)) }
             log("cuarentena activada en ${System.currentTimeMillis() - t0} ms")
             val path = ssh("uci -q get firewall.$INCLUDE_SECTION.path").lines().last()
             assertEquals("un solo fichero de reglas, el que está en uso", path, ssh("ls $INCLUDE_DIR/wrtcontrol*.nft").lines().single())
             checkWith1_0_2(path)
             assertTrue("sin aprobar no hay internet", !newConnectionWorks())
-            assertTrue("pero el router le resuelve", resolveFromClient("openwrt.org", "192.168.56.2").first().isDigit())
+            assertTrue("pero el router le resuelve", resolveFromClient("openwrt.org", vm!!).first().isDigit())
 
             startPing()
             api.update { c, _ -> c.copy(settings = c.settings.copy(approved = c.settings.approved + CLIENT_MAC)) }
@@ -386,13 +415,13 @@ class VmIntegrationTest {
 
             // 2. Perfil con filtro: búsqueda segura, YouTube restringido, DNS cifrado por IP y router protegido.
             // Antes, una conexión TCP abierta: responde ahora, y al endurecer el filtro debe cortarse.
-            echoConnection(echoTarget, "/tmp/wrtc_nc.out", first = 1, second = 20)
+            echoConnection(echoAddress, "/tmp/wrtc_nc.out", first = 1, second = 20)
             Thread.sleep(3000)
             assertTrue("la conexión de antes funciona", "OK antes" in ssh("cat /tmp/wrtc_nc.out"))
             // conntrack puede tardar un momento en mostrarla: se espera un poco antes de mirar la marca.
-            var openMarks = clientMarks(echo.localPort, "ESTABLISHED")
-            repeat(5) { if (openMarks.isEmpty()) { Thread.sleep(1000); openMarks = clientMarks(echo.localPort, "ESTABLISHED") } }
-            if (openMarks.isEmpty()) log("conntrack: ${ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep -v 'dport=53 ' || true").lines().takeLast(5)}")
+            var openMarks = clientMarks(echoPort, "ESTABLISHED")
+            repeat(5) { if (openMarks.isEmpty()) { Thread.sleep(1000); openMarks = clientMarks(echoPort, "ESTABLISHED") } }
+            if (openMarks.isEmpty()) log("conntrack: ${ssh("grep 'src=$clientIp ' /proc/net/nf_conntrack | grep -v 'dport=53 ' || true").lines().takeLast(5)}")
             assertEquals("y aún no tiene época", listOf(0L), openMarks.distinct())
             val filter = ContentFilter(safeSearch = true, youtube = YoutubeMode.Moderate, services = setOf("tiktok"))
             t0 = System.currentTimeMillis()
@@ -400,15 +429,15 @@ class VmIntegrationTest {
             log("filtro con protección aplicado en ${System.currentTimeMillis() - t0} ms")
             checkWith1_0_2(ssh("uci -q get firewall.$INCLUDE_SECTION.path").lines().last())
 
-            for (server in listOf("192.168.56.2", "8.8.8.8", "fd27:71c3:f0a8::1")) {
+            for (server in listOf(vm!!, "8.8.8.8", routerIpv6)) {
                 assertEquals("Google seguro vía $server", "216.239.38.120", resolveFromClient("www.google.com", server))
                 assertEquals("Google México seguro vía $server", "216.239.38.120", resolveFromClient("www.google.com.mx", server))
                 assertEquals("YouTube moderado vía $server", "216.239.38.119", resolveFromClient("www.youtube.com", server))
                 assertEquals("TikTok bloqueado vía $server", "NXDOMAIN", resolveFromClient("tiktok.com", server))
             }
-            assertTrue("AAAA también segura", "2001:4860:4802:32::78" in nslookupFromClient("www.google.com", "192.168.56.2", "aaaa"))
-            assertTrue("Bing estricto", "strict.bing.com" in nslookupFromClient("www.bing.com", "192.168.56.2"))
-            assertTrue("DuckDuckGo seguro", "safe.duckduckgo.com" in nslookupFromClient("duckduckgo.com", "192.168.56.2"))
+            assertTrue("AAAA también segura", "2001:4860:4802:32::78" in nslookupFromClient("www.google.com", vm!!, "aaaa"))
+            assertTrue("Bing estricto", "strict.bing.com" in nslookupFromClient("www.bing.com", vm!!))
+            assertTrue("DuckDuckGo seguro", "safe.duckduckgo.com" in nslookupFromClient("duckduckgo.com", vm!!))
             assertTrue("otras webs siguen", resolveFromClient("openwrt.org", "8.8.8.8").first().isDigit())
             log("búsqueda segura y YouTube restringido por IPv4, 8.8.8.8 e IPv6")
 
@@ -416,8 +445,8 @@ class VmIntegrationTest {
             assertTrue("DNS cifrado de Google bloqueado", !connects("https://8.8.8.8/"))
             assertTrue("también en otros puertos de esas IP", !connects("http://1.1.1.1/"))
             assertTrue("la web normal sigue", connects("https://$web/"))
-            assertTrue("no abre LuCI", !connects("http://192.168.56.2/"))
-            assertTrue("el router le sigue resolviendo", resolveFromClient("openwrt.org", "192.168.56.2").first().isDigit())
+            assertTrue("no abre LuCI", !connects("http://$vm/"))
+            assertTrue("el router le sigue resolviendo", resolveFromClient("openwrt.org", vm!!).first().isDigit())
             log("DNS cifrado por IP y acceso al router bloqueados")
             // Los contadores vuelven a cero con cada recarga del firewall: se miran ahora.
             val counted = api.load()
@@ -435,7 +464,7 @@ class VmIntegrationTest {
 
             // Una conexión abierta durante la ventana del corte (como la de un dispositivo que
             // reconecta con la IP que tenía en caché) funciona al principio y se corta al acabarla.
-            echoConnection(echoTarget, "/tmp/wrtc_nc2.out", first = 2, second = 100)
+            echoConnection(echoAddress, "/tmp/wrtc_nc2.out", first = 2, second = 100)
             val windowConnectionAt = System.currentTimeMillis()
             Thread.sleep(20_000) // la conexión abierta antes del filtro manda su segunda línea ahora
             val nc = ssh("cat /tmp/wrtc_nc.out")
@@ -474,7 +503,7 @@ class VmIntegrationTest {
             assertTrue("después de la ventana se conecta", connects("http://$web/"))
             val epochMark = afterCut.profiles.single().cutEpoch.toLong() shl 14
             val marksAfter = clientMarksWith(epochMark, "dst=$web ")
-            log("marcas tras la ventana: $marksAfter (época $epochMark); conntrack: ${ssh("grep 'src=192.168.56.99 ' /proc/net/nf_conntrack | grep ' dport=80 ' || true").lines().takeLast(4)}")
+            log("marcas tras la ventana: $marksAfter (época $epochMark); conntrack: ${ssh("grep 'src=$clientIp ' /proc/net/nf_conntrack | grep ' dport=80 ' || true").lines().takeLast(4)}")
             assertTrue("con la época del perfil: $marksAfter", epochMark in marksAfter)
             val snapshot = api.load()
             assertEquals(true, snapshot.rulesLoaded)
@@ -504,12 +533,20 @@ class VmIntegrationTest {
             log("tiempo extra comprobado")
         } finally {
             stopPing()
-            echo.close()
+            echo?.close()
             api.update { _, _ -> ParentalConfig(emptyList()) }
         }
         assertTrue("sin ficheros de reglas al terminar", ssh("ls $INCLUDE_DIR/ | grep -c wrtcontrol || true").lines().last() == "0")
         assertTrue("sin secciones de WrtControl", ssh("uci show firewall | grep -c wrtc_ || true").lines().last() == "0")
-        assertTrue("el cliente vuelve a tener internet", newConnectionWorks())
+        // En un router de verdad, con más tráfico, fw4 puede tardar unos segundos más en dejarlo pasar.
+        val backAt = System.currentTimeMillis()
+        var back = newConnectionWorks()
+        while (!back && System.currentTimeMillis() - backAt < 15_000) {
+            Thread.sleep(1000)
+            back = newConnectionWorks()
+        }
+        log("internet de vuelta tras ${System.currentTimeMillis() - backAt} ms")
+        assertTrue("el cliente vuelve a tener internet", back)
     }
 
     private companion object {
