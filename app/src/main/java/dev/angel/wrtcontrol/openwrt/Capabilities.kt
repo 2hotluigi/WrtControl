@@ -172,7 +172,9 @@ private fun Capabilities.addon(addon: Addon): Availability {
  */
 private fun Capabilities.configurable(addon: Addon): Boolean = acl.hasGroup(addon.luciPackage) || when (addon) {
     // La configuración de WireGuard va en `network`, que se puede escribir siempre: se mira su objeto.
-    Addon.WireGuard -> has("luci.wireguard")
+    // Que exista no basta: rpcd lo conserva cargado después de desinstalar el paquete, pero el
+    // permiso para llamarlo se va con él.
+    Addon.WireGuard -> has("luci.wireguard") && acl.canCall("luci.wireguard", "getWgInstances")
     Addon.Ddns -> acl.canWrite("ddns")
     Addon.Sqm -> acl.canWrite("sqm")
     Addon.Upnp -> acl.canWrite("upnpd")

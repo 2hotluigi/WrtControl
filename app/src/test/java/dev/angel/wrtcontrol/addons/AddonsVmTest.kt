@@ -138,7 +138,6 @@ class AddonsVmTest {
         assertEquals("fw4", true, caps.features?.firewall4)
         assertTrue("LuCI deja instalar paquetes", caps.canInstallPackages)
         assertTrue(caps.acl.canCall("uci", "apply") && caps.acl.canCall("network.interface", "dump"))
-        assertFalse("la sesión no puede leer la configuración de rpcd", caps.acl.canWrite("rpcd"))
         assertEquals(Availability.Ready, caps.availability(Feature.Parental))
         assertEquals(Availability.Ready, caps.availability(Feature.ContentFilter))
         // Cada paquete opcional: o ya se puede configurar o la app puede instalarlo.

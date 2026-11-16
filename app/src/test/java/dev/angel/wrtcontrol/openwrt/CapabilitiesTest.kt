@@ -18,7 +18,7 @@ class CapabilitiesTest {
             "luci-app-sqm": ["read","write"], "luci-app-upnp": ["read","write"], "luci-proto-wireguard": ["read","write"],
             "luci-app-package-manager": ["read","write"], "unauthenticated": ["read"]},
           "ubus": {"uci": ["get","set","commit","apply","confirm"], "luci": ["getFeatures","setPassword"], "hostapd.*": ["del_client"],
-            "luci.ddns": ["get_services_status"], "session": ["access","login"]},
+            "luci.ddns": ["get_services_status"], "luci.wireguard": ["getWgInstances"], "session": ["access","login"]},
           "uci": {"firewall": ["read","write"], "dhcp": ["read","write"], "network": ["read","write"], "ddns": ["read","write"],
             "sqm": ["read","write"], "upnpd": ["read","write"], "system": ["read","write"]},
           "file": {"/etc/luci-uploads/*": ["write"], "/usr/libexec/package-manager-call install *": ["exec"],
@@ -66,6 +66,9 @@ class CapabilitiesTest {
             Availability.Installable(listOf("luci-proto-wireguard")),
             caps(acl = noGroup, objects = setOf("uci")).availability(Feature.RemoteAccess),
         )
+        // Desinstalado desde la consola: rpcd conserva el objeto, pero ya no da permiso para llamarlo.
+        val removed = noGroup.copy(ubus = noGroup.ubus - "luci.wireguard")
+        assertEquals(Availability.Installable(listOf("luci-proto-wireguard")), caps(acl = removed).availability(Feature.RemoteAccess))
         // Si no se pudo preguntar qué objetos hay, decide el grupo.
         assertEquals(Availability.Installable(listOf("luci-proto-wireguard")), caps(acl = noGroup, objects = null).availability(Feature.RemoteAccess))
     }
