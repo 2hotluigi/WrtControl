@@ -145,8 +145,9 @@ bien: basta con que llegue al final del fichero sin errores.
 | `parental` | Perfiles, pausas, horarios y filtro de contenido: cómo se guardan, qué configuración de fw4 y dnsmasq generan y cómo se aplican sin arriesgar el acceso (ver abajo). |
 | `addons` | Paquetes opcionales: instalarlos (como la página Software de LuCI), SQM, UPnP, DNS dinámico, el servidor WireGuard del acceso remoto y las claves (X25519 en Kotlin). |
 | `data` | Router guardado en DataStore. La contraseña y la clave del acceso remoto se guardan cifradas con AES-GCM y una clave del Android Keystore. `RouterTransport` decide si cada conexión va directa o por el túnel. |
+| (raíz) | `Txt.kt`: un texto para el usuario sin `Context` (recurso y datos), que devuelve la lógica y resuelve la interfaz; en las pruebas JVM, `TestStrings` lo lee de `values/`. |
 | (raíz) | `Errors.kt`: el texto de cualquier error para el usuario (qué pasó y qué hacer), sin nombres de clase ni códigos. Los errores escritos para el usuario implementan `UserFacing` y se muestran tal cual. |
-| `res/values*` | Textos de la interfaz: español en `values/strings_<área>.xml` (el idioma por defecto, `tools:locale="es"`) e inglés en `values-en/`. `HardcodedTextTest` falla si una pantalla vuelve a llevar un texto fijo. |
+| `res/values*` | Textos de la interfaz: español en `values/strings_<área>.xml` (el idioma por defecto, `tools:locale="es"`) e inglés en `values-en/`. `HardcodedTextTest` falla si una pantalla vuelve a llevar un texto fijo; la lógica devuelve `Txt`. |
 | `ui` | Compose + Material 3. Los datos se recargan periódicamente y la recarga se detiene cuando la app pasa a segundo plano. |
 
 ## Control parental: qué hace en el router

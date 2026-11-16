@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.PackageInstallException
 import dev.angel.wrtcontrol.openwrt.PackageTool
 import dev.angel.wrtcontrol.parental.ChangeRevertedException
@@ -137,7 +138,7 @@ class AddonsApiTest {
         } catch (e: PackageInstallException) {
             e
         }
-        assertTrue(e!!.message, e.message!!.contains("espacio libre"))
+        assertTrue(e!!.text.es, e.text.es.contains("espacio libre suficiente para instalar luci-app-sqm"))
         assertTrue(e.output.contains("No space left"))
         assertFalse("luci-app-sqm" in f.installed)
     }
@@ -203,11 +204,11 @@ class AddonsApiTest {
         assertNull("no dejó nada a medias", f.fake.pendingApply)
         assertEquals(
             "Con menos de 256 kbit/s el router se quedaría casi sin conexión.",
-            sqmProblem(SqmEdit("eth1", true, "eth1", 100, 10_000)),
+            sqmProblem(SqmEdit("eth1", true, "eth1", 100, 10_000))?.es,
         )
         assertNull("0 es sin limitar ese sentido", sqmProblem(SqmEdit("eth1", true, "eth1", 85_000, 0)))
-        assertEquals("Indica al menos una de las dos velocidades.", sqmProblem(SqmEdit("eth1", true, "eth1", 0, 0)))
-        assertEquals("Ese nombre de dispositivo no es válido.", sqmProblem(SqmEdit("eth1", true, "eth1; reboot", 1000, 1000)))
+        assertEquals("Indica al menos una de las dos velocidades.", sqmProblem(SqmEdit("eth1", true, "eth1", 0, 0))?.es)
+        assertEquals("Ese nombre de dispositivo no es válido.", sqmProblem(SqmEdit("eth1", true, "eth1; reboot", 1000, 1000))?.es)
     }
 
     @Test
@@ -230,7 +231,7 @@ class AddonsApiTest {
             api.setUpnp(enabled = true)
             fail("tenía que deshacerse")
         } catch (e: ChangeRevertedException) {
-            assertEquals("UPnP no arrancó en el router, así que se dejó como estaba.", e.message)
+            assertEquals("UPnP no arrancó en el router, así que se dejó como estaba.", e.text.es)
         }
         assertEquals("0", f.fake.option("config", "enabled"))
     }

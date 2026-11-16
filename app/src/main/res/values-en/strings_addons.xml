@@ -118,4 +118,91 @@
     <string name="addons_upnp_no_ports">No device has opened ports.</string>
     <string name="addons_upnp_expires_in">expires in %1$s</string>
     <string name="addons_upnp_close_port">Close port %1$d</string>
+
+    <!-- Optional packages: what they do -->
+    <string name="addons_wireguard_description">Encrypted tunnel so the app can reach the router when you\'re away from home.</string>
+    <string name="addons_ddns_description">A fixed name for the router, even if your ISP changes its address.</string>
+    <string name="addons_sqm_title">SQM (connection quality)</string>
+    <string name="addons_sqm_description">Keeps the connection from clogging up when someone downloads: video calls and games stay smooth.</string>
+    <string name="addons_upnp_description">Lets consoles and games open ports on their own (open NAT). Handy, but any device at home can open them.</string>
+
+    <!-- What's being done on the router -->
+    <string name="addons_busy_installing">Installing %1$s… It can take up to a minute.</string>
+    <string name="addons_busy_restarting_network">Restarting the router\'s network…</string>
+    <string name="addons_busy_sqm">Applying SQM…</string>
+    <string name="addons_busy_upnp_on">Turning on UPnP…</string>
+    <string name="addons_busy_upnp_off">Turning off UPnP…</string>
+    <string name="addons_busy_upnp_secure">Changing UPnP secure mode…</string>
+    <string name="addons_busy_remote_on">Setting up remote access…</string>
+    <string name="addons_busy_remote_off">Removing remote access for %1$s…</string>
+    <string name="addons_busy_ddns_on">Setting up dynamic DNS…</string>
+    <string name="addons_busy_ddns_off">Removing dynamic DNS…</string>
+    <string name="addons_busy_closing_port">Closing port %1$d…</string>
+
+    <!-- Errors while configuring -->
+    <string name="addons_protocol_not_loaded">The router installed the package but didn\'t load it. Restart it to finish.</string>
+    <string name="addons_sqm_conflict">There\'s already another active SQM queue on %1$s. Turn it off first.</string>
+    <string name="addons_sqm_queue_gone">That SQM queue no longer exists on the router: someone removed it from LuCI. Reload the screen.</string>
+    <string name="addons_upnp_no_config">UPnP has no configuration on the router. Reinstall it.</string>
+    <string name="addons_upnp_close_failed">The router couldn\'t close that port. Reload the screen and try again.</string>
+    <string name="addons_remote_no_free_address">There are no free addresses left in the router\'s remote access: remove a phone you no longer use.</string>
+    <string name="addons_remote_web_unreachable">The router\'s web server (uhttpd) only listens on %1$s. For remote access it has to listen on all IPv4 addresses (0.0.0.0) or on the LAN address.</string>
+    <string name="addons_remove_remote_from_home">The app is reaching the router through this phone\'s remote access right now: removing it would cut the connection. Remove it from home.</string>
+
+    <!-- SQM: invalid input -->
+    <string name="addons_sqm_pick_device">Choose the internet connection.</string>
+    <string name="addons_sqm_invalid_device">That device name isn\'t valid.</string>
+    <string name="addons_sqm_negative_speed">Speeds can\'t be negative.</string>
+    <string name="addons_sqm_no_speed">Enter at least one of the two speeds.</string>
+    <string name="addons_sqm_too_slow">Below %1$s kbit/s the router would be left almost without a connection.</string>
+
+    <!-- Dynamic DNS: providers -->
+    <string name="addons_ddns_provider_other">Other</string>
+    <string name="addons_ddns_help_duckdns">Free. On duckdns.org you sign in with your Google or GitHub account, pick a name and copy the token.</string>
+    <string name="addons_ddns_help_dynv6">Free, with good IPv6 support. On dynv6.com you create a zone (e.g. myhome.dynv6.net) and copy its token.</string>
+    <string name="addons_ddns_help_desec">Free and ad-free. On desec.io you register a dedyn.io name and create a token.</string>
+    <string name="addons_ddns_help_custom">Your provider\'s update URL, with [DOMAIN], [USERNAME], [PASSWORD] and [IP] where they go. The app fills them in with the name, the username, the token and the router\'s address.</string>
+
+    <!-- Dynamic DNS: invalid input -->
+    <string name="addons_ddns_invalid_name">Enter a valid name (e.g. %1$s).</string>
+    <string name="addons_ddns_missing_token">The token is missing (the key your provider gives you).</string>
+    <string name="addons_ddns_token_chars">The token can\'t contain spaces or quotes.</string>
+    <string name="addons_ddns_missing_url">The update URL is missing.</string>
+    <string name="addons_ddns_url_scheme">The URL has to start with http:// or https://.</string>
+    <string name="addons_ddns_url_no_ip">The URL has to include [IP], where the address goes.</string>
+
+    <!-- Dynamic DNS: what the router's log says -->
+    <string name="addons_ddns_log_rejected">The provider rejected the update: check the name and the token.</string>
+    <string name="addons_ddns_log_no_public_ip">The router has no public address to publish (CGNAT without IPv6?).</string>
+    <string name="addons_ddns_log_no_certificates">The router is missing the HTTPS certificates (ca-bundle package).</string>
+    <string name="addons_ddns_log_connect_failed">The router couldn\'t connect to the provider: %1$s</string>
+
+    <!-- Dynamic DNS: notifying the provider from the phone -->
+    <string name="addons_ddns_sync_unreachable">Couldn\'t notify %1$s from the phone (no connection to its server). The router will publish its address in a few minutes, but an old address may stay published.</string>
+    <string name="addons_ddns_sync_rejected">%1$s rejected the name or the token: check that the name is yours and the token was copied correctly.</string>
+    <string name="addons_ddns_sync_server_error">The %1$s server failed. The router will try again in a few minutes.</string>
+    <string name="addons_ddns_sync_dynv6_ipv6">dynv6 doesn\'t allow deleting the IPv6 address from here: if the name had an old one, remove it on dynv6.com.</string>
+
+    <!-- Reachable from outside? -->
+    <string name="addons_reach_no_mobile_data">Couldn\'t use mobile data. Turn it on (you can stay on Wi-Fi: the test only uses a few KB) and try again.</string>
+    <string name="addons_reach_reached">%1$s (%2$s): reachable.</string>
+    <string name="addons_reach_v6_no_reply">IPv6 (%1$s): the router didn\'t answer. It\'s almost always the ISP\'s modem dropping incoming IPv6 traffic: on its page, lower the IPv6 firewall level or put the router in its DMZ.</string>
+    <string name="addons_reach_v6_cannot_send">IPv6: your mobile data has no IPv6, so it couldn\'t be tested. It may be reachable from networks with IPv6.</string>
+    <string name="addons_reach_v6_none">IPv6: the router has no public IPv6. If your ISP provides IPv6, check the router\'s WAN6.</string>
+    <string name="addons_reach_v4_no_reply_behind">IPv4 (%1$s): not getting through. The router is behind another device (its WAN has %2$s): on that device, forward UDP port %3$d to the router or put it in its DMZ.</string>
+    <string name="addons_reach_v4_no_reply">IPv4 (%1$s): the router didn\'t answer. Something in front of it may be dropping incoming traffic.</string>
+    <string name="addons_reach_v4_cannot_send">IPv4: your mobile data has no IPv4, so it couldn\'t be tested.</string>
+    <string name="addons_reach_v4_behind">IPv4: the router is behind another device or a CGNAT (its WAN has %1$s), so it can\'t be reached over IPv4.</string>
+    <string name="addons_reach_v4_none">IPv4: the router has no public IPv4.</string>
+    <string name="addons_reach_no_ddns">Without dynamic DNS, if your ISP changes the router\'s address, the app won\'t find it: set it up below.</string>
+    <string name="addons_reach_ddns_stale">Dynamic DNS still returns %1$s, which no longer belongs to the router (it updates every few minutes).</string>
+    <string name="addons_reach_ddns_dead">Dynamic DNS publishes %1$s, which doesn\'t get through: some programs try it first and fail to connect (WireGuard on Windows, for example). Better to publish only %2$s.</string>
+    <string name="addons_reach_ddns_empty">From outside, the dynamic DNS name doesn\'t return any address yet: the provider can take a few minutes.</string>
+    <string name="addons_ddns_not_started">Dynamic DNS didn\'t start on the router, so it was left as it was.</string>
+    <string name="addons_ddns_not_removed">The router didn\'t remove dynamic DNS, so it was left as it was.</string>
+    <string name="addons_remote_not_removed">The router didn\'t remove remote access, so it was left as it was.</string>
+    <string name="addons_remote_not_started">The router didn\'t bring up remote access (WireGuard), so it was left as it was.</string>
+    <string name="addons_sqm_reverted">The router stopped responding with the new SQM, so the change was undone.</string>
+    <string name="addons_upnp_not_started">UPnP didn\'t start on the router, so it was left as it was.</string>
+    <string name="addons_upnp_not_applied">The router didn\'t apply the UPnP change, so it was left as it was.</string>
 </resources>

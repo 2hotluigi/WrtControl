@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Route
@@ -198,7 +199,7 @@ class RemoteAccessTest {
             api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
             fail("tenía que deshacerse")
         } catch (e: dev.angel.wrtcontrol.parental.ChangeRevertedException) {
-            assertEquals("El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.", e.message)
+            assertEquals("El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.", e.text.es)
         }
         assertTrue(f.fake.committed.keys.none { it.startsWith(VPN_PREFIX) })
     }
@@ -288,7 +289,7 @@ class RemoteAccessTest {
             api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
             fail("uhttpd no escucha en ninguna IPv4")
         } catch (e: WebUnreachableException) {
-            assertTrue(e.message!!.contains("0.0.0.0"))
+            assertTrue(e.text.es, e.text.es.contains("solo escucha en [::]:80") && e.text.es.contains("0.0.0.0"))
         }
         assertNull("no se tocó nada", f.fake.committed[VPN_INTERFACE])
     }

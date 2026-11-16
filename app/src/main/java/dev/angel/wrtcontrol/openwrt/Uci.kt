@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.openwrt
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusCaller
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.callAs
@@ -166,7 +168,7 @@ suspend fun UbusCaller.setPassword(username: String, password: String) {
         put("password", password)
     })
     if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
-        throw UbusException.Refused("El router no aceptó la contraseña nueva. Prueba con otra.")
+        throw UbusException.Refused(txt(R.string.router_password_rejected))
     }
 }
 
@@ -188,7 +190,7 @@ suspend fun UbusCaller.initAction(service: String, action: String) {
     }
     if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
         throw UbusException.Refused(
-            "El router no pudo ${initVerb(action)} el servicio $service. Vuelve a intentarlo; si se repite, reinicia el router.",
+            txt(R.string.router_service_failed, service),
         )
     }
 }
@@ -300,15 +302,4 @@ internal fun parseNslookup(out: String): Resolution {
         .filter { it.isNotEmpty() }
     val cnames = lines.mapNotNull { line -> line.substringAfter("canonical name =", "").trim().takeIf { it.isNotEmpty() } }
     return Resolution(Lookup.Resolved, addresses.distinct(), cnames.distinct())
-}
-
-/** La acción de un servicio de /etc/init.d en palabras. */
-internal fun initVerb(action: String): String = when (action) {
-    "start" -> "arrancar"
-    "stop" -> "parar"
-    "restart" -> "reiniciar"
-    "reload" -> "recargar"
-    "enable" -> "activar"
-    "disable" -> "desactivar"
-    else -> "cambiar"
 }

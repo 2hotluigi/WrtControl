@@ -6,18 +6,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.addons.Addon
 import dev.angel.wrtcontrol.addons.AddonsState
 import dev.angel.wrtcontrol.addons.DdnsEdit
 import dev.angel.wrtcontrol.addons.RemotePeer
-import dev.angel.wrtcontrol.addons.X25519
-import dev.angel.wrtcontrol.data.TunnelConfig
 import dev.angel.wrtcontrol.addons.SqmEdit
 import dev.angel.wrtcontrol.addons.UpnpMapping
+import dev.angel.wrtcontrol.addons.X25519
 import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.data.TunnelConfig
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.PackageTool
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.Loadable
 import dev.angel.wrtcontrol.ui.pollingFlow
 import dev.angel.wrtcontrol.ui.userMessage
@@ -108,33 +112,33 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
 
     /** Qué se está haciendo en el router ahora mismo (null si nada). */
-    var busy by mutableStateOf<String?>(null)
+    var busy by mutableStateOf<Txt?>(null)
         private set
 
     /** Error de la última acción, hasta que el usuario lo cierre o haga otra. */
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<Txt?>(null)
 
     /** Aviso de una acción que salió bien pero con algo que saber (p. ej. del DNS dinámico). */
-    var notice by mutableStateOf<String?>(null)
+    var notice by mutableStateOf<Txt?>(null)
 
     fun install(addon: Addon, tool: PackageTool) =
-        run("Instalando ${addon.title}… Puede tardar hasta un minuto.", packagesChanged = true) { it.addons.install(addon, tool) }
+        run(txt(R.string.addons_busy_installing, addon.title), packagesChanged = true) { it.addons.install(addon, tool) }
 
-    fun finishWireGuard() = run("Reiniciando la red del router…") { it.addons.finishWireGuard() }
+    fun finishWireGuard() = run(txt(R.string.addons_busy_restarting_network)) { it.addons.finishWireGuard() }
 
     fun saveSqm(edit: SqmEdit, onDone: () -> Unit = {}) =
-        run("Aplicando el SQM…", onSuccess = onDone) { it.addons.saveSqm(edit) }
+        run(txt(R.string.addons_busy_sqm), onSuccess = onDone) { it.addons.saveSqm(edit) }
 
     fun setUpnp(enabled: Boolean) =
-        run(if (enabled) "Activando UPnP…" else "Desactivando UPnP…") { it.addons.setUpnp(enabled = enabled) }
+        run(txt(if (enabled) R.string.addons_busy_upnp_on else R.string.addons_busy_upnp_off)) { it.addons.setUpnp(enabled = enabled) }
 
-    fun setUpnpSecure(on: Boolean) = run("Cambiando el modo seguro de UPnP…") { it.addons.setUpnp(secureMode = on) }
+    fun setUpnpSecure(on: Boolean) = run(txt(R.string.addons_busy_upnp_secure)) { it.addons.setUpnp(secureMode = on) }
 
     /**
      * Da acceso remoto a este teléfono ([phoneName]). La clave se crea aquí y se guarda antes de
      * tocar el router: si la app se cierra a mitad, al repetir se usa la misma.
      */
-    fun enableRemoteAccess(phoneName: String) = run("Configurando el acceso remoto…") { api ->
+    fun enableRemoteAccess(phoneName: String) = run(txt(R.string.addons_busy_remote_on)) { api ->
         val id = routerId ?: api.routerId().also { repo.rememberRouterId(it) }
         val old = repo.loadTunnel()?.takeIf { it.routerId == id }
         val config = old ?: TunnelConfig(
@@ -163,7 +167,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
      * quitarlo, el router corta el túnel por el que habría que comprobar el cambio. Por eso solo se
      * puede desde casa.
      */
-    fun removeRemotePeer(peer: RemotePeer) = run("Quitando el acceso remoto de ${peer.name}…") { api ->
+    fun removeRemotePeer(peer: RemotePeer) = run(txt(R.string.addons_busy_remote_off, peer.name)) { api ->
         val tunnel = repo.loadTunnel()
         val mine = tunnel?.peerId == peer.id
         val transport = repo.transport
@@ -175,10 +179,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    throw IllegalStateException(
-                        "Ahora la app entra al router por el acceso remoto de este teléfono: quitarlo cortaría la conexión. " +
-                            "Quítalo desde casa.",
-                    )
+                    throw UserFacingException(txt(R.string.addons_remove_remote_from_home))
                 }
             }
             api.addons.removeRemotePeer(peer.id)
@@ -189,15 +190,15 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     fun saveDdns(edit: DdnsEdit, onDone: () -> Unit = {}) =
-        run("Configurando el DNS dinámico…", onSuccess = onDone) { notice = it.addons.saveDdns(edit) }
+        run(txt(R.string.addons_busy_ddns_on), onSuccess = onDone) { notice = it.addons.saveDdns(edit) }
 
-    fun removeDdns() = run("Quitando el DNS dinámico…") { it.addons.removeDdns() }
+    fun removeDdns() = run(txt(R.string.addons_busy_ddns_off)) { it.addons.removeDdns() }
 
     fun closeMapping(mapping: UpnpMapping) =
-        run("Cerrando el puerto ${mapping.externalPort}…") { it.addons.closeUpnpMapping(mapping) }
+        run(txt(R.string.addons_busy_closing_port, mapping.externalPort)) { it.addons.closeUpnpMapping(mapping) }
 
     private fun run(
-        label: String,
+        label: Txt,
         packagesChanged: Boolean = false,
         onSuccess: () -> Unit = {},
         block: suspend (OpenWrtApi) -> Unit,

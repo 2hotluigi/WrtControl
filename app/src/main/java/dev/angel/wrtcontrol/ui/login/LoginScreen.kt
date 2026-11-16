@@ -37,8 +37,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.BuildConfig
 import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.userMessage
@@ -51,7 +53,7 @@ class LoginViewModel(private val repo: RouterRepository, initial: Connection.Sig
     var password by mutableStateOf("")
     var busy by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<Txt?>(null)
         private set
 
     fun connect() {
@@ -100,7 +102,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                state.notice?.let { ErrorBanner(it) }
+                state.notice?.let { ErrorBanner(it.text()) }
 
                 OutlinedTextField(
                     value = vm.address,
@@ -129,7 +131,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     keyboardActions = KeyboardActions(onGo = { vm.connect() }),
                     modifier = Modifier.fillMaxWidth().testTag("password"),
                 )
-                vm.error?.let { ErrorBanner(it) }
+                vm.error?.let { ErrorBanner(it.text()) }
                 Button(
                     onClick = vm::connect,
                     enabled = !vm.busy,

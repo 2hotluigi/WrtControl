@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="router_address_empty">Escribe la dirección del router (por ejemplo, 192.168.1.1).</string>
+    <string name="router_address_invalid">\"%1$s\" no es una dirección válida. Escribe la IP del router, por ejemplo 192.168.1.1.</string>
+    <string name="router_tunnel_unavailable">El acceso remoto no está disponible ahora. Vuelve a intentarlo en un momento.</string>
+    <string name="router_tunnel_missing">Esta versión de la app no trae el acceso remoto.</string>
+    <string name="router_tunnel_no_address">No se llega al router y el acceso remoto no sabe dónde buscarlo: configura el DNS dinámico desde casa.</string>
+    <string name="router_tunnel_changed">El acceso remoto cambió mientras se conectaba. Vuelve a intentarlo.</string>
+    <string name="router_tunnel_failed">No se pudo llegar al router por el acceso remoto (probado: %1$s). Puede que la red en la que estás no tenga IPv6 o que el router no esté encendido.</string>
+    <string name="router_saved_password_rejected">El router rechazó la contraseña guardada. Vuelve a conectar.</string>
+    <string name="router_session_ended">La sesión terminó. Vuelve a conectar.</string>
+    <string name="router_password_rejected">El router no aceptó la contraseña nueva. Prueba con otra.</string>
+    <string name="router_service_failed">El router no pudo cambiar el servicio %1$s. Vuelve a intentarlo; si se repite, reinicia el router.</string>
+    <string name="router_openwrt_may_work">La app se prueba con OpenWrt 24.10 o superior. Con %1$s puede funcionar, pero si algo falla, actualiza el router.</string>
+    <string name="router_openwrt_too_old">OpenWrt %1$s es demasiado antiguo: el control parental necesita el firewall de 22.03 o superior (fw4). Lo demás puede funcionar; actualiza el router para usarlo todo.</string>
+</resources>

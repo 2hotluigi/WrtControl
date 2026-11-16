@@ -1,6 +1,9 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.TunnelConfig
+import dev.angel.wrtcontrol.es
+import dev.angel.wrtcontrol.txt
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,7 +26,7 @@ class ReachabilityTest {
         val probed = mutableListOf<String>()
 
         override suspend fun <T> withMobileData(block: suspend (OutsideLink) -> T): T {
-            if (!available) throw NoMobileDataException("sin datos")
+            if (!available) throw NoMobileDataException(txt(R.string.addons_reach_no_mobile_data))
             return block(object : OutsideLink {
                 override fun resolve(host: String): List<InetAddress> =
                     dns?.map { InetAddress.getByName(it) } ?: throw UnknownHostException(host)
@@ -77,8 +80,8 @@ class ReachabilityTest {
         val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.NoReply)), listOf(v6))
         val advice = adviseReachability(report, ctx(privateWan = "192.168.1.2"))
         assertFalse(advice.ok)
-        assertTrue(advice.lines[0], "cortafuegos IPv6" in advice.lines[0] && "DMZ" in advice.lines[0])
-        assertTrue(advice.lines[1], "192.168.1.2" in advice.lines[1])
+        assertTrue(advice.texts[0], "cortafuegos IPv6" in advice.texts[0] && "DMZ" in advice.texts[0])
+        assertTrue(advice.texts[1], "192.168.1.2" in advice.texts[1])
         assertNull(advice.publishOnly)
     }
 
@@ -91,7 +94,7 @@ class ReachabilityTest {
         val advice = adviseReachability(report, ctx(ddns = setOf(IpFamily.V4, IpFamily.V6), public = listOf(v6, v4)))
         assertTrue(advice.ok)
         assertEquals(setOf(IpFamily.V6), advice.publishOnly)
-        assertTrue(advice.lines.last(), "Mejor publicar solo IPv6" in advice.lines.last())
+        assertTrue(advice.texts.last(), "Mejor publicar solo IPv6" in advice.texts.last())
     }
 
     @Test
@@ -102,7 +105,7 @@ class ReachabilityTest {
         )
         val advice = adviseReachability(report, ctx(ddns = setOf(IpFamily.V4, IpFamily.V6), public = listOf(v6, v4)))
         assertTrue(advice.ok)
-        assertTrue(advice.lines[0], "no tienen IPv6" in advice.lines[0])
+        assertTrue(advice.texts[0], "no tienen IPv6" in advice.texts[0])
         assertNull("no se quita una familia que no se pudo probar", advice.publishOnly)
     }
 
@@ -110,21 +113,21 @@ class ReachabilityTest {
     fun `avisa de una direccion vieja en el DNS`() {
         val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.Reached)), listOf("2001:db8:1::99"))
         val advice = adviseReachability(report, ctx())
-        assertTrue(advice.lines.joinToString(), advice.lines.any { "2001:db8:1::99" in it && "ya no es del router" in it })
+        assertTrue(advice.texts.joinToString(), advice.texts.any { "2001:db8:1::99" in it && "ya no es del router" in it })
     }
 
     @Test
     fun `sin DNS dinamico recuerda configurarlo`() {
         val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.Reached)), null)
         val advice = adviseReachability(report, ctx(ddns = null))
-        assertTrue(advice.lines.last(), "Sin DNS dinámico" in advice.lines.last())
+        assertTrue(advice.texts.last(), "Sin DNS dinámico" in advice.texts.last())
     }
 
     @Test
     fun `detras de otro router sin IPv4 conocida lo explica`() {
         val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.Reached)), null)
         val advice = adviseReachability(report, ctx(ddns = null, privateWan = "192.168.1.2"))
-        assertTrue(advice.lines[1], "detrás de otro aparato o de un CGNAT" in advice.lines[1])
+        assertTrue(advice.texts[1], "detrás de otro aparato o de un CGNAT" in advice.texts[1])
     }
 
     // Lo que pasó en un teléfono real: datos móviles solo IPv4, router detrás del módem y un nombre
@@ -135,7 +138,7 @@ class ReachabilityTest {
         val advice = adviseReachability(report, ctx(privateWan = "192.168.1.2"))
         assertFalse(advice.ok)
         assertTrue(advice.untested)
-        assertFalse(advice.lines.joinToString(), advice.lines.any { "no da ninguna dirección" in it })
+        assertFalse(advice.texts.joinToString(), advice.texts.any { "no da ninguna dirección" in it })
     }
 
     @Test
@@ -143,6 +146,9 @@ class ReachabilityTest {
         val report = ReachabilityReport(listOf(FamilyProbe(IpFamily.V6, v6, ProbeOutcome.NoReply)), emptyList())
         val advice = adviseReachability(report, ctx())
         assertFalse(advice.untested)
-        assertTrue(advice.lines.joinToString(), advice.lines.any { "no da ninguna dirección" in it })
+        assertTrue(advice.texts.joinToString(), advice.texts.any { "no da ninguna dirección" in it })
     }
 }
+
+/** Las líneas del consejo, en español. */
+private val ReachabilityAdvice.texts: List<String> get() = lines.map { it.es }

@@ -1,6 +1,10 @@
 package dev.angel.wrtcontrol.openwrt
 
+import androidx.annotation.StringRes
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusJson
@@ -36,8 +40,15 @@ data class InstalledPackages(val tool: PackageTool?, val versions: Map<String, S
     fun anyOf(names: List<String>) = names.any { it in versions }
 }
 
-/** El gestor de paquetes del router respondió con un error; [message] ya va explicado para el usuario. */
-class PackageInstallException(message: String, val output: String = "") : Exception(message), UserFacing
+/** El gestor de paquetes del router respondió con un error; [text] ya va explicado para el usuario. */
+class PackageInstallException(override val text: Txt, val output: String = "") : Exception(text.toString()), UserFacing
+
+/** Qué se le pidió al gestor de paquetes: cada paso tiene sus frases. */
+internal sealed interface PackageStep {
+    data object Update : PackageStep
+
+    data class Install(val packages: List<String>) : PackageStep
+}
 
 @Serializable
 private data class ToolReply(val code: Int = -1, val stdout: String = "", val stderr: String = "")
@@ -70,8 +81,8 @@ suspend fun UbusClient.installedPackages(): InstalledPackages? {
  */
 suspend fun UbusClient.installPackages(tool: PackageTool, packages: List<String>) {
     require(packages.isNotEmpty() && packages.all { PACKAGE_NAME.matches(it) }) { "Nombre de paquete no válido" }
-    run(tool, updateArgs(tool), "actualizar la lista de paquetes")
-    run(tool, listOf("install") + packages, "instalar ${packages.joinToString()}")
+    run(tool, updateArgs(tool), PackageStep.Update)
+    run(tool, listOf("install") + packages, PackageStep.Install(packages))
 }
 
 private fun updateArgs(tool: PackageTool): List<String> = when (tool) {
@@ -79,42 +90,43 @@ private fun updateArgs(tool: PackageTool): List<String> = when (tool) {
     PackageTool.Opkg -> listOf("update", "--force-removal-of-dependent-packages")
 }
 
-private suspend fun UbusClient.run(tool: PackageTool, args: List<String>, what: String) {
+private suspend fun UbusClient.run(tool: PackageTool, args: List<String>, step: PackageStep) {
     val out = try {
         cgiExec(tool.script, args, INSTALL_TIMEOUT_SECONDS)
     } catch (e: UbusException.AccessDenied) {
-        throw PackageInstallException("El router no deja $what desde la app (permisos de LuCI).")
+        throw PackageInstallException(step.text(R.string.packages_update_denied, R.string.packages_install_denied))
     }
     val reply = try {
         UbusJson.decodeFromString(ToolReply.serializer(), out)
     } catch (e: Exception) {
-        throw PackageInstallException("Respuesta inesperada del gestor de paquetes al $what.", out)
+        throw PackageInstallException(step.text(R.string.packages_update_unexpected, R.string.packages_install_unexpected), out)
     }
     if (reply.code != 0) {
         val output = (reply.stderr + "\n" + reply.stdout).trim()
-        throw PackageInstallException(explainFailure(reply.code, output, what), output)
+        throw PackageInstallException(explainFailure(reply.code, output, step), output)
     }
+}
+
+/** La frase de este paso: la de actualizar las listas o la de instalar (con los paquetes y [args]). */
+private fun PackageStep.text(@StringRes update: Int, @StringRes install: Int, vararg args: Any): Txt = when (this) {
+    PackageStep.Update -> txt(update, *args)
+    is PackageStep.Install -> txt(install, packages.joinToString(), *args)
 }
 
 private val PACKAGE_NAME = Regex("^[a-z0-9][a-z0-9.+_-]*$")
 
 /** Explica en palabras normales los fallos típicos de opkg y apk. */
-internal fun explainFailure(code: Int, output: String, what: String): String {
+internal fun explainFailure(code: Int, output: String, step: PackageStep): Txt {
     val o = output.lowercase()
     return when {
-        code == 255 && "lock" in o ->
-            "Otro programa está instalando paquetes en el router (quizá LuCI). Espera un poco y vuelve a intentarlo."
+        code == 255 && "lock" in o -> txt(R.string.packages_locked)
         "no space left" in o || "not enough space" in o || "insufficient space" in o ->
-            "El router no tiene espacio libre suficiente para $what."
+            step.text(R.string.packages_update_no_space, R.string.packages_install_no_space)
         // apk: "unable to select packages: kernel-…: breaks: kmod-…"; opkg: "Cannot satisfy … kernel (= …)".
-        "kernel" in o && KERNEL_MISMATCH.any { it in o } ->
-            "El paquete no es compatible con el kernel de este firmware (pasa con versiones de desarrollo o " +
-                "firmware de fabricante). Actualiza el router a una versión estable de OpenWrt."
-        DOWNLOAD_ERRORS.any { it in o } ->
-            "El router no pudo descargar los paquetes: comprueba que tiene internet."
-        "unknown package" in o || "no such package" in o || "unable to select packages" in o ->
-            "El paquete no está disponible para este router."
-        else -> "El gestor de paquetes del router no pudo $what (código $code)."
+        "kernel" in o && KERNEL_MISMATCH.any { it in o } -> txt(R.string.packages_kernel_mismatch)
+        DOWNLOAD_ERRORS.any { it in o } -> txt(R.string.packages_download_failed)
+        "unknown package" in o || "no such package" in o || "unable to select packages" in o -> txt(R.string.packages_not_available)
+        else -> step.text(R.string.packages_update_failed, R.string.packages_install_failed, code)
     }
 }
 

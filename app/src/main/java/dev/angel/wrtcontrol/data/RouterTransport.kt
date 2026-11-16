@@ -1,6 +1,9 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
+import dev.angel.wrtcontrol.txt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,7 +44,7 @@ interface TunnelHandle {
 enum class Link { Direct, Connecting, Tunnel }
 
 /** No se pudo entrar por el acceso remoto; el mensaje explica por qué. */
-class TunnelUnavailableException(message: String) : IOException(message), UserFacing
+class TunnelUnavailableException(override val text: Txt) : IOException(text.toString()), UserFacing
 
 /**
  * Lleva las conexiones de OkHttp al router.
@@ -179,13 +182,15 @@ class RouterTransport(
      */
     fun startTunnel(cfg: TunnelConfig, routerHost: String, routerPort: Int): Unit = synchronized(startLock) {
         if (tunnel != null) return
-        if (failedAt != 0L && now() - failedAt < RETRY_TUNNEL_MS) throw failure ?: TunnelUnavailableException("Acceso remoto no disponible")
+        if (failedAt != 0L && now() - failedAt < RETRY_TUNNEL_MS) {
+            throw failure ?: TunnelUnavailableException(txt(R.string.router_tunnel_unavailable))
+        }
         val gen = generation.get()
-        val engine = engine ?: throw TunnelUnavailableException("Esta versión de la app no trae el acceso remoto.")
+        val engine = engine ?: throw TunnelUnavailableException(txt(R.string.router_tunnel_missing))
         val candidates = endpoints(cfg, routerHost)
         if (candidates.isEmpty()) {
             fail(TunnelUnavailableException(
-                "No se llega al router y el acceso remoto no sabe dónde buscarlo: configura el DNS dinámico desde casa.",
+                txt(R.string.router_tunnel_no_address),
             ))
         }
         _link.value = Link.Connecting
@@ -203,7 +208,7 @@ class RouterTransport(
                     if (gen != generation.get() || config?.enabled != true || directOnly) {
                         runCatching { handle.stop() }
                         _link.value = Link.Direct
-                        throw TunnelUnavailableException("El acceso remoto cambió mientras se conectaba.")
+                        throw TunnelUnavailableException(txt(R.string.router_tunnel_changed))
                     }
                     tunnel = handle
                     failedAt = 0L
@@ -218,8 +223,7 @@ class RouterTransport(
         }
         _link.value = Link.Direct
         fail(TunnelUnavailableException(
-            "No se pudo llegar al router por el acceso remoto (probado: ${candidates.joinToString()}). " +
-                "Puede que la red en la que estás no tenga IPv6 o que el router no esté encendido.",
+            txt(R.string.router_tunnel_failed, candidates.joinToString()),
         ))
     }
 

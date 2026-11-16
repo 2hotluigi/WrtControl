@@ -71,6 +71,7 @@ import dev.angel.wrtcontrol.parental.cleanProfileName
 import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.normalizeDomain
 import dev.angel.wrtcontrol.parental.normalizeMac
+import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -287,7 +288,7 @@ fun ProfileEditor(
                             modifier = Modifier.fillMaxWidth().clickable(enabled = !locked) { editingSchedule = s },
                         ) {
                             Text(
-                                formatSchedule(s),
+                                formatSchedule(s).text(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (s.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f).padding(vertical = 8.dp),
@@ -348,9 +349,9 @@ fun ProfileEditor(
                                 ) {
                                     RadioButton(selected = filter.level == level, onClick = null, enabled = !locked)
                                     Column(Modifier.padding(start = 8.dp)) {
-                                        Text(level.title(), style = MaterialTheme.typography.bodyLarge)
+                                        Text(level.title().text(), style = MaterialTheme.typography.bodyLarge)
                                         Text(
-                                            level.description(),
+                                            level.description().text(),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -393,7 +394,7 @@ fun ProfileEditor(
                                     FilterChip(
                                         selected = filter.youtube == mode,
                                         onClick = { filter = filter.copy(youtube = mode) },
-                                        label = { Text(mode.title()) },
+                                        label = { Text(mode.title().text()) },
                                         enabled = !locked && !blocked,
                                         modifier = Modifier.testTag("youtube-${mode.name}"),
                                     )

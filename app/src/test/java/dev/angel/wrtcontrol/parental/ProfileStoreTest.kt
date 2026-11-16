@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.parseUciSections
 import dev.angel.wrtcontrol.ubus.UbusJson
 import kotlinx.serialization.json.jsonObject
@@ -123,7 +125,7 @@ class ProfileStoreTest {
                 ),
             )
         }
-        assertTrue(e.message!!.contains("dos perfiles"))
+        assertTrue(describeError(e).es.contains("dos perfiles"))
     }
 
     @Test

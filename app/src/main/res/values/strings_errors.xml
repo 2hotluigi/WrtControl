@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="error_unexpected">Algo falló dentro de la app. Vuelve a intentarlo; si se repite, avísanos.</string>
+    <string name="error_auth_failed">Usuario o contraseña incorrectos. Son los mismos con los que entras en LuCI (normalmente, root).</string>
+    <string name="error_session_expired">La sesión con el router terminó. Vuelve a entrar.</string>
+    <string name="error_session_lost">Se perdió la conexión con el router a mitad del cambio, así que no se aplicó. Vuelve a intentarlo.</string>
+    <string name="error_no_permission">El router no da permiso para esto al usuario con el que entraste. Vuelve a entrar con root.</string>
+    <string name="error_protocol">El router respondió algo que la app no entiende. Comprueba que la dirección es la de un OpenWrt con LuCI; si lo es, puede que su versión aún no sea compatible.</string>
+    <string name="error_status_missing_function">A este router le falta una función que la app necesita para esto. Actualiza OpenWrt o instala LuCI completo.</string>
+    <string name="error_status_not_found">El router no encontró lo que buscaba la app: puede que alguien lo cambiara desde LuCI. Vuelve a intentarlo.</string>
+    <string name="error_status_timeout">El router tardó demasiado en responder. Vuelve a intentarlo en un momento.</string>
+    <string name="error_status_internal">El router tiene un problema interno (uno de sus servicios no responde). Reinícialo y vuelve a intentarlo.</string>
+    <string name="error_status_rejected">El router rechazó la petición de la app. Vuelve a intentarlo; si se repite, es un fallo de la app: avísanos.</string>
+    <string name="error_http_no_luci">En esa dirección no está la interfaz de LuCI. ¿Es un router OpenWrt con LuCI instalado?</string>
+    <string name="error_http_internal">El router dio un error interno. Espera un poco y vuelve a intentarlo; si se repite, reinícialo.</string>
+    <string name="error_net_unknown_host">No se encuentra el router con ese nombre. Escribe su dirección IP (por ejemplo, 192.168.1.1).</string>
+    <string name="error_net_no_route">No hay camino hasta el router desde esta red. Conéctate al Wi-Fi de casa o activa el acceso remoto.</string>
+    <string name="error_net_refused">El router no acepta conexiones en esa dirección: o no es la del router, o su página web (LuCI) está apagada. Revisa la dirección (suele ser 192.168.1.1).</string>
+    <string name="error_net_tls">No se pudo abrir una conexión segura con el router. Prueba con http:// en vez de https://.</string>
+    <string name="error_net_timeout">El router no responde. Comprueba que estás en la red de casa (o que el acceso remoto está activo) y que la dirección es la del router.</string>
+    <string name="error_net_reset">Se cortó la conexión con el router. Vuelve a intentarlo.</string>
+    <string name="error_net_other">No se pudo hablar con el router. Comprueba la conexión y vuelve a intentarlo.</string>
+    <string name="error_local_network">No se llega al router. Falta el permiso de red local de Android, y sin él la app no lo ve en casa: dáselo en los ajustes de la app (Permisos → Dispositivos cercanos).</string>
+</resources>

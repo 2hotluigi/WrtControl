@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.uciSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -148,7 +150,7 @@ class DnsFilterTest {
         val e = assertThrows(IllegalArgumentException::class.java) {
             compileRouter(listOf(juan.copy(filter = ContentFilter(FilterLevel.Adult))), now, RouterEnv(lanZones = emptyList()))
         }
-        assertTrue(e.message!!.contains("zona LAN"))
+        assertTrue(describeError(e).es.contains("zona LAN"))
     }
 
     @Test

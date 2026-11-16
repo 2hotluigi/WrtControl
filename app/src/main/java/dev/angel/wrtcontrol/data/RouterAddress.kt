@@ -1,6 +1,8 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.UserFacingException
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.userRequire
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -12,7 +14,7 @@ object RouterAddress {
      */
     fun endpoint(address: String): HttpUrl {
         var a = address.trim()
-        userRequire(a.isNotEmpty()) { "Escribe la dirección del router (por ejemplo, 192.168.1.1)." }
+        userRequire(a.isNotEmpty()) { txt(R.string.router_address_empty) }
         if ("://" !in a) {
             a = a.trimEnd('/')
             // Una IPv6 sin corchetes tiene varios ':'; con corchetes ya trae el puerto aparte.
@@ -20,7 +22,7 @@ object RouterAddress {
             a = "http://$a"
         }
         val base = a.toHttpUrlOrNull() ?: throw UserFacingException(
-            "\"$address\" no es una dirección válida. Escribe la IP del router, por ejemplo 192.168.1.1.",
+            txt(R.string.router_address_invalid, address),
         )
         return base.newBuilder().encodedPath("/ubus").query(null).fragment(null).build()
     }

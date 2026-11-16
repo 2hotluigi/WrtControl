@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.parental.Schedule
+import dev.angel.wrtcontrol.text
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -130,6 +131,7 @@ fun ScheduleDialog(initial: Schedule, isNew: Boolean, onDismiss: () -> Unit, onC
 @Composable
 private fun DayToggle(day: DayOfWeek, selected: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val name = day.dayName().text()
     Surface(
         shape = CircleShape,
         color = if (selected) colors.primary else colors.surfaceVariant,
@@ -138,11 +140,11 @@ private fun DayToggle(day: DayOfWeek, selected: Boolean, onClick: () -> Unit) {
             .size(36.dp)
             .clickable(role = Role.Checkbox, onClick = onClick)
             .semantics {
-                contentDescription = day.spanishName()
+                contentDescription = name
                 this.selected = selected
             },
     ) {
-        Box(contentAlignment = Alignment.Center) { Text(day.letter(), style = MaterialTheme.typography.labelLarge) }
+        Box(contentAlignment = Alignment.Center) { Text(day.letter().text(), style = MaterialTheme.typography.labelLarge) }
     }
 }
 

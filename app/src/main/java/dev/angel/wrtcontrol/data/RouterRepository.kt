@@ -1,13 +1,16 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 
 sealed interface Connection {
@@ -15,7 +18,7 @@ sealed interface Connection {
 
     /** Sin router conectado. Se rellenan los últimos datos usados para facilitar la reconexión. */
     data class SignedOut(
-        val notice: String? = null,
+        val notice: Txt? = null,
         val lastAddress: String? = null,
         val lastUsername: String? = null,
     ) : Connection
@@ -88,7 +91,7 @@ class RouterRepository(
         _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty())
     }
 
-    suspend fun signOut(notice: String? = null) {
+    suspend fun signOut(notice: Txt? = null) {
         transport?.config = null
         routerId = null
         client?.forget()
@@ -108,10 +111,10 @@ class RouterRepository(
         try {
             return block(current)
         } catch (e: UbusException.AuthFailed) {
-            signOut("El router rechazó la contraseña guardada. Vuelve a conectar.")
+            signOut(txt(R.string.router_saved_password_rejected))
             throw e
         } catch (e: UbusException.SessionExpired) {
-            signOut("La sesión terminó. Vuelve a conectar.")
+            signOut(txt(R.string.router_session_ended))
             throw e
         }
     }

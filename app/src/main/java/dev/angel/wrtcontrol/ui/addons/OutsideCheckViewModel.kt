@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.addons.IpFamily
 import dev.angel.wrtcontrol.addons.ReachabilityAdvice
 import dev.angel.wrtcontrol.addons.RouterReachContext
@@ -22,7 +23,7 @@ sealed interface OutsideCheck {
 
     data class Done(val advice: ReachabilityAdvice) : OutsideCheck
 
-    data class Failed(val message: String) : OutsideCheck
+    data class Failed(val message: Txt) : OutsideCheck
 }
 
 /**
