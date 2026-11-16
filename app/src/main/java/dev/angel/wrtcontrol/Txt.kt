@@ -36,8 +36,14 @@ fun List<Txt>.joinTxt(separator: String): Txt = Txt.Joined(this, separator)
 
 /** El texto en el idioma de [res]. */
 fun Txt.resolve(res: Resources): String = when (this) {
-    is Txt.Res -> res.getString(id, *args.map { it.resolveArg(res) }.toTypedArray())
-    is Txt.Plural -> res.getQuantityString(id, count, *args.map { it.resolveArg(res) }.toTypedArray())
+    // Sin datos, tal cual: con getString(id, vacío) Android formatea igual y un "%" suelto rompería.
+    is Txt.Res -> if (args.isEmpty()) res.getString(id) else res.getString(id, *args.map { it.resolveArg(res) }.toTypedArray())
+    is Txt.Plural ->
+        if (args.isEmpty()) {
+            res.getQuantityString(id, count)
+        } else {
+            res.getQuantityString(id, count, *args.map { it.resolveArg(res) }.toTypedArray())
+        }
     is Txt.Raw -> text
     is Txt.Joined -> parts.joinToString(separator) { it.resolve(res) }
 }
