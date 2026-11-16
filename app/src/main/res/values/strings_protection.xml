@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Cuarentena -->
+    <string name="protection_quarantine_title">Dispositivos nuevos sin internet</string>
+    <string name="protection_quarantine_help">Lo que se conecte por primera vez a tu red no tendrá internet hasta que lo apruebes aquí. Así un teléfono nuevo o con otra MAC no se salta los perfiles.</string>
+    <string name="protection_no_pending">No hay dispositivos esperando.</string>
+    <plurals name="protection_pending_count">
+        <item quantity="one">%1$d dispositivo esperando</item>
+        <item quantity="other">%1$d dispositivos esperando</item>
+        <item quantity="many">%1$d dispositivos esperando</item>
+    </plurals>
+    <string name="protection_unnamed">Sin nombre</string>
+    <string name="protection_disconnected">Desconectado</string>
+    <string name="protection_this_phone">Este teléfono</string>
+    <string name="protection_approve">Aprobar</string>
+    <string name="protection_assign_to_profile">Asignar a un perfil</string>
+    <plurals name="protection_approved_without_profile_count">
+        <item quantity="one">%1$d dispositivo aprobado sin perfil</item>
+        <item quantity="other">%1$d dispositivos aprobados sin perfil</item>
+        <item quantity="many">%1$d dispositivos aprobados sin perfil</item>
+    </plurals>
+
+    <!-- Confirmación de la cuarentena -->
+    <string name="protection_quarantine_confirm_title">¿Dejar sin internet a los dispositivos nuevos?</string>
+    <plurals name="protection_quarantine_confirm_first">
+        <item quantity="one">Se aprobará el dispositivo que el router conoce ahora, así sigue igual. Los que se conecten después podrán unirse a la red, pero no tendrán internet hasta que los apruebes en esta pantalla. Si un dispositivo de casa estaba apagado, apruébalo cuando aparezca.</item>
+        <item quantity="other">Se aprobarán los %1$d dispositivos que el router conoce ahora, así la TV, la impresora y los demás siguen igual. Los que se conecten después podrán unirse a la red, pero no tendrán internet hasta que los apruebes en esta pantalla. Si un dispositivo de casa estaba apagado, apruébalo cuando aparezca.</item>
+        <item quantity="many">Se aprobarán los %1$d dispositivos que el router conoce ahora, así la TV, la impresora y los demás siguen igual. Los que se conecten después podrán unirse a la red, pero no tendrán internet hasta que los apruebes en esta pantalla. Si un dispositivo de casa estaba apagado, apruébalo cuando aparezca.</item>
+    </plurals>
+    <string name="protection_quarantine_confirm_again">Los dispositivos que ya aprobaste siguen aprobados. Los demás, también los que se conectaron mientras estaba desactivada, no tendrán internet hasta que los apruebes en esta pantalla.</string>
+    <string name="protection_activate">Activar</string>
+    <string name="protection_cancel">Cancelar</string>
+
+    <!-- Asignar a un perfil -->
+    <string name="protection_assign_title">¿A qué perfil pertenece «%1$s»?</string>
+
+    <!-- Aprobados sin perfil -->
+    <string name="protection_approved_title">Aprobados sin perfil</string>
+    <string name="protection_none">Ninguno.</string>
+    <string name="protection_admin_phone">Teléfono con la app</string>
+    <string name="protection_remove">Quitar</string>
+    <string name="protection_unapprove_help">Al quitar la aprobación, ese dispositivo se queda sin internet hasta que lo vuelvas a aprobar.</string>
+    <string name="protection_approve_by_mac">Aprobar por MAC</string>
+    <string name="protection_close">Cerrar</string>
+
+    <!-- Teléfonos con WrtControl -->
+    <string name="protection_admins_title">Teléfonos con WrtControl</string>
+    <string name="protection_admins_help">Nunca se les bloquea la configuración del router, aunque estén en un perfil protegido, y con la cuarentena siempre tienen internet. Se añaden solos al hacer cualquier cambio desde la app.</string>
+    <string name="protection_none_yet">Ninguno todavía.</string>
+    <string name="protection_add_by_mac">Agregar por MAC</string>
+    <string name="protection_add">Agregar</string>
+
+    <!-- Bloqueo de la app -->
+    <string name="protection_app_lock_title">Pedir huella o PIN para abrir WrtControl</string>
+    <string name="protection_app_lock_help">Así nadie más puede quitar las reglas desde este teléfono.</string>
+    <string name="protection_app_lock_unavailable">Configura un bloqueo de pantalla en el teléfono para poder usarlo.</string>
+    <plurals name="protection_admins_count">
+        <item quantity="one">%1$d teléfono con WrtControl</item>
+        <item quantity="other">%1$d teléfonos con WrtControl</item>
+        <item quantity="many">%1$d teléfonos con WrtControl</item>
+    </plurals>
+
+    <!-- Contraseña del router -->
+    <string name="protection_password_title">Contraseña del router</string>
+    <string name="protection_password_help">Es la del usuario con el que entra esta app, y también la de LuCI y SSH. Guárdala bien: la necesitarás para entrar desde otro teléfono o el ordenador.</string>
+    <string name="protection_password_new">Nueva contraseña</string>
+    <!-- Siempre varios: el número es un límite fijo (nunca 1). -->
+    <string name="protection_password_too_short" tools:ignore="PluralsCandidate">Al menos %1$d caracteres</string>
+    <string name="protection_password_repeat">Repítela</string>
+    <string name="protection_password_mismatch">No coinciden</string>
+    <string name="protection_save">Guardar</string>
+
+    <!-- Más tiempo -->
+    <string name="protection_extra_time_title">Más tiempo para %1$s</string>
+    <string name="protection_extra_time_help">Tendrá internet aunque esté en horario. Al acabar el tiempo, el router vuelve a aplicar el horario solo.</string>
+</resources>

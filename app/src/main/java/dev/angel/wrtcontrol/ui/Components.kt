@@ -18,8 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.angel.wrtcontrol.R
 
 @Composable
 fun InfoCard(
@@ -112,7 +114,7 @@ fun <T> LoadableContent(state: Loadable<T>, content: @Composable (data: T, error
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 ErrorBanner(state.error)
                 Spacer(Modifier.height(8.dp))
-                Text("Reintentando…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.common_retrying), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

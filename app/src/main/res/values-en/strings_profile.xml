@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Top bar -->
+    <string name="profile_new">New profile</string>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_close_without_saving">Close without saving</string>
+    <string name="profile_save">Save</string>
+
+    <!-- Name -->
+    <string name="profile_name">Name</string>
+    <string name="profile_name_placeholder">For example: John</string>
+
+    <!-- Devices -->
+    <string name="profile_devices_title">Devices</string>
+    <string name="profile_devices_help">Rules apply by MAC to the devices you select.</string>
+    <string name="profile_no_devices">No devices connected right now.</string>
+    <string name="profile_unnamed">Unnamed</string>
+    <string name="profile_disconnected">Disconnected</string>
+    <string name="profile_note_this_phone">This phone: if you pause it, it loses internet too</string>
+    <string name="profile_note_admin">Has WrtControl: never locked out of the router settings</string>
+    <string name="profile_note_other_profile">Currently in “%1$s”: will move to this profile</string>
+    <string name="profile_add_by_mac">Add by MAC</string>
+    <string name="profile_invalid_mac">Invalid MAC</string>
+    <string name="profile_add">Add</string>
+
+    <!-- Schedules -->
+    <string name="profile_schedules_title">Offline schedules</string>
+    <string name="profile_schedules_help">They follow the router\'s clock and apply even when this phone is off.</string>
+    <string name="profile_no_schedules">No schedules.</string>
+    <string name="profile_remove_schedule">Remove schedule</string>
+    <string name="profile_add_schedule">Add schedule</string>
+
+    <!-- Content filter -->
+    <string name="profile_filter_title">Content filter</string>
+    <string name="profile_filter_help">Applies to what their devices look up on the internet (DNS), even if they use another DNS server.</string>
+    <string name="profile_safe_search">SafeSearch</string>
+    <string name="profile_safe_search_included">Included in this level.</string>
+    <string name="profile_safe_search_help">Google, Bing and DuckDuckGo only show suitable results, even if the search settings are changed.</string>
+    <string name="profile_youtube_title">YouTube Restricted Mode</string>
+    <string name="profile_youtube_blocked">YouTube is blocked completely (see services below).</string>
+    <string name="profile_youtube_strict_default">The strict level already uses Moderate mode. Choose “Strict” to hide more.</string>
+    <string name="profile_youtube_help">Hides adult videos on the YouTube website and app, including on the TV.</string>
+    <string name="profile_block_services">Block services</string>
+    <string name="profile_services_help">Blocks each service\'s main domains; over time, apps may start using others.</string>
+    <string name="profile_blocked_sites">Blocked sites</string>
+    <string name="profile_remove_site">Remove %1$s</string>
+    <string name="profile_add_site">Add site</string>
+    <string name="profile_site_placeholder">example.com</string>
+    <string name="profile_invalid_site">Enter a domain, e.g. example.com</string>
+    <!-- Siempre varios: el número es un límite fijo (nunca 1). -->
+    <string name="profile_max_sites" tools:ignore="PluralsCandidate">Up to %1$d sites</string>
+    <string name="profile_filter_needs_devices">The filter will apply once the profile has devices.</string>
+
+    <!-- Router protection -->
+    <string name="profile_protect_router_title">Prevent changes to the router settings</string>
+    <string name="profile_protect_router_help">Their devices won\'t be able to open LuCI, connect over SSH or use WrtControl. Phones with WrtControl (listed under Protection) are never blocked.</string>
+
+    <!-- Delete -->
+    <string name="profile_delete">Delete profile</string>
+    <string name="profile_delete_title">Delete “%1$s”?</string>
+    <string name="profile_delete_help">Their devices will have internet again, with no pauses or schedules.</string>
+    <string name="profile_delete_confirm">Delete</string>
+    <string name="profile_cancel">Cancel</string>
+</resources>

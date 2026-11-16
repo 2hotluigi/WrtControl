@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="local_network_title">Permiso para la red de casa</string>
+    <string name="local_network_explain">Android pide permiso a las apps que hablan con aparatos de tu red local. WrtControl lo necesita para llegar a tu router (por ejemplo, 192.168.1.1) y a nada más: no busca ni toca otros aparatos.</string>
+    <string name="local_network_blocked">Android ya no muestra la pregunta. Actívalo en los ajustes de la app: Permisos → Dispositivos cercanos (red local).</string>
+    <string name="local_network_settings">Abrir los ajustes</string>
+    <string name="local_network_allow">Dar permiso</string>
+    <string name="local_network_skip">Seguir sin él (solo acceso remoto)</string>
+</resources>

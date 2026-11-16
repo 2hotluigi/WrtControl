@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_network_title">Permission for your home network</string>
+    <string name="local_network_explain">Android asks apps that talk to devices on your local network for permission. WrtControl needs it to reach your router (for example, 192.168.1.1) and nothing else: it doesn\'t look for or touch other devices.</string>
+    <string name="local_network_blocked">Android no longer shows the prompt. Turn it on in the app settings: Permissions → Nearby devices (local network).</string>
+    <string name="local_network_settings">Open settings</string>
+    <string name="local_network_allow">Allow</string>
+    <string name="local_network_skip">Continue without it (remote access only)</string>
+</resources>

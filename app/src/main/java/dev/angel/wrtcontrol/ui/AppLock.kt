@@ -2,8 +2,8 @@ package dev.angel.wrtcontrol.ui
 
 import android.app.Activity
 import android.content.Context
-import android.view.WindowManager
 import android.os.SystemClock
+import android.view.WindowManager
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -20,10 +20,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,7 +77,7 @@ fun authenticate(context: Context, title: String, onResult: (Boolean) -> Unit) {
     )
     val info = BiometricPrompt.PromptInfo.Builder()
         .setTitle(title)
-        .setSubtitle("Usa la huella, la cara o el bloqueo de pantalla del teléfono")
+        .setSubtitle(context.getString(R.string.lock_prompt_subtitle))
         .setAllowedAuthenticators(AUTHENTICATORS)
         .build()
     prompt.authenticate(info)
@@ -140,10 +141,11 @@ fun AppLockGate(settings: AppSettings, content: @Composable () -> Unit) {
 private fun LockScreen(onUnlocked: () -> Unit) {
     val context = LocalContext.current
     var asking by remember { mutableStateOf(false) }
+    val title = stringResource(R.string.lock_unlock_title)
     fun ask() {
         if (asking) return
         asking = true
-        authenticate(context, "Desbloquear WrtControl") { ok ->
+        authenticate(context, title) { ok ->
             asking = false
             if (ok) onUnlocked()
         }
@@ -156,13 +158,13 @@ private fun LockScreen(onUnlocked: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(painterResource(R.drawable.ic_shield), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("WrtControl está bloqueada", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.lock_locked), style = MaterialTheme.typography.titleLarge)
             Text(
-                "Identifícate para ver y cambiar el control parental.",
+                stringResource(R.string.lock_explain),
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = ::ask) { Text("Desbloquear") }
+            Button(onClick = ::ask) { Text(stringResource(R.string.lock_unlock)) }
         }
     }
 }

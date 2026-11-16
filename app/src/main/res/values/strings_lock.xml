@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="lock_prompt_subtitle">Usa la huella, la cara o el bloqueo de pantalla del teléfono</string>
+    <string name="lock_unlock_title">Desbloquear WrtControl</string>
+    <string name="lock_locked">WrtControl está bloqueada</string>
+    <string name="lock_explain">Identifícate para ver y cambiar el control parental.</string>
+    <string name="lock_unlock">Desbloquear</string>
+</resources>

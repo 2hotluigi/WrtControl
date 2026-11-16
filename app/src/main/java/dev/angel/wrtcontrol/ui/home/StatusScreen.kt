@@ -8,9 +8,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.addons.publicAddresses
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.BoardInfo
@@ -73,9 +75,9 @@ fun StatusScreen(state: Loadable<StatusData>) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (error != null) item { ErrorBanner("Datos sin actualizar: $error") }
+            if (error != null) item { ErrorBanner(stringResource(R.string.common_stale_data, error)) }
             openWrtSupportNotice(data.board.release.version)?.let { notice ->
-                item { NoticeCard("Versión de OpenWrt sin probar", notice) }
+                item { NoticeCard(stringResource(R.string.status_untested_openwrt), notice) }
             }
             item { SystemCard(data.board, data.info) }
             item { ResourcesCard(data.info) }
@@ -86,11 +88,11 @@ fun StatusScreen(state: Loadable<StatusData>) {
 
 @Composable
 private fun SystemCard(board: BoardInfo, info: SystemInfo) {
-    InfoCard("Sistema") {
-        InfoRow("Modelo", board.model)
-        InfoRow("Firmware", board.release.description)
-        InfoRow("Kernel", board.kernel)
-        InfoRow("Encendido", formatDuration(info.uptime))
+    InfoCard(stringResource(R.string.status_system)) {
+        InfoRow(stringResource(R.string.status_model), board.model)
+        InfoRow(stringResource(R.string.status_firmware), board.release.description)
+        InfoRow(stringResource(R.string.status_kernel), board.kernel)
+        InfoRow(stringResource(R.string.status_uptime), formatDuration(info.uptime))
     }
 }
 
@@ -98,12 +100,18 @@ private fun SystemCard(board: BoardInfo, info: SystemInfo) {
 private fun ResourcesCard(info: SystemInfo) {
     val mem = info.memory
     val memUsed = mem.total - mem.available
-    InfoCard("Carga y memoria") {
-        InfoRow("Carga (1/5/15 min)", info.load.joinToString(" · ") { formatLoad(it) })
-        InfoRow("Memoria", "${formatBytes(memUsed)} de ${formatBytes(mem.total)}")
+    InfoCard(stringResource(R.string.status_load_memory)) {
+        InfoRow(stringResource(R.string.status_load), info.load.joinToString(" · ") { formatLoad(it) })
+        InfoRow(
+            stringResource(R.string.status_memory),
+            stringResource(R.string.status_used_of, formatBytes(memUsed), formatBytes(mem.total)),
+        )
         LinearProgressIndicator(progress = { fraction(memUsed, mem.total) }, modifier = Modifier.fillMaxWidth())
         info.root?.let { root ->
-            InfoRow("Almacenamiento", "${formatBytes(root.used * 1024)} de ${formatBytes(root.total * 1024)}")
+            InfoRow(
+                stringResource(R.string.status_storage),
+                stringResource(R.string.status_used_of, formatBytes(root.used * 1024), formatBytes(root.total * 1024)),
+            )
             LinearProgressIndicator(progress = { fraction(root.used, root.total) }, modifier = Modifier.fillMaxWidth())
         }
     }
@@ -113,14 +121,14 @@ private fun ResourcesCard(info: SystemInfo) {
 private fun InterfaceCard(iface: NetInterface) {
     InfoCard(
         title = iface.name.uppercase(),
-        trailing = { StatusPill(if (iface.up) "activa" else "caída", iface.up) },
+        trailing = { StatusPill(stringResource(if (iface.up) R.string.status_iface_up else R.string.status_iface_down), iface.up) },
     ) {
-        InfoRow("Protocolo", iface.proto)
-        InfoRow("Dispositivo", iface.l3Device ?: iface.device ?: "—")
+        InfoRow(stringResource(R.string.status_protocol), iface.proto)
+        InfoRow(stringResource(R.string.status_device), iface.l3Device ?: iface.device ?: "—")
         if (iface.ipv4.isNotEmpty()) InfoRow("IPv4", iface.ipv4.joinToString { "${it.address}/${it.mask}" })
         val v6 = iface.ipv6 + iface.ipv6Prefixes.map { IpAddress(it.address, it.mask) }
         if (v6.isNotEmpty()) InfoRow("IPv6", v6.joinToString { "${it.address}/${it.mask}" })
         if (iface.dns.isNotEmpty()) InfoRow("DNS", iface.dns.joinToString())
-        if (iface.up) iface.uptime?.let { InfoRow("Conectada", formatDuration(it)) }
+        if (iface.up) iface.uptime?.let { InfoRow(stringResource(R.string.status_connected_for), formatDuration(it)) }
     }
 }

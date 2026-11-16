@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -35,6 +36,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.BuildConfig
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.ui.ErrorBanner
@@ -92,9 +94,9 @@ fun LoginScreen(state: Connection.SignedOut) {
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Conectar al router", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.login_title), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Usa la dirección del router OpenWrt (24.10 o superior) en tu red y sus credenciales de LuCI.",
+                    stringResource(R.string.login_intro),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -103,7 +105,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                 OutlinedTextField(
                     value = vm.address,
                     onValueChange = { vm.address = it },
-                    label = { Text("Dirección del router") },
+                    label = { Text(stringResource(R.string.login_address)) },
                     placeholder = { Text("192.168.1.1") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
@@ -112,7 +114,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                 OutlinedTextField(
                     value = vm.username,
                     onValueChange = { vm.username = it },
-                    label = { Text("Usuario") },
+                    label = { Text(stringResource(R.string.login_username)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth().testTag("username"),
@@ -120,7 +122,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                 OutlinedTextField(
                     value = vm.password,
                     onValueChange = { vm.password = it },
-                    label = { Text("Contraseña") },
+                    label = { Text(stringResource(R.string.login_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
@@ -133,7 +135,10 @@ fun LoginScreen(state: Connection.SignedOut) {
                     enabled = !vm.busy,
                     modifier = Modifier.fillMaxWidth().testTag("connect"),
                 ) {
-                    if (vm.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Conectar")
+                    if (vm.busy) CircularProgressIndicator(
+                        Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    ) else Text(stringResource(R.string.login_connect))
                 }
             }
         }

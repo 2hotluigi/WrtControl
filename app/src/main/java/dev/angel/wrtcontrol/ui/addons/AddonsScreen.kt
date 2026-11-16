@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -102,25 +104,26 @@ fun AddonsScreen(address: String) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (loadError != null) item { ErrorBanner("Datos sin actualizar: $loadError") }
+                if (loadError != null) item { ErrorBanner(stringResource(R.string.addons_stale_data, loadError)) }
                 vm.busy?.let { item { BusyBanner(it) } }
                 if (installing == null && editingSqm == null && !newSqm && !editingDdns) {
                     vm.error?.let { item { DismissibleError(it) { vm.error = null } } }
                     vm.notice?.let { notice ->
                         item {
-                            NoticeCard("DNS dinámico", notice) { TextButton(onClick = { vm.notice = null }) { Text("Entendido") } }
+                            NoticeCard(stringResource(R.string.addons_ddns_title), notice) {
+                                TextButton(onClick = { vm.notice = null }) { Text(stringResource(R.string.addons_got_it)) }
+                            }
                         }
                     }
                 }
                 if (tool == null) item {
                     NoticeCard(
-                        "La app no puede instalar paquetes en este router",
-                        "Para eso hace falta la página Software de LuCI (luci-app-package-manager, o luci-app-opkg en " +
-                            "versiones anteriores a 24.10). Lo que ya esté instalado sí se ve y se configura aquí.",
+                        stringResource(R.string.addons_no_installer_title),
+                        stringResource(R.string.addons_no_installer_body),
                     )
                 }
 
-                item { SectionTitle("Acceso remoto") }
+                item { SectionTitle(stringResource(R.string.addons_remote_title)) }
                 item {
                     AddonCard(Addon.WireGuard, status(Addon.WireGuard), canInstall = tool != null, busy = busy,
                         onInstall = { vm.error = null; installing = Addon.WireGuard }, onFinish = vm::finishWireGuard) {
@@ -152,7 +155,7 @@ fun AddonsScreen(address: String) {
                     }
                 }
 
-                item { SectionTitle("Red de casa") }
+                item { SectionTitle(stringResource(R.string.addons_home_network_title)) }
                 item {
                     AddonCard(Addon.Sqm, status(Addon.Sqm), canInstall = tool != null, busy = busy,
                         onInstall = { installing = Addon.Sqm }, onFinish = {}) {
@@ -206,18 +209,19 @@ fun AddonsScreen(address: String) {
                     val mine = data.tunnel?.peerId == peer.id
                     AlertDialog(
                         onDismissRequest = { removingPeer = null },
-                        title = { Text("Quitar el acceso remoto") },
+                        title = { Text(stringResource(R.string.addons_remove_remote_title)) },
                         text = {
                             Text(
-                                if (mine) "Este teléfono dejará de poder entrar al router desde fuera de casa. En casa sigue " +
-                                    "funcionando. Hay que hacerlo desde casa: la app lo quita por la conexión directa."
-                                else "${peer.name} dejará de poder entrar al router desde fuera de casa.",
+                                if (mine) stringResource(R.string.addons_remove_remote_this_phone)
+                                else stringResource(R.string.addons_remove_remote_peer, peer.name),
                             )
                         },
                         confirmButton = {
-                            Button(onClick = { removingPeer = null; vm.removeRemotePeer(peer) }) { Text("Quitar") }
+                            Button(onClick = { removingPeer = null; vm.removeRemotePeer(peer) }) {
+                                Text(stringResource(R.string.addons_remove))
+                            }
                         },
-                        dismissButton = { TextButton(onClick = { removingPeer = null }) { Text("Cancelar") } },
+                        dismissButton = { TextButton(onClick = { removingPeer = null }) { Text(stringResource(R.string.addons_cancel)) } },
                     )
                 }
                 if (newSqm || editingSqm != null) {
@@ -262,31 +266,31 @@ private fun AddonCard(
     content: @Composable () -> Unit,
 ) {
     val (label, ok) = when (status) {
-        AddonStatus.Installed -> "instalado" to true
-        AddonStatus.Missing -> "no instalado" to null
-        AddonStatus.Partial -> "incompleto" to false
-        AddonStatus.NeedsRestart -> "sin cargar" to false
+        AddonStatus.Installed -> stringResource(R.string.addons_status_installed) to true
+        AddonStatus.Missing -> stringResource(R.string.addons_status_missing) to null
+        AddonStatus.Partial -> stringResource(R.string.addons_status_partial) to false
+        AddonStatus.NeedsRestart -> stringResource(R.string.addons_status_needs_restart) to false
     }
     InfoCard(addon.title, modifier = Modifier.testTag("addon-${addon.name}"), trailing = { StatusPill(label, ok) }) {
         Text(addon.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         when (status) {
             AddonStatus.Installed -> content()
             AddonStatus.Missing -> Button(onClick = onInstall, enabled = canInstall && !busy, modifier = Modifier.testTag("install-${addon.name}")) {
-                Text("Instalar")
+                Text(stringResource(R.string.addons_install))
             }
             AddonStatus.Partial -> {
                 Text(
-                    "Está instalado, pero falta su parte de LuCI (${addon.luciPackage}), que es la que da permiso a la app para configurarlo.",
+                    stringResource(R.string.addons_partial_help, addon.luciPackage),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Button(onClick = onInstall, enabled = canInstall && !busy) { Text("Completar la instalación") }
+                Button(onClick = onInstall, enabled = canInstall && !busy) { Text(stringResource(R.string.addons_complete_install)) }
             }
             AddonStatus.NeedsRestart -> {
                 Text(
-                    "Está instalado, pero el router aún no lo cargó. Hay que reiniciar la red: unos segundos sin conexión.",
+                    stringResource(R.string.addons_needs_restart_help),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Button(onClick = onFinish, enabled = !busy) { Text("Reiniciar la red") }
+                Button(onClick = onFinish, enabled = !busy) { Text(stringResource(R.string.addons_restart_network)) }
             }
         }
     }
@@ -296,23 +300,26 @@ private fun AddonCard(
 private fun InstallDialog(addon: Addon, freeKiB: Long?, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Instalar ${addon.title}") },
+        title = { Text(stringResource(R.string.addons_install_title, addon.title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("El router descargará ${addon.luciPackage} y lo que necesite de los servidores de OpenWrt. Necesita internet.")
-                freeKiB?.let { Text("Espacio libre en el router: ${formatBytes(it * 1024)}.") }
+                Text(stringResource(R.string.addons_install_download, addon.luciPackage))
+                freeKiB?.let { Text(stringResource(R.string.addons_install_free_space, formatBytes(it * 1024))) }
                 if (addon.restartsNetwork) {
-                    Text("Al terminar se reinicia la red: unos segundos sin internet en casa.")
+                    Text(stringResource(R.string.addons_install_restarts_network))
                 }
                 Text(
-                    "Una actualización del firmware borra los paquetes instalados; la app avisará y podrás volver a instalarlo.",
+                    stringResource(R.string.addons_install_firmware_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
-        confirmButton = { Button(onClick = onConfirm, modifier = Modifier.testTag("confirm-install")) { Text("Instalar") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { Button(
+            onClick = onConfirm,
+            modifier = Modifier.testTag("confirm-install"),
+        ) { Text(stringResource(R.string.addons_install)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.addons_cancel)) } },
     )
 }
 
@@ -332,28 +339,28 @@ private fun OutsideCheckContent(
 ) {
     val running = check == OutsideCheck.Running
     Text(
-        "Prueba si se llega al router desde internet: la app lo intenta por tus datos móviles, sin salir del Wi-Fi. " +
-            "Gasta unos pocos KB.",
+        stringResource(R.string.addons_outside_check_help),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     OutlinedButton(onClick = onCheck, enabled = !running, modifier = Modifier.testTag("check-outside")) {
-        Text(if (running) "Probando desde fuera… (hasta 20 s)" else "¿Se llega desde fuera?")
+        Text(stringResource(if (running) R.string.addons_outside_checking else R.string.addons_outside_check))
     }
     when (check) {
         is OutsideCheck.Failed -> Text(check.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         is OutsideCheck.Done -> {
             val advice = check.advice
             val (headline, color) = when {
-                advice.ok -> "Desde fuera se llega al router." to MaterialTheme.colorScheme.primary
-                advice.untested -> "Con estos datos móviles no se puede comprobar." to MaterialTheme.colorScheme.onSurface
-                else -> "Desde fuera no se llega al router." to MaterialTheme.colorScheme.error
+                advice.ok -> stringResource(R.string.addons_outside_ok) to MaterialTheme.colorScheme.primary
+                advice.untested -> stringResource(R.string.addons_outside_untested) to MaterialTheme.colorScheme.onSurface
+                else -> stringResource(R.string.addons_outside_fail) to MaterialTheme.colorScheme.error
             }
             Text(headline, style = MaterialTheme.typography.bodyMedium, color = color)
-            advice.lines.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+            advice.lines.forEach { Text("• " + it, style = MaterialTheme.typography.bodySmall) }
             advice.publishOnly?.let { families ->
-                val names = families.sorted().joinToString(" y ") { if (it == IpFamily.V6) "IPv6" else "IPv4" }
-                Button(onClick = { onPublishOnly(families) }, enabled = !busy) { Text("Publicar solo $names") }
+                val and = stringResource(R.string.addons_and)
+                val names = families.sorted().joinToString(and) { if (it == IpFamily.V6) "IPv6" else "IPv4" }
+                Button(onClick = { onPublishOnly(families) }, enabled = !busy) { Text(stringResource(R.string.addons_publish_only, names)) }
             }
         }
         else -> {}
@@ -367,39 +374,42 @@ private fun RemoteAccessContent(data: AddonsData, busy: Boolean, onEnable: () ->
     val live = s.wireguard.orEmpty().firstOrNull { it.name == VPN_INTERFACE }
     val now = System.currentTimeMillis() / 1000
     HorizontalDivider()
-    Text("Acceso remoto", style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.addons_remote_title), style = MaterialTheme.typography.titleSmall)
     Text(
-        "Solo la app usa el túnel, con su propio WireGuard: no ocupa la VPN del teléfono ni toca otras. " +
-            "Desde el túnel solo se llega a la web del router, no al resto de la red.",
+        stringResource(R.string.addons_remote_tunnel_help),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     when {
         s.publicAddresses.isEmpty() -> Text(
-            "El router no tiene ahora una dirección pública (ni IPv6 ni IPv4 sin CGNAT): desde fuera no se podrá llegar a él.",
+            stringResource(R.string.addons_remote_no_public_address),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
         s.publicAddresses.none { '.' in it } -> Text(
-            "Se llega por IPv6 (${s.publicAddresses.first()}): la red desde la que entres también tiene que tener IPv6.",
+            stringResource(R.string.addons_remote_ipv6_only, s.publicAddresses.first()),
             style = MaterialTheme.typography.bodySmall,
         )
     }
     if (remote != null) {
         Text(
-            "WireGuard en el puerto UDP ${remote.port}" + if (live?.up == false) " · sin levantar" else "",
+            stringResource(if (live?.up == false) R.string.addons_remote_port_down else R.string.addons_remote_port, remote.port),
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            s.ddnsDomain?.let { "Desde fuera, la app lo buscará en $it." }
-                ?: "Sin DNS dinámico, la app usará la última dirección que vio: si cambia mientras estás fuera, no lo encontrará.",
+            s.ddnsDomain?.let { stringResource(R.string.addons_remote_lookup_domain, it) }
+                ?: stringResource(R.string.addons_remote_no_ddns),
             style = MaterialTheme.typography.bodySmall,
             color = if (s.ddnsDomain == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (remote.foreignPeers.isNotEmpty()) {
             Text(
-                "Además hay ${remote.foreignPeers.size} par(es) añadidos fuera de la app (${remote.foreignPeers.joinToString()}): " +
-                    "se gestionan desde LuCI.",
+                pluralStringResource(
+                    R.plurals.addons_remote_foreign_peers,
+                    remote.foreignPeers.size,
+                    remote.foreignPeers.size,
+                    remote.foreignPeers.joinToString(),
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -408,22 +418,29 @@ private fun RemoteAccessContent(data: AddonsData, busy: Boolean, onEnable: () ->
             val status = when {
                 live == null || !live.liveKnown -> null
                 else -> live.peers.firstOrNull { it.publicKey == peer.publicKey }?.lastHandshake
-                    ?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "aún no ha conectado"
+                    ?.let { stringResource(R.string.addons_connected_ago, formatDuration((now - it).coerceAtLeast(0))) }
+                    ?: stringResource(R.string.addons_not_connected_yet)
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f)) {
-                    Text(peer.name + if (data.tunnel?.peerId == peer.id) " (este teléfono)" else "", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        if (data.tunnel?.peerId == peer.id) stringResource(R.string.addons_peer_this_phone, peer.name) else peer.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     Text(listOfNotNull(peer.address, status).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { onRemove(peer) }, enabled = !busy) {
-                    Icon(painterResource(R.drawable.ic_delete), contentDescription = "Quitar el acceso remoto de ${peer.name}")
+                    Icon(
+                        painterResource(R.drawable.ic_delete),
+                        contentDescription = stringResource(R.string.addons_remove_remote_of, peer.name),
+                    )
                 }
             }
         }
     }
     if (!data.phoneHasAccess) {
         Button(onClick = onEnable, enabled = !busy, modifier = Modifier.testTag("enable-remote")) {
-            Text(if (remote == null) "Activar el acceso remoto" else "Añadir este teléfono")
+            Text(stringResource(if (remote == null) R.string.addons_enable_remote else R.string.addons_add_this_phone))
         }
     }
 }
@@ -433,21 +450,24 @@ private fun WireGuardContent(interfaces: List<WireGuardInterface>) {
     if (interfaces.isEmpty()) return
     val now = System.currentTimeMillis() / 1000
     HorizontalDivider()
-    Text("Otros túneles del router", style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.addons_other_tunnels), style = MaterialTheme.typography.titleSmall)
+    val notUp = stringResource(R.string.addons_not_up)
     interfaces.forEach { iface ->
+        val port = iface.listenPort?.let { stringResource(R.string.addons_port, it) }
         Text(
             buildString {
                 append(iface.name)
-                iface.listenPort?.let { append(" · puerto $it") }
-                if (!iface.up) append(" · sin levantar")
+                port?.let { append(" · $it") }
+                if (!iface.up) append(" · $notUp")
             },
             style = MaterialTheme.typography.titleSmall,
         )
         if (iface.addresses.isNotEmpty()) Text(iface.addresses.joinToString(), style = MaterialTheme.typography.bodySmall)
-        if (iface.peers.isEmpty()) Text("Sin pares.", style = MaterialTheme.typography.bodySmall)
+        if (iface.peers.isEmpty()) Text(stringResource(R.string.addons_no_peers), style = MaterialTheme.typography.bodySmall)
         iface.peers.forEach { peer ->
             val seen = if (!iface.liveKnown) null else
-                peer.lastHandshake?.let { "conectado hace ${formatDuration((now - it).coerceAtLeast(0))}" } ?: "nunca ha conectado"
+                peer.lastHandshake?.let { stringResource(R.string.addons_connected_ago, formatDuration((now - it).coerceAtLeast(0))) }
+                    ?: stringResource(R.string.addons_never_connected)
             Text(
                 peer.description.ifBlank { peer.publicKey.take(8) + "…" } + (seen?.let { ": $it" } ?: ""),
                 style = MaterialTheme.typography.bodyMedium,
@@ -471,37 +491,55 @@ private fun DdnsContent(
     val own = owned.firstOrNull()
     if (own == null) {
         Text(
-            if (remote) "El acceso remoto lo necesita: sin un nombre fijo, si tu proveedor le cambia la dirección al router mientras estás fuera, la app no lo encontrará."
-            else "Para el acceso remoto: un nombre que siempre apunta al router.",
+            stringResource(if (remote) R.string.addons_ddns_needed_remote else R.string.addons_ddns_help),
             style = MaterialTheme.typography.bodySmall,
         )
-        Button(onClick = onEdit, enabled = !busy, modifier = Modifier.testTag("ddns-configure")) { Text("Configurar") }
+        Button(
+            onClick = onEdit,
+            enabled = !busy,
+            modifier = Modifier.testTag("ddns-configure"),
+        ) { Text(stringResource(R.string.addons_configure)) }
     } else {
         HorizontalDivider()
         Text(own.domain, style = MaterialTheme.typography.titleSmall)
-        Text(own.provider?.title ?: own.serviceName ?: "Proveedor propio", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            own.provider?.title ?: own.serviceName ?: stringResource(R.string.addons_ddns_custom_provider),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         owned.sortedBy { it.ipv6 }.forEach { svc ->
             val family = if (svc.ipv6) "IPv6" else "IPv4"
+            val lastUpdate = svc.lastUpdate
+            val lastSentIp = svc.lastSentIp
+            val update = when {
+                lastUpdate == null -> stringResource(R.string.addons_ddns_not_updated)
+                lastSentIp != null -> stringResource(R.string.addons_ddns_updated_ip, lastUpdate, lastSentIp)
+                else -> stringResource(R.string.addons_ddns_updated, lastUpdate)
+            }
             Text(
-                "$family: " + (svc.lastUpdate?.let { "actualizado $it" + (svc.lastSentIp?.let { ip -> " ($ip)" } ?: "") } ?: "aún no se ha actualizado") +
-                    if (svc.running) "" else " · parado",
+                stringResource(if (svc.running) R.string.addons_ddns_status else R.string.addons_ddns_status_stopped, family, update),
                 style = MaterialTheme.typography.bodyMedium,
             )
             svc.lastError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             if (svc.ipv6 && publicAddresses.none { ':' in it }) {
-                Text("El router no tiene ahora una IPv6 pública que publicar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(R.string.addons_ddns_no_public_ipv6),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onEdit, enabled = !busy) { Text("Cambiar") }
-            TextButton(onClick = onRemove, enabled = !busy) { Text("Quitar") }
+            TextButton(onClick = onEdit, enabled = !busy) { Text(stringResource(R.string.addons_change)) }
+            TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(R.string.addons_remove)) }
         }
     }
     val others = services.filter { !it.own && it.enabled }
     if (others.isNotEmpty()) {
         HorizontalDivider()
-        Text("Configurados en LuCI", style = MaterialTheme.typography.titleSmall)
-        others.forEach { Text("${it.domain} · ${it.serviceName ?: "propio"}", style = MaterialTheme.typography.bodyMedium) }
+        Text(stringResource(R.string.addons_ddns_luci_title), style = MaterialTheme.typography.titleSmall)
+        val customShort = stringResource(R.string.addons_ddns_custom_short)
+        others.forEach { Text(it.domain + " · " + (it.serviceName ?: customShort), style = MaterialTheme.typography.bodyMedium) }
     }
 }
 
@@ -532,7 +570,7 @@ private fun DdnsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("DNS dinámico") },
+        title = { Text(stringResource(R.string.addons_ddns_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -543,14 +581,17 @@ private fun DdnsDialog(
                 Text(provider.help, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = domain, onValueChange = { domain = it }, singleLine = true,
-                    label = { Text("Nombre") },
-                    supportingText = { if (domain.isNotBlank() && problem == null) Text(edit.fullDomain()) else provider.suffix?.let { Text("p. ej. micasa$it") } },
+                    label = { Text(stringResource(R.string.addons_ddns_name)) },
+                    supportingText = {
+                        if (domain.isNotBlank() && problem == null) Text(edit.fullDomain())
+                        else provider.suffix?.let { Text(stringResource(R.string.addons_ddns_example, it)) }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth().testTag("ddns-domain"),
                 )
                 OutlinedTextField(
                     value = token, onValueChange = { token = it }, singleLine = true,
-                    label = { Text("Token") },
+                    label = { Text(stringResource(R.string.addons_ddns_token)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth().testTag("ddns-token"),
@@ -558,23 +599,25 @@ private fun DdnsDialog(
                 if (provider == DdnsProvider.Custom) {
                     OutlinedTextField(
                         value = url, onValueChange = { url = it },
-                        label = { Text("URL de actualización") },
+                        label = { Text(stringResource(R.string.addons_ddns_update_url)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = username, onValueChange = { username = it }, singleLine = true,
-                        label = { Text("Usuario (si la URL lo pide)") },
+                        label = { Text(stringResource(R.string.addons_ddns_username)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 val v4 = publicAddresses.any { '.' in it }
                 val v6 = publicAddresses.any { ':' in it }
                 Text(
-                    when {
-                        v4 && v6 -> "Se publicarán la IPv4 y la IPv6 del router: así se llega desde cualquier red."
-                        v4 -> "Se publicará la IPv4 del router."
-                        else -> "Se publicará la IPv6 del router: con CGNAT, la IPv4 no sirve para entrar desde fuera."
-                    },
+                    stringResource(
+                        when {
+                            v4 && v6 -> R.string.addons_ddns_publish_both
+                            v4 -> R.string.addons_ddns_publish_v4
+                            else -> R.string.addons_ddns_publish_v6
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -586,10 +629,10 @@ private fun DdnsDialog(
         },
         confirmButton = {
             Button(onClick = { onSave(edit) }, enabled = problem == null && !busy, modifier = Modifier.testTag("ddns-save")) {
-                Text(if (busy) "Aplicando…" else "Guardar")
+                Text(stringResource(if (busy) R.string.addons_applying else R.string.addons_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.addons_cancel)) } },
     )
 }
 
@@ -606,15 +649,15 @@ private fun SqmContent(
     onCreate: () -> Unit,
 ) {
     if (queues.isEmpty()) {
-        Text("Sin configurar.", style = MaterialTheme.typography.bodyMedium)
-        Button(onClick = onCreate, enabled = !busy) { Text("Configurar") }
+        Text(stringResource(R.string.addons_not_configured), style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onCreate, enabled = !busy) { Text(stringResource(R.string.addons_configure)) }
         return
     }
     queues.forEach { q ->
         HorizontalDivider()
         SwitchRow(
             title = q.device.ifBlank { q.section },
-            help = "Bajada ${formatMbit(q.downloadKbit)} · subida ${formatMbit(q.uploadKbit)} · ${q.qdisc}",
+            help = stringResource(R.string.addons_sqm_summary, formatMbit(q.downloadKbit), formatMbit(q.uploadKbit), q.qdisc),
             checked = q.enabled,
             enabled = !busy,
             onChange = { onToggle(q, it) },
@@ -622,13 +665,16 @@ private fun SqmContent(
         )
         if (internetDevice != null && q.device !in internetDevices) {
             Text(
-                "Esta cola está en ${q.device.ifBlank { "ningún dispositivo" }}, pero la salida a internet es $internetDevice: " +
-                    "así no hace nada. Edítala para cambiarla.",
+                stringResource(
+                    R.string.addons_sqm_wrong_device,
+                    q.device.ifBlank { stringResource(R.string.addons_sqm_no_device) },
+                    internetDevice,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        TextButton(onClick = { onEdit(q) }, enabled = !busy) { Text("Editar") }
+        TextButton(onClick = { onEdit(q) }, enabled = !busy) { Text(stringResource(R.string.addons_edit)) }
     }
 }
 
@@ -649,41 +695,40 @@ private fun SqmDialog(
     val enabled = queue?.enabled ?: true
     val edit = SqmEdit(queue?.section, enabled, device, parseMbit(down) ?: -1, parseMbit(up) ?: -1)
     val problem = when {
-        listOf(down, up).any { THOUSANDS.matches(it.trim()) } -> "Escribe la velocidad sin puntos de miles (p. ej. 1000)."
-        parseMbit(down) == null || parseMbit(up) == null -> "Escribe las dos velocidades en Mbit/s."
+        listOf(down, up).any { THOUSANDS.matches(it.trim()) } -> stringResource(R.string.addons_sqm_no_thousands)
+        parseMbit(down) == null || parseMbit(up) == null -> stringResource(R.string.addons_sqm_both_speeds)
         else -> sqmProblem(edit)
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (queue == null) "Configurar SQM" else "Editar SQM") },
+        title = { Text(stringResource(if (queue == null) R.string.addons_sqm_configure_title else R.string.addons_sqm_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Haz una prueba de velocidad sin nadie más usando internet y pon un poco menos (85–95 %): si pones " +
-                        "más de lo que da la conexión, no sirve de nada.",
+                    stringResource(R.string.addons_sqm_help),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text("Conexión a internet", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.addons_sqm_internet_connection), style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (listOf(device) + devices).filter { it.isNotBlank() }.distinct().forEach { d ->
                         FilterChip(
                             selected = d == device,
                             onClick = { device = d },
-                            label = { Text(if (d == internetDevice) "$d (internet)" else d) },
+                            label = { Text(if (d == internetDevice) stringResource(R.string.addons_sqm_device_internet, d) else d) },
                         )
                     }
                 }
                 OutlinedTextField(
                     value = down, onValueChange = { down = it }, singleLine = true,
-                    label = { Text("Bajada (Mbit/s)") },
+                    label = { Text(stringResource(R.string.addons_sqm_download)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth().testTag("sqm-down"),
                 )
                 OutlinedTextField(
                     value = up, onValueChange = { up = it }, singleLine = true,
-                    label = { Text("Subida (Mbit/s)") },
+                    label = { Text(stringResource(R.string.addons_sqm_upload)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth().testTag("sqm-up"),
                 )
@@ -695,15 +740,25 @@ private fun SqmDialog(
         },
         confirmButton = {
             Button(onClick = { onSave(edit) }, enabled = problem == null && !busy, modifier = Modifier.testTag("sqm-save")) {
-                Text(if (busy) "Aplicando…" else if (queue == null) "Activar" else "Guardar")
+                Text(
+                    stringResource(
+                        when {
+                            busy -> R.string.addons_applying
+                            queue == null -> R.string.addons_activate
+                            else -> R.string.addons_save
+                        },
+                    ),
+                )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.addons_cancel)) } },
     )
 }
 
 /** 85000 → "85 Mbit/s"; 1500 → "1,5 Mbit/s"; 0 → "sin límite". */
-internal fun formatMbit(kbit: Long): String = if (kbit <= 0) "sin límite" else "${formatMbitNumber(kbit)} Mbit/s"
+@Composable
+internal fun formatMbit(kbit: Long): String =
+    if (kbit <= 0) stringResource(R.string.addons_sqm_unlimited) else stringResource(R.string.addons_sqm_mbit, formatMbitNumber(kbit))
 
 internal fun formatMbitNumber(kbit: Long): String =
     if (kbit % 1000 == 0L) "${kbit / 1000}" else String.format(Locale.ROOT, "%.3f", kbit / 1000.0).trimEnd('0').trimEnd('.').replace('.', ',')
@@ -728,12 +783,14 @@ private fun UpnpContent(
     onClose: (UpnpMapping) -> Unit,
 ) {
     SwitchRow(
-        title = "Activado",
-        help = when {
-            upnp.enabled && upnp.running == false -> "Está activado pero el servicio no está en marcha."
-            upnp.enabled -> "Los dispositivos pueden abrir puertos."
-            else -> "Ningún dispositivo puede abrir puertos solo."
-        },
+        title = stringResource(R.string.addons_upnp_enabled),
+        help = stringResource(
+            when {
+                upnp.enabled && upnp.running == false -> R.string.addons_upnp_not_running
+                upnp.enabled -> R.string.addons_upnp_on_help
+                else -> R.string.addons_upnp_off_help
+            },
+        ),
         checked = upnp.enabled,
         enabled = !busy,
         onChange = onToggle,
@@ -741,41 +798,44 @@ private fun UpnpContent(
     )
     if (privateWan != null) {
         Text(
-            "La dirección de internet del router ($privateWan) es privada: hay otro router delante o tu proveedor " +
-                "usa CGNAT. Así UPnP no puede abrir puertos hacia internet por IPv4.",
+            stringResource(R.string.addons_upnp_private_wan, privateWan),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
     }
     SwitchRow(
-        title = "Modo seguro",
-        help = "Cada dispositivo solo puede abrir puertos hacia sí mismo. Mejor dejarlo activado.",
+        title = stringResource(R.string.addons_upnp_secure),
+        help = stringResource(R.string.addons_upnp_secure_help),
         checked = upnp.secureMode,
         enabled = !busy,
         onChange = onSecure,
     )
     if (!upnp.enabled && upnp.mappings.isEmpty()) return
     HorizontalDivider()
-    Text("Puertos abiertos", style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.addons_upnp_open_ports), style = MaterialTheme.typography.titleSmall)
     if (upnp.mappings.isEmpty()) {
-        Text("Ningún dispositivo ha abierto puertos.", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.addons_upnp_no_ports), style = MaterialTheme.typography.bodyMedium)
     }
     upnp.mappings.forEach { m ->
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text(m.host ?: m.address, style = MaterialTheme.typography.bodyMedium)
+                val expires = m.expiresIn?.let { stringResource(R.string.addons_upnp_expires_in, formatDuration(it)) }
                 Text(
                     buildString {
                         append("${m.protocol} ${m.externalPort} → ${m.address}:${m.internalPort}")
                         if (m.description.isNotEmpty()) append(" · ${m.description}")
-                        m.expiresIn?.let { append(" · caduca en ${formatDuration(it)}") }
+                        expires?.let { append(" · $it") }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             IconButton(onClick = { onClose(m) }, enabled = !busy) {
-                Icon(painterResource(R.drawable.ic_close), contentDescription = "Cerrar el puerto ${m.externalPort}")
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.addons_upnp_close_port, m.externalPort),
+                )
             }
         }
     }

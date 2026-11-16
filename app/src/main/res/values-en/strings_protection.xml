@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Quarantine -->
+    <string name="protection_quarantine_title">New devices without internet</string>
+    <string name="protection_quarantine_help">Anything that connects to your network for the first time won\'t get internet until you approve it here. That way a new phone, or one with a different MAC, can\'t get around the profiles.</string>
+    <string name="protection_no_pending">No devices waiting.</string>
+    <plurals name="protection_pending_count">
+        <item quantity="one">%1$d device waiting</item>
+        <item quantity="other">%1$d devices waiting</item>
+    </plurals>
+    <string name="protection_unnamed">Unnamed</string>
+    <string name="protection_disconnected">Disconnected</string>
+    <string name="protection_this_phone">This phone</string>
+    <string name="protection_approve">Approve</string>
+    <string name="protection_assign_to_profile">Assign to a profile</string>
+    <plurals name="protection_approved_without_profile_count">
+        <item quantity="one">%1$d approved device without a profile</item>
+        <item quantity="other">%1$d approved devices without a profile</item>
+    </plurals>
+
+    <!-- Quarantine confirmation -->
+    <string name="protection_quarantine_confirm_title">Keep new devices off the internet?</string>
+    <plurals name="protection_quarantine_confirm_first">
+        <item quantity="one">The device the router knows right now will be approved, so it keeps working as before. Devices that connect later can join the network, but won\'t get internet until you approve them on this screen. If a device at home was turned off, approve it when it shows up.</item>
+        <item quantity="other">The %1$d devices the router knows right now will be approved, so the TV, the printer and the rest keep working as before. Devices that connect later can join the network, but won\'t get internet until you approve them on this screen. If a device at home was turned off, approve it when it shows up.</item>
+    </plurals>
+    <string name="protection_quarantine_confirm_again">Devices you already approved stay approved. The rest, including those that connected while this was off, won\'t get internet until you approve them on this screen.</string>
+    <string name="protection_activate">Turn on</string>
+    <string name="protection_cancel">Cancel</string>
+
+    <!-- Assign to a profile -->
+    <string name="protection_assign_title">Which profile does “%1$s” belong to?</string>
+
+    <!-- Approved without a profile -->
+    <string name="protection_approved_title">Approved without a profile</string>
+    <string name="protection_none">None.</string>
+    <string name="protection_admin_phone">Phone with the app</string>
+    <string name="protection_remove">Remove</string>
+    <string name="protection_unapprove_help">Once you remove the approval, that device has no internet until you approve it again.</string>
+    <string name="protection_approve_by_mac">Approve by MAC</string>
+    <string name="protection_close">Close</string>
+
+    <!-- Phones with WrtControl -->
+    <string name="protection_admins_title">Phones with WrtControl</string>
+    <string name="protection_admins_help">They\'re never locked out of the router settings, even if they\'re in a protected profile, and with quarantine on they always have internet. They\'re added automatically whenever you make a change from the app.</string>
+    <string name="protection_none_yet">None yet.</string>
+    <string name="protection_add_by_mac">Add by MAC</string>
+    <string name="protection_add">Add</string>
+
+    <!-- App lock -->
+    <string name="protection_app_lock_title">Require fingerprint or PIN to open WrtControl</string>
+    <string name="protection_app_lock_help">That way nobody else can remove the rules from this phone.</string>
+    <string name="protection_app_lock_unavailable">Set up a screen lock on your phone to use this.</string>
+    <plurals name="protection_admins_count">
+        <item quantity="one">%1$d phone with WrtControl</item>
+        <item quantity="other">%1$d phones with WrtControl</item>
+    </plurals>
+
+    <!-- Router password -->
+    <string name="protection_password_title">Router password</string>
+    <string name="protection_password_help">It\'s the password of the user this app signs in with, and also the one for LuCI and SSH. Keep it safe: you\'ll need it to sign in from another phone or a computer.</string>
+    <string name="protection_password_new">New password</string>
+    <!-- Siempre varios: el número es un límite fijo (nunca 1). -->
+    <string name="protection_password_too_short" tools:ignore="PluralsCandidate">At least %1$d characters</string>
+    <string name="protection_password_repeat">Repeat it</string>
+    <string name="protection_password_mismatch">They don\'t match</string>
+    <string name="protection_save">Save</string>
+
+    <!-- Extra time -->
+    <string name="protection_extra_time_title">Extra time for %1$s</string>
+    <string name="protection_extra_time_help">They\'ll have internet even during a schedule. When the time is up, the router goes back to the schedule on its own.</string>
+</resources>

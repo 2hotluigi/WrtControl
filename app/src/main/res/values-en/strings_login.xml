@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_title">Connect to your router</string>
+    <string name="login_intro">Use the address of your OpenWrt router (24.10 or later) on your network and its LuCI credentials.</string>
+    <string name="login_address">Router address</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_connect">Connect</string>
+</resources>

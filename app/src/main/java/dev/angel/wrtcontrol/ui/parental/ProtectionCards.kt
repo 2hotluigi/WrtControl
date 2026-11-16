@@ -26,11 +26,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.normalizeMac
@@ -72,9 +75,8 @@ internal fun QuarantineCard(
     Card(Modifier.fillMaxWidth().testTag("quarantine-card")) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SwitchRow(
-                title = "Dispositivos nuevos sin internet",
-                help = "Lo que se conecte por primera vez a tu red no tendrá internet hasta que lo apruebes aquí. " +
-                    "Así un teléfono nuevo o con otra MAC no se salta los perfiles.",
+                title = stringResource(R.string.protection_quarantine_title),
+                help = stringResource(R.string.protection_quarantine_help),
                 checked = settings.quarantine,
                 enabled = !busy,
                 onChange = onToggle,
@@ -84,27 +86,41 @@ internal fun QuarantineCard(
                 val pending = data.pending
                 HorizontalDivider()
                 if (pending.isEmpty()) {
-                    Text("No hay dispositivos esperando.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.protection_no_pending),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else {
                     Text(
-                        if (pending.size == 1) "1 dispositivo esperando" else "${pending.size} dispositivos esperando",
+                        pluralStringResource(R.plurals.protection_pending_count, pending.size, pending.size),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     pending.forEach { d ->
                         Column(Modifier.fillMaxWidth().testTag("pending-${d.mac}")) {
-                            Text(d.name ?: "Sin nombre", style = MaterialTheme.typography.bodyLarge)
+                            Text(d.name ?: stringResource(R.string.protection_unnamed), style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                             )
                             if (d.ipv4.any { it in phoneIps }) {
-                                Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                Text(
+                                    stringResource(R.string.protection_this_phone),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilledTonalButton(onClick = { onApprove(d) }, enabled = !busy) { Text("Aprobar") }
+                                FilledTonalButton(
+                                    onClick = { onApprove(d) },
+                                    enabled = !busy,
+                                ) { Text(stringResource(R.string.protection_approve)) }
                                 if (data.snapshot.profiles.isNotEmpty()) {
-                                    TextButton(onClick = { onAssign(d) }, enabled = !busy) { Text("Asignar a un perfil") }
+                                    TextButton(
+                                        onClick = { onAssign(d) },
+                                        enabled = !busy,
+                                    ) { Text(stringResource(R.string.protection_assign_to_profile)) }
                                 }
                             }
                         }
@@ -112,7 +128,7 @@ internal fun QuarantineCard(
                 }
                 val extra = (settings.approved + settings.admins).distinct().count { mac -> data.snapshot.profiles.none { mac in it.macs } }
                 TextButton(onClick = onShowApproved, enabled = !busy) {
-                    Text(if (extra == 1) "1 dispositivo aprobado sin perfil" else "$extra dispositivos aprobados sin perfil")
+                    Text(pluralStringResource(R.plurals.protection_approved_without_profile_count, extra, extra))
                 }
             }
         }
@@ -124,21 +140,21 @@ internal fun QuarantineCard(
 internal fun QuarantineConfirmDialog(known: Int?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("¿Dejar sin internet a los dispositivos nuevos?") },
+        title = { Text(stringResource(R.string.protection_quarantine_confirm_title)) },
         text = {
             Text(
                 if (known != null) {
-                    "Se aprobarán los $known dispositivos que el router conoce ahora, así la TV, la impresora y los demás " +
-                        "siguen igual. Los que se conecten después podrán unirse a la red, pero no tendrán internet hasta que los " +
-                        "apruebes en esta pantalla. Si un dispositivo de casa estaba apagado, apruébalo cuando aparezca."
+                    pluralStringResource(R.plurals.protection_quarantine_confirm_first, known, known)
                 } else {
-                    "Los dispositivos que ya aprobaste siguen aprobados. Los demás, también los que se conectaron mientras " +
-                        "estaba desactivada, no tendrán internet hasta que los apruebes en esta pantalla."
+                    stringResource(R.string.protection_quarantine_confirm_again)
                 },
             )
         },
-        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("quarantine-confirm")) { Text("Activar") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton(
+            onClick = onConfirm,
+            modifier = Modifier.testTag("quarantine-confirm"),
+        ) { Text(stringResource(R.string.protection_activate)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.protection_cancel)) } },
     )
 }
 
@@ -146,7 +162,7 @@ internal fun QuarantineConfirmDialog(known: Int?, onConfirm: () -> Unit, onDismi
 internal fun AssignDialog(device: Device, profiles: List<Profile>, onPick: (Profile) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("¿A qué perfil pertenece «${device.name ?: device.mac}»?") },
+        title = { Text(stringResource(R.string.protection_assign_title, device.name ?: device.mac)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 profiles.forEach { p ->
@@ -157,7 +173,7 @@ internal fun AssignDialog(device: Device, profiles: List<Profile>, onPick: (Prof
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.protection_cancel)) } },
     )
 }
 
@@ -180,27 +196,41 @@ internal fun ApprovedDialog(
     val manualMac = normalizeMac(manual)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Aprobados sin perfil") },
+        title = { Text(stringResource(R.string.protection_approved_title)) },
         text = {
             Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (approved.isEmpty()) Text("Ninguno.")
+                if (approved.isEmpty()) Text(stringResource(R.string.protection_none))
                 approved.forEach { mac ->
                     val d = devices.firstOrNull { it.mac == mac }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
-                            Text(d?.name ?: if (d == null) "Desconectado" else "Sin nombre", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                d?.name ?: stringResource(if (d == null) R.string.protection_disconnected else R.string.protection_unnamed),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                             Text(mac, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                             when {
-                                mac in phoneMacs -> Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
-                                mac in admins -> Text("Teléfono con la app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                mac in phoneMacs -> Text(
+                                    stringResource(R.string.protection_this_phone),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
+                                mac in admins -> Text(
+                                    stringResource(R.string.protection_admin_phone),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
                             }
                         }
                         // Este teléfono queda aprobado en cualquier cambio que haga: quitarlo no tendría efecto.
-                        if (mac !in phoneMacs) TextButton(onClick = { onRemove(mac) }, enabled = !busy) { Text("Quitar") }
+                        if (mac !in phoneMacs) TextButton(
+                            onClick = { onRemove(mac) },
+                            enabled = !busy,
+                        ) { Text(stringResource(R.string.protection_remove)) }
                     }
                 }
                 Text(
-                    "Al quitar la aprobación, ese dispositivo se queda sin internet hasta que lo vuelvas a aprobar.",
+                    stringResource(R.string.protection_unapprove_help),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -208,19 +238,22 @@ internal fun ApprovedDialog(
                     OutlinedTextField(
                         value = manual,
                         onValueChange = { manual = it.take(20) },
-                        label = { Text("Aprobar por MAC") },
-                        placeholder = { Text("AA:BB:CC:DD:EE:FF") },
+                        label = { Text(stringResource(R.string.protection_approve_by_mac)) },
+                        placeholder = { Text(MAC_PLACEHOLDER) },
                         singleLine = true,
                         enabled = !busy,
                         isError = manual.isNotBlank() && manualMac == null,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { manualMac?.let(onApproveMac); manual = "" }, enabled = !busy && manualMac != null) { Text("Aprobar") }
+                    TextButton(
+                        onClick = { manualMac?.let(onApproveMac); manual = "" },
+                        enabled = !busy && manualMac != null,
+                    ) { Text(stringResource(R.string.protection_approve)) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.protection_close)) } },
     )
 }
 
@@ -244,45 +277,57 @@ internal fun AdminsDialog(
     val manualMac = normalizeMac(manual)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Teléfonos con WrtControl") },
+        title = { Text(stringResource(R.string.protection_admins_title)) },
         text = {
             Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "Nunca se les bloquea la configuración del router, aunque estén en un perfil protegido, y con la " +
-                        "cuarentena siempre tienen internet. Se añaden solos al hacer cualquier cambio desde la app.",
+                    stringResource(R.string.protection_admins_help),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (admins.isEmpty()) Text("Ninguno todavía.")
+                if (admins.isEmpty()) Text(stringResource(R.string.protection_none_yet))
                 admins.forEach { mac ->
                     val d = devices.firstOrNull { it.mac == mac }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
-                            Text(d?.name ?: if (d == null) "Desconectado" else "Sin nombre", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                d?.name ?: stringResource(if (d == null) R.string.protection_disconnected else R.string.protection_unnamed),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                             Text(mac, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                            if (mac in phoneMacs) Text("Este teléfono", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                            if (mac in phoneMacs) Text(
+                                stringResource(R.string.protection_this_phone),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            )
                         }
                         // Este teléfono vuelve a añadirse en cualquier cambio que haga: quitarlo no tendría efecto.
-                        if (mac !in phoneMacs) TextButton(onClick = { onRemove(mac) }, enabled = !busy) { Text("Quitar") }
+                        if (mac !in phoneMacs) TextButton(
+                            onClick = { onRemove(mac) },
+                            enabled = !busy,
+                        ) { Text(stringResource(R.string.protection_remove)) }
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = manual,
                         onValueChange = { manual = it.take(20) },
-                        label = { Text("Agregar por MAC") },
-                        placeholder = { Text("AA:BB:CC:DD:EE:FF") },
+                        label = { Text(stringResource(R.string.protection_add_by_mac)) },
+                        placeholder = { Text(MAC_PLACEHOLDER) },
                         singleLine = true,
                         enabled = !busy,
                         isError = manual.isNotBlank() && manualMac == null,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { manualMac?.let(onAdd); manual = "" }, enabled = !busy && manualMac != null) { Text("Agregar") }
+                    TextButton(
+                        onClick = { manualMac?.let(onAdd); manual = "" },
+                        enabled = !busy && manualMac != null,
+                    ) { Text(stringResource(R.string.protection_add)) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.protection_close)) } },
     )
 }
 
@@ -292,11 +337,11 @@ internal fun AppLockCard(enabled: Boolean, available: Boolean, admins: Int, onTo
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             SwitchRow(
-                title = "Pedir huella o PIN para abrir WrtControl",
+                title = stringResource(R.string.protection_app_lock_title),
                 help = if (available) {
-                    "Así nadie más puede quitar las reglas desde este teléfono."
+                    stringResource(R.string.protection_app_lock_help)
                 } else {
-                    "Configura un bloqueo de pantalla en el teléfono para poder usarlo."
+                    stringResource(R.string.protection_app_lock_unavailable)
                 },
                 checked = enabled,
                 enabled = available || enabled,
@@ -305,7 +350,7 @@ internal fun AppLockCard(enabled: Boolean, available: Boolean, admins: Int, onTo
             )
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             TextButton(onClick = onShowAdmins, modifier = Modifier.testTag("show-admins")) {
-                Text(if (admins == 1) "1 teléfono con WrtControl" else "$admins teléfonos con WrtControl")
+                Text(pluralStringResource(R.plurals.protection_admins_count, admins, admins))
             }
         }
     }
@@ -320,22 +365,24 @@ internal fun PasswordDialog(busy: Boolean, error: String?, onSubmit: (String) ->
     val tooShort = first.isNotEmpty() && first.length < MIN_PASSWORD
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Contraseña del router") },
+        title = { Text(stringResource(R.string.protection_password_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Es la del usuario con el que entra esta app, y también la de LuCI y SSH. Guárdala bien: " +
-                        "la necesitarás para entrar desde otro teléfono o el ordenador.",
+                    stringResource(R.string.protection_password_help),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
                     value = first,
                     onValueChange = { first = it },
-                    label = { Text("Nueva contraseña") },
+                    label = { Text(stringResource(R.string.protection_password_new)) },
                     singleLine = true,
                     enabled = !busy,
                     isError = tooShort,
-                    supportingText = if (tooShort) { { Text("Al menos $MIN_PASSWORD caracteres") } } else null,
+                    supportingText = if (tooShort) { { Text(stringResource(
+                        R.string.protection_password_too_short,
+                        MIN_PASSWORD,
+                    )) } } else null,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.testTag("password-new"),
@@ -343,11 +390,11 @@ internal fun PasswordDialog(busy: Boolean, error: String?, onSubmit: (String) ->
                 OutlinedTextField(
                     value = second,
                     onValueChange = { second = it },
-                    label = { Text("Repítela") },
+                    label = { Text(stringResource(R.string.protection_password_repeat)) },
                     singleLine = true,
                     enabled = !busy,
                     isError = mismatch,
-                    supportingText = if (mismatch) { { Text("No coinciden") } } else null,
+                    supportingText = if (mismatch) { { Text(stringResource(R.string.protection_password_mismatch)) } } else null,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.testTag("password-repeat"),
@@ -360,23 +407,26 @@ internal fun PasswordDialog(busy: Boolean, error: String?, onSubmit: (String) ->
                 onClick = { onSubmit(first) },
                 enabled = !busy && first.length >= MIN_PASSWORD && first == second,
                 modifier = Modifier.testTag("password-save"),
-            ) { Text("Guardar") }
+            ) { Text(stringResource(R.string.protection_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.protection_cancel)) } },
     )
 }
 
 private const val MIN_PASSWORD = 8
 
+/** Ejemplo de MAC en los campos para escribirla: valor técnico, no se traduce. */
+internal const val MAC_PLACEHOLDER = "AA:BB:CC:DD:EE:FF"
+
 @Composable
 internal fun ExtraTimeDialog(name: String, options: List<ExtraOption>, onPick: (ExtraOption) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Más tiempo para $name") },
+        title = { Text(stringResource(R.string.protection_extra_time_title, name)) },
         text = {
             Column {
                 Text(
-                    "Tendrá internet aunque esté en horario. Al acabar el tiempo, el router vuelve a aplicar el horario solo.",
+                    stringResource(R.string.protection_extra_time_help),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -388,6 +438,6 @@ internal fun ExtraTimeDialog(name: String, options: List<ExtraOption>, onPick: (
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.protection_cancel)) } },
     )
 }

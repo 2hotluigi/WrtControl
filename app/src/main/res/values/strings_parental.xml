@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Pantalla de control parental -->
+    <string name="parental_stale_data">Datos sin actualizar: %1$s</string>
+    <string name="parental_backup_title">Los perfiles ya no están en el router</string>
+    <string name="parental_backup_body_missing">Este teléfono guardó una copia. Puede que el router se haya restablecido o que alguien los borrara desde LuCI.</string>
+    <string name="parental_backup_body_missing_named">Este teléfono guardó una copia (%1$s). Puede que el router se haya restablecido o que alguien los borrara desde LuCI.</string>
+    <string name="parental_backup_body_replace">Este teléfono guardó una copia de antes de que desaparecieran. Restaurarla sustituye los perfiles que hay ahora.</string>
+    <string name="parental_backup_body_replace_named">Este teléfono guardó una copia (%1$s) de antes de que desaparecieran. Restaurarla sustituye los perfiles que hay ahora.</string>
+    <string name="parental_restore">Restaurar</string>
+    <string name="parental_discard_backup">Descartar la copia</string>
+    <string name="parental_newer_schema_title">Actualiza WrtControl para cambiar esto</string>
+    <string name="parental_newer_schema_body">El control parental de este router lo configuró una versión más nueva de la app (quizá desde otro teléfono). Desde aquí puedes verlo, pero no cambiarlo: lo que esta versión no conoce se perdería.</string>
+    <string name="parental_no_password_title">El router no tiene contraseña</string>
+    <string name="parental_no_password_body">Cualquiera conectado a tu red puede abrir su configuración y quitar estas reglas.</string>
+    <string name="parental_set_password">Poner contraseña</string>
+    <string name="parental_rules_inactive_title">Las reglas de WrtControl no están activas</string>
+    <string name="parental_rules_inactive_body">El firewall del router no tiene cargadas las reglas de los perfiles (quizá se reinició con un error o alguien borró el archivo). Vuelve a aplicarlas.</string>
+    <string name="parental_reapply">Volver a aplicar</string>
+    <string name="parental_zone_mismatch_title">La hora del router no coincide con la de este teléfono</string>
+    <string name="parental_zone_mismatch_body">El router usa %1$s (%2$s) y el teléfono %3$s (%4$s). Los horarios se cuentan con la hora del router.</string>
+    <string name="parental_zone_unknown">una zona desconocida</string>
+    <string name="parental_use_phone_zone">Usar la zona del teléfono</string>
+    <string name="parental_flow_offloading_title">Descarga de flujos activada</string>
+    <string name="parental_flow_offloading_body">Con flow offloading, las conexiones que ya estaban abiertas pueden seguir hasta que se cierren aunque pauses, bloquees un servicio, quites una aprobación o bloquees el DNS cifrado. Las nuevas sí se bloquean.</string>
+    <string name="parental_mark_conflicts_title">Otras reglas usan la misma marca</string>
+    <string name="parental_mark_conflicts_body">Estas reglas del firewall cambian la marca 0x08000000 que usa WrtControl y podrían interferir con las pausas y horarios: %1$s.</string>
+    <string name="parental_title">Control parental</string>
+    <string name="parental_profiles">Perfiles</string>
+    <string name="parental_empty_hint">Crea un perfil por persona y asígnale sus dispositivos. Después podrás pausarle internet o programar horarios sin conexión, como la hora de dormir.</string>
+    <string name="parental_protection">Protección</string>
+    <string name="parental_lock_enable">Activar el bloqueo de WrtControl</string>
+    <string name="parental_lock_disable">Quitar el bloqueo de WrtControl</string>
+    <string name="parental_new_profile">Nuevo perfil</string>
+
+    <!-- Tarjeta de perfil -->
+    <string name="parental_no_devices">Sin dispositivos</string>
+    <plurals name="parental_devices">
+        <item quantity="one">%1$d dispositivo: %2$s</item>
+        <item quantity="other">%1$d dispositivos: %2$s</item>
+        <item quantity="many">%1$d dispositivos: %2$s</item>
+    </plurals>
+    <string name="parental_filter_not_running">El filtro no está funcionando en el router. Vuelve a guardar el perfil para reactivarlo.</string>
+    <plurals name="parental_dns_bypass">
+        <item quantity="one">Se bloquearon conexiones a servidores de DNS cifrado (%1$d paquete desde el último cambio): algo intentó saltarse el filtro, por ejemplo el «DNS seguro» del navegador.</item>
+        <item quantity="other">Se bloquearon conexiones a servidores de DNS cifrado (%1$d paquetes desde el último cambio): algo intentó saltarse el filtro, por ejemplo el «DNS seguro» del navegador.</item>
+        <item quantity="many">Se bloquearon conexiones a servidores de DNS cifrado (%1$d paquetes desde el último cambio): algo intentó saltarse el filtro, por ejemplo el «DNS seguro» del navegador.</item>
+    </plurals>
+    <string name="parental_schedule_disabled">%1$s (desactivado)</string>
+    <string name="parental_resume">Reanudar</string>
+    <string name="parental_extra_time">Más tiempo</string>
+    <string name="parental_pause_internet">Pausar internet</string>
+    <string name="parental_clear_extra_time">Quitar tiempo extra</string>
+    <string name="parental_edit">Editar</string>
+    <string name="parental_busy_hint">Si el cambio no funciona, el router lo deshace solo.</string>
+    <string name="parental_close">Cerrar</string>
+    <string name="parental_cancel">Cancelar</string>
+    <string name="parental_ok">Aceptar</string>
+
+    <!-- Diálogo de pausa -->
+    <string name="parental_pause_title">Pausar internet de %1$s</string>
+    <string name="parental_pause_body">Se corta también lo que esté usando en ese momento. Podrá seguir conectado a la red de casa.</string>
+    <string name="parental_pause_30_min">30 minutos</string>
+    <string name="parental_pause_1_hour">1 hora</string>
+    <string name="parental_pause_2_hours">2 horas</string>
+    <string name="parental_pause_until_resumed">Hasta que lo reanude</string>
+
+    <!-- Diálogo de horario -->
+    <string name="parental_schedule_no_days">Elige al menos un día.</string>
+    <string name="parental_schedule_same_time">La hora de fin debe ser distinta de la de inicio.</string>
+    <string name="parental_schedule_new_title">Nuevo horario sin internet</string>
+    <string name="parental_schedule_edit_title">Editar horario</string>
+    <string name="parental_schedule_start_days">Días en que empieza</string>
+    <string name="parental_preset_weekdays">L a V</string>
+    <string name="parental_preset_sun_thu">D a J</string>
+    <string name="parental_preset_weekend">S y D</string>
+    <string name="parental_preset_every_day">Todos</string>
+    <string name="parental_schedule_all_day">Todo el día</string>
+    <string name="parental_schedule_from">Desde</string>
+    <string name="parental_schedule_until">Hasta</string>
+    <string name="parental_schedule_next_day">%1$s (día siguiente)</string>
+</resources>

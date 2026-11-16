@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -19,23 +20,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.Link
-import androidx.compose.ui.platform.testTag
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 import dev.angel.wrtcontrol.ui.parental.ParentalScreen
 import kotlinx.coroutines.launch
 
-private enum class Tab(val label: String, val icon: Int) {
-    Status("Estado", R.drawable.ic_dashboard),
-    Devices("Dispositivos", R.drawable.ic_devices),
-    Parental("Control", R.drawable.ic_shield),
-    Addons("Paquetes", R.drawable.ic_extension),
+private enum class Tab(@StringRes val label: Int, val icon: Int) {
+    Status(R.string.home_tab_status, R.drawable.ic_dashboard),
+    Devices(R.string.home_tab_devices, R.drawable.ic_devices),
+    Parental(R.string.home_tab_parental, R.drawable.ic_shield),
+    Addons(R.string.home_tab_addons, R.drawable.ic_extension),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,12 +56,12 @@ fun HomeScreen(connection: Connection.SignedIn) {
             TopAppBar(
                 title = {
                     Column {
-                        Text(status.data?.board?.hostname ?: "Router")
+                        Text(status.data?.board?.hostname ?: stringResource(R.string.home_router_fallback))
                         Text(
-                            connection.address + when (link) {
-                                Link.Direct -> ""
-                                Link.Connecting -> " · conectando por el acceso remoto…"
-                                Link.Tunnel -> " · por el acceso remoto"
+                            when (link) {
+                                Link.Direct -> connection.address
+                                Link.Connecting -> stringResource(R.string.home_link_connecting, connection.address)
+                                Link.Tunnel -> stringResource(R.string.home_link_tunnel, connection.address)
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = if (link == Link.Tunnel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -69,7 +71,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
                 },
                 actions = {
                     IconButton(onClick = { scope.launch { repo.signOut() } }) {
-                        Icon(painterResource(R.drawable.ic_logout), contentDescription = "Desconectar")
+                        Icon(painterResource(R.drawable.ic_logout), contentDescription = stringResource(R.string.home_sign_out))
                     }
                 },
             )
@@ -81,7 +83,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
                         selected = tab == t.ordinal,
                         onClick = { tab = t.ordinal },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                        label = { Text(t.label) },
+                        label = { Text(stringResource(t.label)) },
                     )
                 }
             }
