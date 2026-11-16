@@ -45,6 +45,7 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 | Errores legibles: traducir `UbusException` y los fallos de paquetes a mensaje + causa + acción | P0 | Nunca se muestra un nombre de clase ni un código de rpcd |
 | Textos a `strings.xml` (español e inglés) | P0 | Sin textos de usuario en el código Kotlin |
 | Versión mínima: soporte probado desde 24.10; 23.05 "puede funcionar"; retirar 22.03 cuando no haya más remedio. En 24.10 el ACL de LuCI no deja ver `service list`: saber si un servicio está en marcha por otro camino (p. ej. `rc list`) y deshacer UPnP si miniupnpd no arranca | P0 | Decidido, documentado en el README y reflejado en la pantalla de conexión. La prueba de UPnP que no arranca pasa en 24.10 |
+| Permiso de red local de Android 17 (`ACCESS_LOCAL_NETWORK`, en tiempo de ejecución, para apps con `targetSdk` 37): sin él, Android corta toda conexión a IPs privadas (EPERM en UDP, TCP que no conecta), así que la app no llega al router en casa. Pedirlo antes de conectar y explicar para qué | P0 | Comprobado en el emulador API 37. La app conecta a 192.168.x en Android 17 tras aceptarlo, y sin él lo explica |
 | Usuario rpcd con ACL limitado (no root) que la app crea en la primera conexión | P0 | La app funciona sin la contraseña de root guardada |
 | Proceso: PRs pequeños, `versionCode` que suba, firma de release, changelog | P0 | Definición de hecho: pruebas + VM en CI + README + captura de la pantalla nueva |
 
@@ -94,9 +95,11 @@ Cambiar la cara, no el motor.
   - ~~El DNS dinámico borra en el proveedor la familia que no publica: DuckDNS deja un A con la IPv4
     de quien crea el nombre, y WireGuard en Windows prefiere ese A viejo~~ (hecho: el teléfono avisa
     al proveedor al guardar; dynv6 no deja borrar el AAAA y se avisa).
-  - **"¿Se llega desde fuera?":** saludo de WireGuard por IPv6 y por IPv4 desde los datos móviles
+  - ~~**"¿Se llega desde fuera?":** saludo de WireGuard por IPv6 y por IPv4 desde los datos móviles
     (`requestNetwork` con `TRANSPORT_CELLULAR`) sin salir del Wi-Fi de casa. Decide qué familias
-    publicar y explica el fallo. Sustituye a "probarlo con un teléfono en datos móviles".
+    publicar y explica el fallo. Sustituye a "probarlo con un teléfono en datos móviles".~~ (hecho:
+    el socket se ata a los datos móviles con `bindSocket` y wireguard-go lo usa con un `Bind` propio;
+    probado en el emulador. Falta probarlo en un teléfono de verdad contra el GL-MT6000.)
   - **Módem del proveedor que filtra lo que entra** (el ONT de Megacable con el cortafuegos por
     defecto descarta todo el IPv6 entrante): detectarlo con la prueba anterior y explicar qué tocar
     (nivel del cortafuegos IPv6, DMZ hacia el router).

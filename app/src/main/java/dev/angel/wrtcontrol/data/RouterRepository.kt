@@ -32,6 +32,8 @@ class RouterRepository(
     val transport: RouterTransport? = null,
     /** Para avisar al proveedor del DNS dinámico por internet (no por el túnel). */
     private val ddnsHttp: dev.angel.wrtcontrol.addons.DdnsHttp? = null,
+    /** Los datos móviles, para probar el acceso remoto desde fuera sin salir de casa. */
+    val outside: dev.angel.wrtcontrol.addons.OutsideNetwork? = null,
 ) {
     private val _state = MutableStateFlow<Connection>(Connection.Loading)
     val state: StateFlow<Connection> = _state.asStateFlow()
