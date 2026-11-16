@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- "¿Se llega desde fuera?": levantar los datos móviles sin dejar el Wi-Fi (requestNetwork). -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <!-- Android 17: hablar con el router (IPs privadas de la red local). Se pide al abrir la app. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <!--
         usesCleartextTraffic: los routers OpenWrt sirven /ubus por HTTP en la LAN (HTTPS requiere

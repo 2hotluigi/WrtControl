@@ -423,6 +423,13 @@ interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y s
 - El acceso remoto guardado va con el router para el que se creó (modelo y MAC de la LAN), no solo
   con su dirección: otro router en 192.168.1.1 tiene su propia clave.
 
+**Permiso de red local (Android 17).** Con `targetSdk` 37, Android no deja hablar con IPs privadas
+(el router en 192.168.x) sin `ACCESS_LOCAL_NETWORK`, que se pide en tiempo de ejecución y Android
+presenta como "Dispositivos cercanos": sin él, UDP da EPERM y TCP no llega a conectar. La app lo pide
+antes de nada y explica para qué (`ui/LocalNetwork.kt`); se puede seguir sin él (solo acceso remoto),
+y entonces los fallos de conexión dicen que falta. Ojo: `FragmentActivity` (la pide la huella) con el
+fragment 1.2.5 que trae biometric se cae al pedir permisos desde Compose; por eso fragment va explícito.
+
 **¿Se llega desde fuera?** Con el acceso remoto puesto, la app lo comprueba sin salir de casa: pide
 los datos móviles con `requestNetwork` (Android los levanta aunque el Wi-Fi siga siendo la red por
 defecto), ata un socket UDP a ellos con `bindSocket` y le pasa el descriptor a wireguard-go

@@ -45,7 +45,19 @@ fun <T> pollingFlow(
     }
 }
 
-fun Throwable.userMessage(): String = when (this) {
-    is UbusException -> message ?: "Error del router"
+fun Throwable.userMessage(): String = when {
+    blockedByLocalNetwork() ->
+        "No se llega al router. Falta el permiso de red local de Android, y sin él la app no lo ve en casa: " +
+            "dáselo en los ajustes de la app (Permisos → Dispositivos cercanos)."
+    this is UbusException -> message ?: "Error del router"
     else -> message ?: javaClass.simpleName
+}
+
+/**
+ * Android 17 sin el permiso de red local: los envíos a IPs privadas dan EPERM, y TCP no conecta (se
+ * agota el tiempo). Puede venir envuelto en el error de red del cliente de ubus.
+ */
+private fun Throwable.blockedByLocalNetwork(): Boolean {
+    val io = this as? java.io.IOException ?: (this as? UbusException.Network)?.cause as? java.io.IOException ?: return false
+    return io.message?.contains("EPERM") == true || LocalNetworkStatus.missing
 }
