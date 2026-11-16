@@ -13,6 +13,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   que vuelva a cargar. La app le hace menos llamadas: cada dato se pide una sola vez aunque lo
   usen varias pantallas.
 
+- Cara nueva: colores y tipografía propios (azul cobalto y Manrope), iguales en todos los
+  teléfonos, en claro y en oscuro. El verde, el ámbar y el rojo quedan para decir cómo está algo.
+
 ### Añadido
 - "Qué puede hacer este router", en Estado: cada función de la app aparece como disponible, se
   instalará o no compatible, con el motivo y qué hacer. También dice qué Wi-Fi tiene el router.

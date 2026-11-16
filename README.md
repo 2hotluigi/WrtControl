@@ -148,7 +148,7 @@ bien: basta con que llegue al final del fichero sin errores.
 | (raíz) | `Txt.kt`: un texto para el usuario sin `Context` (recurso y datos), que devuelve la lógica y resuelve la interfaz; en las pruebas JVM, `TestStrings` lo lee de `values/`. |
 | (raíz) | `Errors.kt`: el texto de cualquier error para el usuario (qué pasó y qué hacer), sin nombres de clase ni códigos. Los errores escritos para el usuario implementan `UserFacing` y se muestran tal cual. |
 | `res/values*` | Textos de la interfaz: español en `values/strings_<área>.xml` (el idioma por defecto, `tools:locale="es"`) e inglés en `values-en/`. `HardcodedTextTest` falla si una pantalla vuelve a llevar un texto fijo; la lógica devuelve `Txt`. |
-| `ui` | Compose + Material 3. Las pantallas miran las lecturas de `RouterMonitor` (`watchAsState`), que se detienen cuando la app pasa a segundo plano. |
+| `ui` | Compose + Material 3 con la cara propia de la app ("Cobalto", en `Theme.kt`): azul cobalto para la marca y lo que se toca, Manrope (va dentro de la app) y verde, ámbar y rojo solo para decir cómo está algo. No usa el color dinámico de Android: se ve igual en todos los teléfonos. Las pantallas miran las lecturas de `RouterMonitor` (`watchAsState`), que se detienen cuando la app pasa a segundo plano. |
 
 ### Lo que se lee del router
 
@@ -550,6 +550,9 @@ pantalla.
 Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.
 
 ## Licencia
+
+La tipografía Manrope (`app/src/main/res/font/manrope.ttf`) es de The Manrope Project Authors y se
+distribuye bajo la [SIL Open Font License 1.1](licenses/Manrope-OFL.txt).
 
 Copyright © 2026 Luis Angel Abrego Herrera.
 

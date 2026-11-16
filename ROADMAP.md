@@ -69,6 +69,10 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - **Sistema de diseño propio** en lugar del color dinámico: paleta y tipografía de marca, iconos por
   tipo de dispositivo, animaciones de aplicar/verificar/confirmar, estados vacíos ilustrados.
   Pruebas de capturas (Roborazzi o Paparazzi) desde el primer componente.
+  - ~~Paleta, tipografía y formas de marca~~ (hecho: "Cobalto", elegida entre tres propuestas. Azul
+    cobalto, Manrope dentro de la app y colores de estado aparte del de marca, en claro y oscuro).
+  - Falta: pruebas de capturas, iconos por tipo de dispositivo, animaciones de aplicar/verificar/
+    confirmar y estados vacíos ilustrados.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.
