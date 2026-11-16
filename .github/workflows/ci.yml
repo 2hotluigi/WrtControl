@@ -52,6 +52,37 @@ jobs:
             app/build/test-results/
           if-no-files-found: ignore
 
+  # Las reglas que genera la app, con el nftables y el fw4 de cada versión de OpenWrt (imágenes
+  # oficiales openwrt/rootfs). Así un cambio que no analiza en una versión falla aquí, no en un router.
+  nft:
+    name: nft-${{ matrix.openwrt }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        openwrt: ['22.03.7', '23.05.6', '24.10.8', '25.12.6', SNAPSHOT]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Ejemplos de reglas
+        env:
+          WRTCONTROL_NFT_SAMPLES: ${{ runner.temp }}/nft-samples
+        run: ./gradlew :app:testDebugUnitTest --tests '*NftSamplesTest*' --rerun
+
+      - name: nft -c y fw4 check en OpenWrt ${{ matrix.openwrt }}
+        run: |
+          docker run --rm --cap-add NET_ADMIN -v "$PWD/tools:/tools:ro" \
+            -v "${{ runner.temp }}/nft-samples:/samples:ro" \
+            "openwrt/rootfs:x86-64-${{ matrix.openwrt }}" /bin/sh /tools/nft-check.sh
+
   tunnel:
     name: tunnel
     runs-on: ubuntu-latest
