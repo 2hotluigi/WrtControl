@@ -15,6 +15,21 @@ echo "OpenWrt ${DISTRIB_RELEASE:-?} · $(nft --version)"
 mkdir -p /etc/luci-uploads /var/lock /var/run /tmp/run
 cp /etc/config/firewall /tmp/firewall.orig
 
+# Control: un fichero roto tiene que fallar en las dos comprobaciones (si no, un "ok" no vale nada).
+printf 'chain wrtc_roto {\n\tmeta nada que analice\n}\n' > /etc/luci-uploads/roto.nft
+{ echo 'table inet wrtc_chk {'; cat /etc/luci-uploads/roto.nft; echo '}'; } > /tmp/chk.nft
+if nft -c -f /tmp/chk.nft > /dev/null 2>&1; then echo "FALLO control: nft -c acepta un fichero roto"; fail=1; fi
+uci -q batch <<-EOF
+	set firewall.wrtc_roto=include
+	set firewall.wrtc_roto.type='nftables'
+	set firewall.wrtc_roto.path='/etc/luci-uploads/roto.nft'
+	set firewall.wrtc_roto.position='table-append'
+EOF
+uci commit firewall
+if fw4 check > /dev/null 2>&1; then echo "FALLO control: fw4 check acepta un include roto"; fail=1; else echo "ok   control: lo roto falla"; fi
+cp /tmp/firewall.orig /etc/config/firewall
+rm -f /etc/luci-uploads/roto.nft
+
 for dir in /samples/*/; do
 	name=$(basename "$dir")
 	for f in "$dir"wrtcontrol-*.nft; do
