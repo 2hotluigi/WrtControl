@@ -87,9 +87,11 @@ class NftSamplesTest {
     private fun uciBatch(config: String, sections: List<UciSection>): String = buildString {
         for (s in sections) {
             appendLine("set $config.${s.name}=${s.type}")
-            for ((key, value) in s.options) when (value) {
-                is UciValue.Text -> appendLine("set $config.${s.name}.$key=${quote(value.value)}")
-                is UciValue.Items -> value.values.forEach { appendLine("add_list $config.${s.name}.$key=${quote(it)}") }
+            for ((key, value) in s.options) {
+                when (value) {
+                    is UciValue.Text -> appendLine("set $config.${s.name}.$key=${quote(value.value)}")
+                    is UciValue.Items -> value.values.forEach { appendLine("add_list $config.${s.name}.$key=${quote(it)}") }
+                }
             }
         }
     }
