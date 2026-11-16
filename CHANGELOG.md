@@ -7,8 +7,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ## [Sin publicar]
 
 ### Cambiado
-- Las pantallas, en inglés si el teléfono está en inglés. Los mensajes del router, los formatos de
-  tiempo y las descripciones de los paquetes siguen en español hasta la fase 2.
+- La app, en inglés si el teléfono está en inglés: pantallas, mensajes de error, consejos del
+  acceso remoto, horarios, filtros y descripciones de los paquetes.
 
 ## [0.2.0]
 
