@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Barra superior -->
+    <string name="profile_new">Nuevo perfil</string>
+    <string name="profile_edit">Editar perfil</string>
+    <string name="profile_close_without_saving">Cerrar sin guardar</string>
+    <string name="profile_save">Guardar</string>
+
+    <!-- Nombre -->
+    <string name="profile_name">Nombre</string>
+    <string name="profile_name_placeholder">Por ejemplo: Juan</string>
+
+    <!-- Dispositivos -->
+    <string name="profile_devices_title">Dispositivos</string>
+    <string name="profile_devices_help">Las reglas se aplican por MAC a los equipos que marques.</string>
+    <string name="profile_no_devices">No hay dispositivos conectados ahora.</string>
+    <string name="profile_unnamed">Sin nombre</string>
+    <string name="profile_disconnected">Desconectado</string>
+    <string name="profile_note_this_phone">Este teléfono: si lo pausas, también se queda sin internet</string>
+    <string name="profile_note_admin">Tiene WrtControl: nunca se le bloquea la configuración del router</string>
+    <string name="profile_note_other_profile">Ahora en «%1$s»: pasará a este perfil</string>
+    <string name="profile_add_by_mac">Agregar por MAC</string>
+    <string name="profile_invalid_mac">MAC no válida</string>
+    <string name="profile_add">Agregar</string>
+
+    <!-- Horarios -->
+    <string name="profile_schedules_title">Horarios sin internet</string>
+    <string name="profile_schedules_help">Se cuentan con la hora del router y se aplican aunque este teléfono esté apagado.</string>
+    <string name="profile_no_schedules">Sin horarios.</string>
+    <string name="profile_remove_schedule">Quitar horario</string>
+    <string name="profile_add_schedule">Agregar horario</string>
+
+    <!-- Filtro de contenido -->
+    <string name="profile_filter_title">Filtro de contenido</string>
+    <string name="profile_filter_help">Se aplica a lo que sus dispositivos buscan en internet (DNS), aunque usen otro servidor DNS.</string>
+    <string name="profile_safe_search">Búsqueda segura</string>
+    <string name="profile_safe_search_included">Incluida en este nivel.</string>
+    <string name="profile_safe_search_help">Google, Bing y DuckDuckGo solo muestran resultados aptos, aunque cambien la configuración del buscador.</string>
+    <string name="profile_youtube_title">Modo restringido de YouTube</string>
+    <string name="profile_youtube_blocked">YouTube está bloqueado del todo (abajo, en servicios).</string>
+    <string name="profile_youtube_strict_default">El nivel estricto ya usa el modo moderado. Elige «Estricto» para ocultar más.</string>
+    <string name="profile_youtube_help">Oculta vídeos para adultos en la web y en la app de YouTube, también en la TV.</string>
+    <string name="profile_block_services">Bloquear servicios</string>
+    <string name="profile_services_help">Bloquea los dominios principales de cada servicio; con el tiempo las apps pueden usar otros.</string>
+    <string name="profile_blocked_sites">Sitios bloqueados</string>
+    <string name="profile_remove_site">Quitar %1$s</string>
+    <string name="profile_add_site">Agregar sitio</string>
+    <string name="profile_site_placeholder">ejemplo.com</string>
+    <string name="profile_invalid_site">Escribe un dominio, p. ej. ejemplo.com</string>
+    <!-- Siempre varios: el número es un límite fijo (nunca 1). -->
+    <string name="profile_max_sites" tools:ignore="PluralsCandidate">Máximo %1$d sitios</string>
+    <string name="profile_filter_needs_devices">El filtro se aplicará cuando el perfil tenga dispositivos.</string>
+
+    <!-- Protección del router -->
+    <string name="profile_protect_router_title">Impedir que cambien la configuración del router</string>
+    <string name="profile_protect_router_help">Sus dispositivos no podrán abrir LuCI, entrar por SSH ni usar WrtControl. Los teléfonos con WrtControl (los ves en Protección) nunca se bloquean.</string>
+
+    <!-- Eliminar -->
+    <string name="profile_delete">Eliminar perfil</string>
+    <string name="profile_delete_title">¿Eliminar «%1$s»?</string>
+    <string name="profile_delete_help">Sus dispositivos volverán a tener internet sin pausas ni horarios.</string>
+    <string name="profile_delete_confirm">Eliminar</string>
+    <string name="profile_cancel">Cancelar</string>
+</resources>

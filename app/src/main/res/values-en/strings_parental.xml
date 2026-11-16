@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Parental control screen -->
+    <string name="parental_stale_data">Data not up to date: %1$s</string>
+    <string name="parental_backup_title">The profiles are no longer on the router</string>
+    <string name="parental_backup_body_missing">This phone saved a copy. The router may have been reset, or someone deleted them from LuCI.</string>
+    <string name="parental_backup_body_missing_named">This phone saved a copy (%1$s). The router may have been reset, or someone deleted them from LuCI.</string>
+    <string name="parental_backup_body_replace">This phone saved a copy from before they disappeared. Restoring it replaces the current profiles.</string>
+    <string name="parental_backup_body_replace_named">This phone saved a copy (%1$s) from before they disappeared. Restoring it replaces the current profiles.</string>
+    <string name="parental_restore">Restore</string>
+    <string name="parental_discard_backup">Discard the copy</string>
+    <string name="parental_newer_schema_title">Update WrtControl to change this</string>
+    <string name="parental_newer_schema_body">Parental control on this router was set up by a newer version of the app (maybe from another phone). You can view it here, but not change it: anything this version doesn\'t know about would be lost.</string>
+    <string name="parental_no_password_title">The router has no password</string>
+    <string name="parental_no_password_body">Anyone on your network can open its settings and remove these rules.</string>
+    <string name="parental_set_password">Set a password</string>
+    <string name="parental_rules_inactive_title">WrtControl rules aren\'t active</string>
+    <string name="parental_rules_inactive_body">The router\'s firewall hasn\'t loaded the profile rules (maybe it restarted with an error or someone deleted the file). Apply them again.</string>
+    <string name="parental_reapply">Apply again</string>
+    <string name="parental_zone_mismatch_title">The router\'s time doesn\'t match this phone</string>
+    <string name="parental_zone_mismatch_body">The router uses %1$s (%2$s) and the phone %3$s (%4$s). Schedules follow the router\'s time.</string>
+    <string name="parental_zone_unknown">an unknown time zone</string>
+    <string name="parental_use_phone_zone">Use the phone\'s time zone</string>
+    <string name="parental_flow_offloading_title">Flow offloading is on</string>
+    <string name="parental_flow_offloading_body">With flow offloading, connections that were already open may keep going until they close, even if you pause, block a service, remove an approval or block encrypted DNS. New ones are blocked.</string>
+    <string name="parental_mark_conflicts_title">Other rules use the same mark</string>
+    <string name="parental_mark_conflicts_body">These firewall rules change the 0x08000000 mark that WrtControl uses and could interfere with pauses and schedules: %1$s.</string>
+    <string name="parental_title">Parental control</string>
+    <string name="parental_profiles">Profiles</string>
+    <string name="parental_empty_hint">Create a profile for each person and assign their devices. Then you can pause their internet or schedule offline times, like bedtime.</string>
+    <string name="parental_protection">Protection</string>
+    <string name="parental_lock_enable">Turn on the WrtControl lock</string>
+    <string name="parental_lock_disable">Remove the WrtControl lock</string>
+    <string name="parental_new_profile">New profile</string>
+
+    <!-- Profile card -->
+    <string name="parental_no_devices">No devices</string>
+    <plurals name="parental_devices">
+        <item quantity="one">%1$d device: %2$s</item>
+        <item quantity="other">%1$d devices: %2$s</item>
+    </plurals>
+    <string name="parental_filter_not_running">The filter isn\'t working on the router. Save the profile again to turn it back on.</string>
+    <plurals name="parental_dns_bypass">
+        <item quantity="one">Connections to encrypted DNS servers were blocked (%1$d packet since the last change): something tried to get around the filter, such as the browser\'s \"secure DNS\".</item>
+        <item quantity="other">Connections to encrypted DNS servers were blocked (%1$d packets since the last change): something tried to get around the filter, such as the browser\'s \"secure DNS\".</item>
+    </plurals>
+    <string name="parental_schedule_disabled">%1$s (off)</string>
+    <string name="parental_resume">Resume</string>
+    <string name="parental_extra_time">Extra time</string>
+    <string name="parental_pause_internet">Pause internet</string>
+    <string name="parental_clear_extra_time">Remove extra time</string>
+    <string name="parental_edit">Edit</string>
+    <string name="parental_busy_hint">If the change doesn\'t work, the router undoes it by itself.</string>
+    <string name="parental_close">Close</string>
+    <string name="parental_cancel">Cancel</string>
+    <string name="parental_ok">OK</string>
+
+    <!-- Pause dialog -->
+    <string name="parental_pause_title">Pause internet for %1$s</string>
+    <string name="parental_pause_body">Whatever they\'re using right now is cut off too. They can stay connected to the home network.</string>
+    <string name="parental_pause_30_min">30 minutes</string>
+    <string name="parental_pause_1_hour">1 hour</string>
+    <string name="parental_pause_2_hours">2 hours</string>
+    <string name="parental_pause_until_resumed">Until I resume it</string>
+
+    <!-- Schedule dialog -->
+    <string name="parental_schedule_no_days">Pick at least one day.</string>
+    <string name="parental_schedule_same_time">The end time must be different from the start time.</string>
+    <string name="parental_schedule_new_title">New offline schedule</string>
+    <string name="parental_schedule_edit_title">Edit schedule</string>
+    <string name="parental_schedule_start_days">Days it starts</string>
+    <string name="parental_preset_weekdays">Mon–Fri</string>
+    <string name="parental_preset_sun_thu">Sun–Thu</string>
+    <string name="parental_preset_weekend">Weekend</string>
+    <string name="parental_preset_every_day">Every day</string>
+    <string name="parental_schedule_all_day">All day</string>
+    <string name="parental_schedule_from">From</string>
+    <string name="parental_schedule_until">Until</string>
+    <string name="parental_schedule_next_day">%1$s (next day)</string>
+</resources>

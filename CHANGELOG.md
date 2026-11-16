@@ -6,6 +6,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Cambiado
+- Las pantallas, en inglés si el teléfono está en inglés. Los mensajes del router, los formatos de
+  tiempo y las descripciones de los paquetes siguen en español hasta la fase 2.
+
 ## [0.2.0]
 
 Primera versión publicada.

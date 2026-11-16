@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_tab_status">Status</string>
+    <string name="home_tab_devices">Devices</string>
+    <string name="home_tab_parental">Controls</string>
+    <string name="home_tab_addons">Packages</string>
+    <string name="home_router_fallback">Router</string>
+    <string name="home_link_connecting">%1$s · connecting through remote access…</string>
+    <string name="home_link_tunnel">%1$s · through remote access</string>
+    <string name="home_sign_out">Sign out</string>
+    <string name="status_untested_openwrt">Untested OpenWrt version</string>
+    <string name="status_system">System</string>
+    <string name="status_model">Model</string>
+    <string name="status_firmware">Firmware</string>
+    <string name="status_kernel">Kernel</string>
+    <string name="status_uptime">Uptime</string>
+    <string name="status_load_memory">Load and memory</string>
+    <string name="status_load">Load (1/5/15 min)</string>
+    <string name="status_memory">Memory</string>
+    <string name="status_storage">Storage</string>
+    <string name="status_used_of">%1$s of %2$s</string>
+    <string name="status_iface_up">up</string>
+    <string name="status_iface_down">down</string>
+    <string name="status_protocol">Protocol</string>
+    <string name="status_device">Device</string>
+    <string name="status_connected_for">Connected</string>
+    <plurals name="devices_count">
+        <item quantity="one">%1$d device on the network</item>
+        <item quantity="other">%1$d devices on the network</item>
+    </plurals>
+    <string name="devices_none">No devices found.</string>
+    <string name="devices_unnamed">Unnamed</string>
+    <string name="devices_ipv6_only">IPv6 only</string>
+    <string name="devices_static_ip">Static IP</string>
+    <string name="devices_static_lease">Static DHCP</string>
+    <string name="devices_lease">DHCP · %1$s</string>
+</resources>

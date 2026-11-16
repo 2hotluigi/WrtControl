@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="login_title">Conectar al router</string>
+    <string name="login_intro">Usa la dirección del router OpenWrt (24.10 o superior) en tu red y sus credenciales de LuCI.</string>
+    <string name="login_address">Dirección del router</string>
+    <string name="login_username">Usuario</string>
+    <string name="login_password">Contraseña</string>
+    <string name="login_connect">Conectar</string>
+</resources>

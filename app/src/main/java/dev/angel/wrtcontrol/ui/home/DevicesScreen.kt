@@ -15,12 +15,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LeaseState
@@ -51,16 +54,16 @@ fun DevicesScreen(routerAddress: String) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (error != null) item { ErrorBanner("Datos sin actualizar: $error") }
+            if (error != null) item { ErrorBanner(stringResource(R.string.common_stale_data, error)) }
             item {
                 Text(
-                    "${devices.size} ${if (devices.size == 1) "dispositivo" else "dispositivos"} en la red",
+                    pluralStringResource(R.plurals.devices_count, devices.size, devices.size),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
             if (devices.isEmpty()) {
-                item { Text("No se detectan dispositivos.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.devices_none), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             items(devices, key = { it.mac }) { DeviceRow(it) }
         }
@@ -71,7 +74,7 @@ fun DevicesScreen(routerAddress: String) {
 private fun DeviceRow(device: Device) {
     Card(Modifier.fillMaxWidth()) {
         ListItem(
-            headlineContent = { Text(device.name ?: "Sin nombre") },
+            headlineContent = { Text(device.name ?: stringResource(R.string.devices_unnamed)) },
             supportingContent = {
                 val address = device.ipv4.firstOrNull() ?: device.ipv6.firstOrNull { !it.startsWith("fe80:") } ?: "—"
                 Text("$address\n${device.mac}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
@@ -84,8 +87,9 @@ private fun DeviceRow(device: Device) {
     }
 }
 
+@Composable
 private fun leaseText(device: Device): String = when (val lease = device.lease) {
-    LeaseState.None -> if (device.ipv4.isEmpty()) "solo IPv6" else "IP fija"
-    LeaseState.Permanent -> "DHCP fijo"
-    is LeaseState.Expires -> "DHCP · ${formatDuration(lease.seconds)}"
+    LeaseState.None -> stringResource(if (device.ipv4.isEmpty()) R.string.devices_ipv6_only else R.string.devices_static_ip)
+    LeaseState.Permanent -> stringResource(R.string.devices_static_lease)
+    is LeaseState.Expires -> stringResource(R.string.devices_lease, formatDuration(lease.seconds))
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="home_tab_status">Estado</string>
+    <string name="home_tab_devices">Dispositivos</string>
+    <string name="home_tab_parental">Control</string>
+    <string name="home_tab_addons">Paquetes</string>
+    <string name="home_router_fallback">Router</string>
+    <string name="home_link_connecting">%1$s · conectando por el acceso remoto…</string>
+    <string name="home_link_tunnel">%1$s · por el acceso remoto</string>
+    <string name="home_sign_out">Desconectar</string>
+    <string name="status_untested_openwrt">Versión de OpenWrt sin probar</string>
+    <string name="status_system">Sistema</string>
+    <string name="status_model">Modelo</string>
+    <string name="status_firmware">Firmware</string>
+    <string name="status_kernel">Kernel</string>
+    <string name="status_uptime">Encendido</string>
+    <string name="status_load_memory">Carga y memoria</string>
+    <string name="status_load">Carga (1/5/15 min)</string>
+    <string name="status_memory">Memoria</string>
+    <string name="status_storage">Almacenamiento</string>
+    <string name="status_used_of">%1$s de %2$s</string>
+    <string name="status_iface_up">activa</string>
+    <string name="status_iface_down">caída</string>
+    <string name="status_protocol">Protocolo</string>
+    <string name="status_device">Dispositivo</string>
+    <string name="status_connected_for">Conectada</string>
+    <plurals name="devices_count">
+        <item quantity="one">%1$d dispositivo en la red</item>
+        <item quantity="other">%1$d dispositivos en la red</item>
+        <item quantity="many">%1$d dispositivos en la red</item>
+    </plurals>
+    <string name="devices_none">No se detectan dispositivos.</string>
+    <string name="devices_unnamed">Sin nombre</string>
+    <string name="devices_ipv6_only">solo IPv6</string>
+    <string name="devices_static_ip">IP fija</string>
+    <string name="devices_static_lease">DHCP fijo</string>
+    <string name="devices_lease">DHCP · %1$s</string>
+</resources>

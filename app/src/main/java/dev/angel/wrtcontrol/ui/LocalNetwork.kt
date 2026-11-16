@@ -26,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.angel.wrtcontrol.R
 
 /**
  * Android 17 (API 37) no deja a las apps que lo tienen como objetivo hablar con la red local (IPs
@@ -82,28 +84,26 @@ fun LocalNetworkGate(content: @Composable () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Permiso para la red de casa", style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.local_network_title), style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Android pide permiso a las apps que hablan con aparatos de tu red local. WrtControl lo necesita " +
-                "para llegar a tu router (por ejemplo, 192.168.1.1) y a nada más: no busca ni toca otros aparatos.",
+            stringResource(R.string.local_network_explain),
             style = MaterialTheme.typography.bodyMedium,
         )
         if (blocked) {
             Text(
-                "Android ya no muestra la pregunta. Actívalo en los ajustes de la app: Permisos → Dispositivos cercanos " +
-                    "(red local).",
+                stringResource(R.string.local_network_blocked),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
             )
             Button(onClick = { context.startActivity(appSettings(context)) }, modifier = Modifier.testTag("local-network-settings")) {
-                Text("Abrir los ajustes")
+                Text(stringResource(R.string.local_network_settings))
             }
         } else {
             Button(onClick = { launcher.launch(ACCESS_LOCAL_NETWORK) }, modifier = Modifier.testTag("local-network-allow")) {
-                Text("Dar permiso")
+                Text(stringResource(R.string.local_network_allow))
             }
         }
-        TextButton(onClick = { skipped = true }) { Text("Seguir sin él (solo acceso remoto)") }
+        TextButton(onClick = { skipped = true }) { Text(stringResource(R.string.local_network_skip)) }
     }
 }
 

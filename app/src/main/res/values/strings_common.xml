@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="common_stale_data">Datos sin actualizar: %1$s</string>
+    <string name="common_retrying">Reintentando…</string>
+</resources>

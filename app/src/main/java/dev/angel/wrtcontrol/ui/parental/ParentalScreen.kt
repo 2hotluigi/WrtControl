@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -101,93 +103,98 @@ fun ParentalScreen(connection: Connection.SignedIn) {
             ) {
                 vm.busy?.let { item { BusyBanner(it) } }
                 if (editing == null && !askPassword) vm.error?.let { item { DismissibleError(it) { vm.error = null } } }
-                if (loadError != null) item { ErrorBanner("Datos sin actualizar: $loadError") }
+                if (loadError != null) item { ErrorBanner(stringResource(R.string.parental_stale_data, loadError)) }
 
                 data.backup?.let { backup ->
                     item {
                         val names = backup.profiles.joinToString { it.name }
-                        val copy = "Este teléfono guardó una copia" + (if (names.isNotEmpty()) " ($names)" else "")
                         NoticeCard(
-                            "Los perfiles ya no están en el router",
-                            if (snapshot.profiles.isEmpty()) {
-                                "$copy. Puede que el router se haya restablecido o que alguien los borrara desde LuCI."
-                            } else {
-                                "$copy de antes de que desaparecieran. Restaurarla sustituye los perfiles que hay ahora."
+                            stringResource(R.string.parental_backup_title),
+                            when {
+                                snapshot.profiles.isEmpty() && names.isNotEmpty() -> stringResource(
+                                    R.string.parental_backup_body_missing_named,
+                                    names,
+                                )
+                                snapshot.profiles.isEmpty() -> stringResource(R.string.parental_backup_body_missing)
+                                names.isNotEmpty() -> stringResource(R.string.parental_backup_body_replace_named, names)
+                                else -> stringResource(R.string.parental_backup_body_replace)
                             },
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { vm.restore(backup) }, enabled = !busy, modifier = Modifier.testTag("restore-backup")) {
-                                    Text("Restaurar")
+                                    Text(stringResource(R.string.parental_restore))
                                 }
-                                TextButton(onClick = vm::discardBackup, enabled = !busy) { Text("Descartar la copia") }
+                                TextButton(
+                                    onClick = vm::discardBackup,
+                                    enabled = !busy,
+                                ) { Text(stringResource(R.string.parental_discard_backup)) }
                             }
                         }
                     }
                 }
                 if (snapshot.newerSchema) item {
                     NoticeCard(
-                        "Actualiza WrtControl para cambiar esto",
-                        "El control parental de este router lo configuró una versión más nueva de la app (quizá desde otro " +
-                            "teléfono). Desde aquí puedes verlo, pero no cambiarlo: lo que esta versión no conoce se perdería.",
+                        stringResource(R.string.parental_newer_schema_title),
+                        stringResource(R.string.parental_newer_schema_body),
                     )
                 }
                 if (connection.emptyPassword) item {
                     NoticeCard(
-                        "El router no tiene contraseña",
-                        "Cualquiera conectado a tu red puede abrir su configuración y quitar estas reglas.",
+                        stringResource(R.string.parental_no_password_title),
+                        stringResource(R.string.parental_no_password_body),
                     ) {
                         Button(onClick = { vm.error = null; askPassword = true }, enabled = !busy, modifier = Modifier.testTag("set-password")) {
-                            Text("Poner contraseña")
+                            Text(stringResource(R.string.parental_set_password))
                         }
                     }
                 }
                 if (snapshot.rulesLoaded == false) item {
                     NoticeCard(
-                        "Las reglas de WrtControl no están activas",
-                        "El firewall del router no tiene cargadas las reglas de los perfiles (quizá se reinició con un error " +
-                            "o alguien borró el archivo). Vuelve a aplicarlas.",
+                        stringResource(R.string.parental_rules_inactive_title),
+                        stringResource(R.string.parental_rules_inactive_body),
                     ) {
-                        Button(onClick = vm::reapply, enabled = !busy) { Text("Volver a aplicar") }
+                        Button(onClick = vm::reapply, enabled = !busy) { Text(stringResource(R.string.parental_reapply)) }
                     }
                 }
                 if (zone.mismatch) item {
                     NoticeCard(
-                        "La hora del router no coincide con la de este teléfono",
-                        "El router usa ${zoneLabel(zone.routerZone)} (${formatUtcOffset(zone.routerOffsetSeconds!!)}) y el " +
-                            "teléfono ${zoneLabel(zone.phoneZone)} (${formatUtcOffset(zone.phoneOffsetSeconds)}). " +
-                            "Los horarios se cuentan con la hora del router.",
+                        stringResource(R.string.parental_zone_mismatch_title),
+                        stringResource(
+                            R.string.parental_zone_mismatch_body,
+                            zoneLabel(zone.routerZone),
+                            formatUtcOffset(zone.routerOffsetSeconds!!),
+                            zoneLabel(zone.phoneZone),
+                            formatUtcOffset(zone.phoneOffsetSeconds),
+                        ),
                     ) {
                         Button(onClick = { vm.useZone(ZoneId.systemDefault()) }, enabled = !busy) {
-                            Text("Usar la zona del teléfono")
+                            Text(stringResource(R.string.parental_use_phone_zone))
                         }
                     }
                 }
                 if (snapshot.flowOffloading) item {
                     NoticeCard(
-                        "Descarga de flujos activada",
-                        "Con flow offloading, las conexiones que ya estaban abiertas pueden seguir hasta que se cierren aunque " +
-                            "pauses, bloquees un servicio, quites una aprobación o bloquees el DNS cifrado. Las nuevas sí se bloquean.",
+                        stringResource(R.string.parental_flow_offloading_title),
+                        stringResource(R.string.parental_flow_offloading_body),
                     )
                 }
                 if (snapshot.markConflicts.isNotEmpty()) item {
                     NoticeCard(
-                        "Otras reglas usan la misma marca",
-                        "Estas reglas del firewall cambian la marca 0x08000000 que usa WrtControl y podrían interferir " +
-                            "con las pausas y horarios: ${snapshot.markConflicts.joinToString()}.",
+                        stringResource(R.string.parental_mark_conflicts_title),
+                        stringResource(R.string.parental_mark_conflicts_body, snapshot.markConflicts.joinToString()),
                     )
                 }
 
                 item {
                     Text(
-                        if (snapshot.profiles.isEmpty()) "Control parental" else "Perfiles",
+                        stringResource(if (snapshot.profiles.isEmpty()) R.string.parental_title else R.string.parental_profiles),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
                 if (snapshot.profiles.isEmpty()) item {
                     Text(
-                        "Crea un perfil por persona y asígnale sus dispositivos. Después podrás pausarle internet " +
-                            "o programar horarios sin conexión, como la hora de dormir.",
+                        stringResource(R.string.parental_empty_hint),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
@@ -206,7 +213,11 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                 }
 
                 item {
-                    Text("Protección", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp))
+                    Text(
+                        stringResource(R.string.parental_protection),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
+                    )
                 }
                 item {
                     QuarantineCard(
@@ -220,6 +231,8 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                     )
                 }
                 item {
+                    val lockEnableTitle = stringResource(R.string.parental_lock_enable)
+                    val lockDisableTitle = stringResource(R.string.parental_lock_disable)
                     AppLockCard(
                         enabled = appLock,
                         available = lockAvailable,
@@ -231,7 +244,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                             if (!on && !lockAvailable) {
                                 scope.launch { settings.setAppLock(false) }
                             } else {
-                                authenticate(context, if (on) "Activar el bloqueo de WrtControl" else "Quitar el bloqueo de WrtControl") { ok ->
+                                authenticate(context, if (on) lockEnableTitle else lockDisableTitle) { ok ->
                                     if (ok) scope.launch { settings.setAppLock(on) }
                                 }
                             }
@@ -295,17 +308,18 @@ fun ParentalScreen(connection: Connection.SignedIn) {
 
         val data = state.data
         if (data != null) {
+            val newProfileLabel = stringResource(R.string.parental_new_profile)
             ExtendedFloatingActionButton(
                 onClick = { editing = newProfile(data) },
                 icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                text = { Text("Nuevo perfil") },
+                text = { Text(newProfileLabel) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
                     .testTag("new-profile")
                     // El FAB extendido no expone el texto de su etiqueta a accesibilidad (se vio con
                     // uiautomator: nodo clicable sin texto). Sin esto, TalkBack solo diría "botón".
-                    .semantics { contentDescription = "Nuevo perfil" },
+                    .semantics { contentDescription = newProfileLabel },
             )
         }
     }
@@ -348,7 +362,8 @@ fun ParentalScreen(connection: Connection.SignedIn) {
     }
 }
 
-private fun zoneLabel(zone: String?): String = zone?.replace('_', ' ') ?: "una zona desconocida"
+@Composable
+private fun zoneLabel(zone: String?): String = zone?.replace('_', ' ') ?: stringResource(R.string.parental_zone_unknown)
 
 /** Los perfiles nuevos protegen la configuración del router: suelen ser de los niños. */
 private fun newProfile(data: ParentalData): Profile =
@@ -378,10 +393,10 @@ private fun ProfileCard(
                 StatusPill(status.pill, status.blocked?.not())
             }
             Text(
-                when (names.size) {
-                    0 -> "Sin dispositivos"
-                    1 -> "1 dispositivo: ${names.single()}"
-                    else -> "${names.size} dispositivos: ${names.joinToString()}"
+                if (names.isEmpty()) {
+                    stringResource(R.string.parental_no_devices)
+                } else {
+                    pluralStringResource(R.plurals.parental_devices, names.size, names.size, names.joinToString())
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -390,40 +405,48 @@ private fun ProfileCard(
             formatFilter(profile.filter)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             if (data.snapshot.filterRunning(profile) == false) {
                 Text(
-                    "El filtro no está funcionando en el router. Vuelve a guardar el perfil para reactivarlo.",
+                    stringResource(R.string.parental_filter_not_running),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
             }
             if (bypass > 0) {
                 Text(
-                    "Se bloquearon conexiones a servidores de DNS cifrado ($bypass paquetes desde el último cambio): algo intentó " +
-                        "saltarse el filtro, por ejemplo el «DNS seguro» del navegador.",
+                    pluralStringResource(
+                        R.plurals.parental_dns_bypass,
+                        bypass.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                        bypass,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
             profile.schedules.forEach { s ->
                 Text(
-                    formatSchedule(s) + if (s.enabled) "" else " (desactivado)",
+                    if (s.enabled) formatSchedule(s) else stringResource(R.string.parental_schedule_disabled, formatSchedule(s)),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (s.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
                 when {
-                    profile.pause != null -> FilledTonalButton(onClick = onResume, enabled = !busy) { Text("Reanudar") }
+                    profile.pause != null -> FilledTonalButton(
+                        onClick = onResume,
+                        enabled = !busy,
+                    ) { Text(stringResource(R.string.parental_resume)) }
                     access is Access.Blocked -> FilledTonalButton(onClick = onExtraTime, enabled = !busy, modifier = Modifier.testTag("extra-${profile.id}")) {
-                        Text("Más tiempo")
+                        Text(stringResource(R.string.parental_extra_time))
                     }
-                    else -> FilledTonalButton(onClick = onPause, enabled = !busy && profile.macs.isNotEmpty()) { Text("Pausar internet") }
+                    else -> FilledTonalButton(onClick = onPause, enabled = !busy && profile.macs.isNotEmpty()) {
+                        Text(stringResource(R.string.parental_pause_internet))
+                    }
                 }
                 if (access is Access.ExtraTime) {
                     TextButton(onClick = onClearExtraTime, enabled = !busy, modifier = Modifier.testTag("clear-extra-${profile.id}")) {
-                        Text("Quitar tiempo extra")
+                        Text(stringResource(R.string.parental_clear_extra_time))
                     }
                 } else {
-                    TextButton(onClick = onEdit, enabled = !busy) { Text("Editar") }
+                    TextButton(onClick = onEdit, enabled = !busy) { Text(stringResource(R.string.parental_edit)) }
                 }
             }
         }
@@ -437,7 +460,7 @@ private fun BusyBanner(text: String) {
             Text(text, style = MaterialTheme.typography.bodyMedium)
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(
-                "Si el cambio no funciona, el router lo deshace solo.",
+                stringResource(R.string.parental_busy_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -449,33 +472,38 @@ private fun BusyBanner(text: String) {
 internal fun DismissibleError(message: String, onDismiss: () -> Unit) {
     Column {
         ErrorBanner(message)
-        TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("Cerrar") }
+        TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.parental_close)) }
     }
 }
 
-private val PAUSE_OPTIONS = listOf(30L to "30 minutos", 60L to "1 hora", 120L to "2 horas", null to "Hasta que lo reanude")
+private val PAUSE_OPTIONS = listOf(
+    30L to R.string.parental_pause_30_min,
+    60L to R.string.parental_pause_1_hour,
+    120L to R.string.parental_pause_2_hours,
+    null to R.string.parental_pause_until_resumed,
+)
 
 @Composable
 private fun PauseDialog(name: String, onDismiss: () -> Unit, onPick: (Long?) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pausar internet de $name") },
+        title = { Text(stringResource(R.string.parental_pause_title, name)) },
         text = {
             Column {
                 Text(
-                    "Se corta también lo que esté usando en ese momento. Podrá seguir conectado a la red de casa.",
+                    stringResource(R.string.parental_pause_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
                 PAUSE_OPTIONS.forEach { (minutes, label) ->
                     TextButton(onClick = { onPick(minutes) }, modifier = Modifier.fillMaxWidth().testTag("pause-${minutes ?: "indef"}")) {
-                        Text(label, modifier = Modifier.fillMaxWidth())
+                        Text(stringResource(label), modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.parental_cancel)) } },
     )
 }

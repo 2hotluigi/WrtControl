@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_prompt_subtitle">Use your fingerprint, face or the phone\'s screen lock</string>
+    <string name="lock_unlock_title">Unlock WrtControl</string>
+    <string name="lock_locked">WrtControl is locked</string>
+    <string name="lock_explain">Verify it\'s you to view and change parental controls.</string>
+    <string name="lock_unlock">Unlock</string>
+</resources>

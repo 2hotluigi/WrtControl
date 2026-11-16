@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Comunes -->
+    <string name="addons_stale_data">Datos sin actualizar: %1$s</string>
+    <string name="addons_got_it">Entendido</string>
+    <string name="addons_cancel">Cancelar</string>
+    <string name="addons_remove">Quitar</string>
+    <string name="addons_change">Cambiar</string>
+    <string name="addons_edit">Editar</string>
+    <string name="addons_save">Guardar</string>
+    <string name="addons_activate">Activar</string>
+    <string name="addons_applying">Aplicando…</string>
+    <string name="addons_configure">Configurar</string>
+    <string name="addons_not_configured">Sin configurar.</string>
+    <string name="addons_and">" y "</string>
+    <string name="addons_home_network_title">Red de casa</string>
+
+    <!-- Instalación -->
+    <string name="addons_no_installer_title">La app no puede instalar paquetes en este router</string>
+    <string name="addons_no_installer_body">Para eso hace falta la página Software de LuCI (luci-app-package-manager, o luci-app-opkg en versiones anteriores a 24.10). Lo que ya esté instalado sí se ve y se configura aquí.</string>
+    <string name="addons_status_installed">instalado</string>
+    <string name="addons_status_missing">no instalado</string>
+    <string name="addons_status_partial">incompleto</string>
+    <string name="addons_status_needs_restart">sin cargar</string>
+    <string name="addons_install">Instalar</string>
+    <string name="addons_partial_help">Está instalado, pero falta su parte de LuCI (%1$s), que es la que da permiso a la app para configurarlo.</string>
+    <string name="addons_complete_install">Completar la instalación</string>
+    <string name="addons_needs_restart_help">Está instalado, pero el router aún no lo cargó. Hay que reiniciar la red: unos segundos sin conexión.</string>
+    <string name="addons_restart_network">Reiniciar la red</string>
+    <string name="addons_install_title">Instalar %1$s</string>
+    <string name="addons_install_download">El router descargará %1$s y lo que necesite de los servidores de OpenWrt. Necesita internet.</string>
+    <string name="addons_install_free_space">Espacio libre en el router: %1$s.</string>
+    <string name="addons_install_restarts_network">Al terminar se reinicia la red: unos segundos sin internet en casa.</string>
+    <string name="addons_install_firmware_note">Una actualización del firmware borra los paquetes instalados; la app avisará y podrás volver a instalarlo.</string>
+
+    <!-- Acceso remoto -->
+    <string name="addons_remote_title">Acceso remoto</string>
+    <string name="addons_remove_remote_title">Quitar el acceso remoto</string>
+    <string name="addons_remove_remote_this_phone">Este teléfono dejará de poder entrar al router desde fuera de casa. En casa sigue funcionando. Hay que hacerlo desde casa: la app lo quita por la conexión directa.</string>
+    <string name="addons_remove_remote_peer">%1$s dejará de poder entrar al router desde fuera de casa.</string>
+    <string name="addons_remove_remote_of">Quitar el acceso remoto de %1$s</string>
+    <string name="addons_outside_check_help">Prueba si se llega al router desde internet: la app lo intenta por tus datos móviles, sin salir del Wi-Fi. Gasta unos pocos KB.</string>
+    <string name="addons_outside_checking">Probando desde fuera… (hasta 20 s)</string>
+    <string name="addons_outside_check">¿Se llega desde fuera?</string>
+    <string name="addons_outside_ok">Desde fuera se llega al router.</string>
+    <string name="addons_outside_untested">Con estos datos móviles no se puede comprobar.</string>
+    <string name="addons_outside_fail">Desde fuera no se llega al router.</string>
+    <string name="addons_publish_only">Publicar solo %1$s</string>
+    <string name="addons_remote_tunnel_help">Solo la app usa el túnel, con su propio WireGuard: no ocupa la VPN del teléfono ni toca otras. Desde el túnel solo se llega a la web del router, no al resto de la red.</string>
+    <string name="addons_remote_no_public_address">El router no tiene ahora una dirección pública (ni IPv6 ni IPv4 sin CGNAT): desde fuera no se podrá llegar a él.</string>
+    <string name="addons_remote_ipv6_only">Se llega por IPv6 (%1$s): la red desde la que entres también tiene que tener IPv6.</string>
+    <string name="addons_remote_port">WireGuard en el puerto UDP %1$d</string>
+    <string name="addons_remote_port_down">WireGuard en el puerto UDP %1$d · sin levantar</string>
+    <string name="addons_remote_lookup_domain">Desde fuera, la app lo buscará en %1$s.</string>
+    <string name="addons_remote_no_ddns">Sin DNS dinámico, la app usará la última dirección que vio: si cambia mientras estás fuera, no lo encontrará.</string>
+    <plurals name="addons_remote_foreign_peers">
+        <item quantity="one">Además hay %1$d par añadido fuera de la app (%2$s): se gestiona desde LuCI.</item>
+        <item quantity="other">Además hay %1$d pares añadidos fuera de la app (%2$s): se gestionan desde LuCI.</item>
+        <item quantity="many">Además hay %1$d pares añadidos fuera de la app (%2$s): se gestionan desde LuCI.</item>
+    </plurals>
+    <string name="addons_connected_ago">conectado hace %1$s</string>
+    <string name="addons_not_connected_yet">aún no ha conectado</string>
+    <string name="addons_never_connected">nunca ha conectado</string>
+    <string name="addons_peer_this_phone">%1$s (este teléfono)</string>
+    <string name="addons_enable_remote">Activar el acceso remoto</string>
+    <string name="addons_add_this_phone">Añadir este teléfono</string>
+    <string name="addons_other_tunnels">Otros túneles del router</string>
+    <string name="addons_port">puerto %1$d</string>
+    <string name="addons_not_up">sin levantar</string>
+    <string name="addons_no_peers">Sin pares.</string>
+
+    <!-- DNS dinámico -->
+    <string name="addons_ddns_title">DNS dinámico</string>
+    <string name="addons_ddns_needed_remote">El acceso remoto lo necesita: sin un nombre fijo, si tu proveedor le cambia la dirección al router mientras estás fuera, la app no lo encontrará.</string>
+    <string name="addons_ddns_help">Para el acceso remoto: un nombre que siempre apunta al router.</string>
+    <string name="addons_ddns_custom_provider">Proveedor propio</string>
+    <string name="addons_ddns_custom_short">propio</string>
+    <string name="addons_ddns_updated">actualizado %1$s</string>
+    <string name="addons_ddns_updated_ip">actualizado %1$s (%2$s)</string>
+    <string name="addons_ddns_not_updated">aún no se ha actualizado</string>
+    <string name="addons_ddns_status">%1$s: %2$s</string>
+    <string name="addons_ddns_status_stopped">%1$s: %2$s · parado</string>
+    <string name="addons_ddns_no_public_ipv6">El router no tiene ahora una IPv6 pública que publicar.</string>
+    <string name="addons_ddns_luci_title">Configurados en LuCI</string>
+    <string name="addons_ddns_name">Nombre</string>
+    <string name="addons_ddns_example">p. ej. micasa%1$s</string>
+    <string name="addons_ddns_token">Token</string>
+    <string name="addons_ddns_update_url">URL de actualización</string>
+    <string name="addons_ddns_username">Usuario (si la URL lo pide)</string>
+    <string name="addons_ddns_publish_both">Se publicarán la IPv4 y la IPv6 del router: así se llega desde cualquier red.</string>
+    <string name="addons_ddns_publish_v4">Se publicará la IPv4 del router.</string>
+    <string name="addons_ddns_publish_v6">Se publicará la IPv6 del router: con CGNAT, la IPv4 no sirve para entrar desde fuera.</string>
+
+    <!-- SQM -->
+    <string name="addons_sqm_summary">Bajada %1$s · subida %2$s · %3$s</string>
+    <string name="addons_sqm_wrong_device">Esta cola está en %1$s, pero la salida a internet es %2$s: así no hace nada. Edítala para cambiarla.</string>
+    <string name="addons_sqm_no_device">ningún dispositivo</string>
+    <string name="addons_sqm_no_thousands">Escribe la velocidad sin puntos de miles (p. ej. 1000).</string>
+    <string name="addons_sqm_both_speeds">Escribe las dos velocidades en Mbit/s.</string>
+    <string name="addons_sqm_configure_title">Configurar SQM</string>
+    <string name="addons_sqm_edit_title">Editar SQM</string>
+    <!-- Sin argumentos: formatted="false" para que el % se muestre tal cual (con %% saldría doble). -->
+    <string name="addons_sqm_help" formatted="false">Haz una prueba de velocidad sin nadie más usando internet y pon un poco menos (85–95 %): si pones más de lo que da la conexión, no sirve de nada.</string>
+    <string name="addons_sqm_internet_connection">Conexión a internet</string>
+    <string name="addons_sqm_device_internet">%1$s (internet)</string>
+    <string name="addons_sqm_download">Bajada (Mbit/s)</string>
+    <string name="addons_sqm_upload">Subida (Mbit/s)</string>
+    <string name="addons_sqm_unlimited">sin límite</string>
+    <string name="addons_sqm_mbit">%1$s Mbit/s</string>
+
+    <!-- UPnP -->
+    <string name="addons_upnp_enabled">Activado</string>
+    <string name="addons_upnp_not_running">Está activado pero el servicio no está en marcha.</string>
+    <string name="addons_upnp_on_help">Los dispositivos pueden abrir puertos.</string>
+    <string name="addons_upnp_off_help">Ningún dispositivo puede abrir puertos solo.</string>
+    <string name="addons_upnp_private_wan">La dirección de internet del router (%1$s) es privada: hay otro router delante o tu proveedor usa CGNAT. Así UPnP no puede abrir puertos hacia internet por IPv4.</string>
+    <string name="addons_upnp_secure">Modo seguro</string>
+    <string name="addons_upnp_secure_help">Cada dispositivo solo puede abrir puertos hacia sí mismo. Mejor dejarlo activado.</string>
+    <string name="addons_upnp_open_ports">Puertos abiertos</string>
+    <string name="addons_upnp_no_ports">Ningún dispositivo ha abierto puertos.</string>
+    <string name="addons_upnp_expires_in">caduca en %1$s</string>
+    <string name="addons_upnp_close_port">Cerrar el puerto %1$d</string>
+</resources>

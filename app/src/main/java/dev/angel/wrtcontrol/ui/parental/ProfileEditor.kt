@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,14 +45,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -107,26 +108,36 @@ fun ProfileEditor(
 
     val cleanName = cleanProfileName(name)
     val owner = others.flatMap { p -> p.macs.map { it to p.name } }.toMap()
-    val options = remember(devices, macs, others, phoneIps, admins) {
+    val unnamed = stringResource(R.string.profile_unnamed)
+    val disconnected = stringResource(R.string.profile_disconnected)
+    val noteThisPhone = stringResource(R.string.profile_note_this_phone)
+    val noteAdmin = stringResource(R.string.profile_note_admin)
+    // Plantilla con %1$s: se rellena dentro de remember, donde no se puede llamar a stringResource.
+    val noteOtherProfile = stringResource(R.string.profile_note_other_profile)
+    val options = remember(devices, macs, others, phoneIps, admins, unnamed, disconnected, noteThisPhone, noteAdmin, noteOtherProfile) {
         val online = devices.map { d ->
             DeviceOption(
                 mac = d.mac,
-                title = d.name ?: "Sin nombre",
+                title = d.name ?: unnamed,
                 detail = listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
                 note = when {
-                    d.ipv4.any { it in phoneIps } -> "Este teléfono: si lo pausas, también se queda sin internet"
-                    d.mac in admins -> "Tiene WrtControl: nunca se le bloquea la configuración del router"
-                    d.mac !in macs && d.mac in owner -> "Ahora en «${owner[d.mac]}»: pasará a este perfil"
+                    d.ipv4.any { it in phoneIps } -> noteThisPhone
+                    d.mac in admins -> noteAdmin
+                    d.mac !in macs && d.mac in owner -> noteOtherProfile.format(owner[d.mac])
                     else -> null
                 },
             )
         }
         val offline = macs.filter { mac -> devices.none { it.mac == mac } }.sorted()
-            .map { DeviceOption(it, "Desconectado", it, if (it in admins) "Tiene WrtControl: nunca se le bloquea la configuración del router" else null) }
+            .map { DeviceOption(it, disconnected, it, if (it in admins) noteAdmin else null) }
         online + offline
     }
     val takenScheduleIds = (others.flatMap { p -> p.schedules.map { it.id } } + schedules.map { it.id }).toSet()
     val locked = busy != null
+    // Los errores se guardan como texto en el estado y se asignan en onClick, fuera de la composición.
+    val invalidMac = stringResource(R.string.profile_invalid_mac)
+    val invalidSite = stringResource(R.string.profile_invalid_site)
+    val maxSites = stringResource(R.string.profile_max_sites, MAX_BLOCKED_DOMAINS)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -149,10 +160,13 @@ fun ProfileEditor(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(if (isNew) "Nuevo perfil" else "Editar perfil") },
+                        title = { Text(stringResource(if (isNew) R.string.profile_new else R.string.profile_edit)) },
                         navigationIcon = {
                             IconButton(onClick = onDismiss, enabled = !locked) {
-                                Icon(painterResource(R.drawable.ic_close), contentDescription = "Cerrar sin guardar")
+                                Icon(
+                                    painterResource(R.drawable.ic_close),
+                                    contentDescription = stringResource(R.string.profile_close_without_saving),
+                                )
                             }
                         },
                         actions = {
@@ -170,7 +184,7 @@ fun ProfileEditor(
                                 },
                                 enabled = cleanName.isNotEmpty() && !locked,
                                 modifier = Modifier.testTag("save-profile"),
-                            ) { Text("Guardar") }
+                            ) { Text(stringResource(R.string.profile_save)) }
                         },
                     )
                 },
@@ -196,8 +210,8 @@ fun ProfileEditor(
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it.take(MAX_PROFILE_NAME) },
-                            label = { Text("Nombre") },
-                            placeholder = { Text("Por ejemplo: Juan") },
+                            label = { Text(stringResource(R.string.profile_name)) },
+                            placeholder = { Text(stringResource(R.string.profile_name_placeholder)) },
                             singleLine = true,
                             enabled = !locked,
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -205,9 +219,9 @@ fun ProfileEditor(
                         )
                     }
 
-                    item { SectionTitle("Dispositivos", "Las reglas se aplican por MAC a los equipos que marques.") }
+                    item { SectionTitle(stringResource(R.string.profile_devices_title), stringResource(R.string.profile_devices_help)) }
                     if (options.isEmpty()) item {
-                        Text("No hay dispositivos conectados ahora.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.profile_no_devices), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     items(options, key = { it.mac }) { option ->
                         val checked = option.mac in macs
@@ -233,8 +247,8 @@ fun ProfileEditor(
                             OutlinedTextField(
                                 value = manualMac,
                                 onValueChange = { manualMac = it.take(20); manualError = null },
-                                label = { Text("Agregar por MAC") },
-                                placeholder = { Text("AA:BB:CC:DD:EE:FF") },
+                                label = { Text(stringResource(R.string.profile_add_by_mac)) },
+                                placeholder = { Text(MAC_PLACEHOLDER) },
                                 singleLine = true,
                                 enabled = !locked,
                                 isError = manualError != null,
@@ -246,26 +260,26 @@ fun ProfileEditor(
                                 onClick = {
                                     val mac = normalizeMac(manualMac)
                                     if (mac == null) {
-                                        manualError = "MAC no válida"
+                                        manualError = invalidMac
                                     } else {
                                         macs = macs + mac
                                         manualMac = ""
                                     }
                                 },
                                 enabled = manualMac.isNotBlank() && !locked,
-                            ) { Text("Agregar") }
+                            ) { Text(stringResource(R.string.profile_add)) }
                         }
                     }
 
                     item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                     item {
                         SectionTitle(
-                            "Horarios sin internet",
-                            "Se cuentan con la hora del router y se aplican aunque este teléfono esté apagado.",
+                            stringResource(R.string.profile_schedules_title),
+                            stringResource(R.string.profile_schedules_help),
                         )
                     }
                     if (schedules.isEmpty()) item {
-                        Text("Sin horarios.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.profile_no_schedules), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     items(schedules, key = { it.id }) { s ->
                         Row(
@@ -284,7 +298,10 @@ fun ProfileEditor(
                                 enabled = !locked,
                             )
                             IconButton(onClick = { schedules = schedules.filter { it.id != s.id } }, enabled = !locked) {
-                                Icon(painterResource(R.drawable.ic_delete), contentDescription = "Quitar horario")
+                                Icon(
+                                    painterResource(R.drawable.ic_delete),
+                                    contentDescription = stringResource(R.string.profile_remove_schedule),
+                                )
                             }
                         }
                     }
@@ -302,15 +319,15 @@ fun ProfileEditor(
                             modifier = Modifier.testTag("add-schedule"),
                         ) {
                             Icon(painterResource(R.drawable.ic_add), contentDescription = null)
-                            Text("Agregar horario", modifier = Modifier.padding(start = 8.dp))
+                            Text(stringResource(R.string.profile_add_schedule), modifier = Modifier.padding(start = 8.dp))
                         }
                     }
 
                     item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                     item {
                         SectionTitle(
-                            "Filtro de contenido",
-                            "Se aplica a lo que sus dispositivos buscan en internet (DNS), aunque usen otro servidor DNS.",
+                            stringResource(R.string.profile_filter_title),
+                            stringResource(R.string.profile_filter_help),
                         )
                     }
                     item {
@@ -345,11 +362,11 @@ fun ProfileEditor(
                     item {
                         val included = filter.level != FilterLevel.None
                         SwitchRow(
-                            title = "Búsqueda segura",
+                            title = stringResource(R.string.profile_safe_search),
                             help = if (included) {
-                                "Incluida en este nivel."
+                                stringResource(R.string.profile_safe_search_included)
                             } else {
-                                "Google, Bing y DuckDuckGo solo muestran resultados aptos, aunque cambien la configuración del buscador."
+                                stringResource(R.string.profile_safe_search_help)
                             },
                             checked = filter.safeSearch || included,
                             enabled = !locked && !included,
@@ -360,13 +377,13 @@ fun ProfileEditor(
                     item {
                         val blocked = "youtube" in filter.services
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
-                            Text("Modo restringido de YouTube", style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.profile_youtube_title), style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 when {
-                                    blocked -> "YouTube está bloqueado del todo (abajo, en servicios)."
+                                    blocked -> stringResource(R.string.profile_youtube_blocked)
                                     filter.level == FilterLevel.Strict && filter.youtube == YoutubeMode.Off ->
-                                        "El nivel estricto ya usa el modo moderado. Elige «Estricto» para ocultar más."
-                                    else -> "Oculta vídeos para adultos en la web y en la app de YouTube, también en la TV."
+                                        stringResource(R.string.profile_youtube_strict_default)
+                                    else -> stringResource(R.string.profile_youtube_help)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -384,7 +401,11 @@ fun ProfileEditor(
                             }
                         }
                     }
-                    item { Text("Bloquear servicios", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp)) }
+                    item { Text(
+                        stringResource(R.string.profile_block_services),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) }
                     item {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SERVICES.forEach { service ->
@@ -403,17 +424,24 @@ fun ProfileEditor(
                     }
                     item {
                         Text(
-                            "Bloquea los dominios principales de cada servicio; con el tiempo las apps pueden usar otros.",
+                            stringResource(R.string.profile_services_help),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    item { Text("Sitios bloqueados", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp)) }
+                    item { Text(
+                        stringResource(R.string.profile_blocked_sites),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) }
                     items(filter.domains, key = { "domain-$it" }) { domain ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text(domain, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             IconButton(onClick = { filter = filter.copy(domains = filter.domains - domain) }, enabled = !locked) {
-                                Icon(painterResource(R.drawable.ic_delete), contentDescription = "Quitar $domain")
+                                Icon(
+                                    painterResource(R.drawable.ic_delete),
+                                    contentDescription = stringResource(R.string.profile_remove_site, domain),
+                                )
                             }
                         }
                     }
@@ -422,8 +450,8 @@ fun ProfileEditor(
                             OutlinedTextField(
                                 value = newDomain,
                                 onValueChange = { newDomain = it.take(255); domainError = null },
-                                label = { Text("Agregar sitio") },
-                                placeholder = { Text("ejemplo.com") },
+                                label = { Text(stringResource(R.string.profile_add_site)) },
+                                placeholder = { Text(stringResource(R.string.profile_site_placeholder)) },
                                 singleLine = true,
                                 enabled = !locked,
                                 isError = domainError != null,
@@ -435,8 +463,8 @@ fun ProfileEditor(
                                 onClick = {
                                     val domain = normalizeDomain(newDomain)
                                     when {
-                                        domain == null -> domainError = "Escribe un dominio, por ejemplo ejemplo.com"
-                                        filter.domains.size >= MAX_BLOCKED_DOMAINS -> domainError = "Máximo $MAX_BLOCKED_DOMAINS sitios"
+                                        domain == null -> domainError = invalidSite
+                                        filter.domains.size >= MAX_BLOCKED_DOMAINS -> domainError = maxSites
                                         else -> {
                                             filter = filter.copy(domains = (filter.domains + domain).distinct().sorted())
                                             newDomain = ""
@@ -445,12 +473,12 @@ fun ProfileEditor(
                                 },
                                 enabled = newDomain.isNotBlank() && !locked,
                                 modifier = Modifier.testTag("add-domain"),
-                            ) { Text("Agregar") }
+                            ) { Text(stringResource(R.string.profile_add)) }
                         }
                     }
                     if (filter.active && macs.isEmpty()) item {
                         Text(
-                            "El filtro se aplicará cuando el perfil tenga dispositivos.",
+                            stringResource(R.string.profile_filter_needs_devices),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
@@ -459,9 +487,8 @@ fun ProfileEditor(
                     item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                     item {
                         SwitchRow(
-                            title = "Impedir que cambien la configuración del router",
-                            help = "Sus dispositivos no podrán abrir LuCI, entrar por SSH ni usar WrtControl. Los teléfonos con " +
-                                "WrtControl (los ves en Protección) nunca se bloquean.",
+                            title = stringResource(R.string.profile_protect_router_title),
+                            help = stringResource(R.string.profile_protect_router_help),
                             checked = protectRouter,
                             enabled = !locked,
                             onChange = { protectRouter = it },
@@ -477,7 +504,7 @@ fun ProfileEditor(
                                 enabled = !locked,
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text("Eliminar perfil") }
+                            ) { Text(stringResource(R.string.profile_delete)) }
                         }
                     }
                 }
@@ -503,14 +530,14 @@ fun ProfileEditor(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("¿Eliminar «${initial.name}»?") },
-            text = { Text("Sus dispositivos volverán a tener internet sin pausas ni horarios.") },
+            title = { Text(stringResource(R.string.profile_delete_title, initial.name)) },
+            text = { Text(stringResource(R.string.profile_delete_help)) },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; onDelete() }) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.profile_delete_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.profile_cancel)) } },
         )
     }
 }
