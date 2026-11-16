@@ -1,9 +1,9 @@
 package dev.angel.wrtcontrol.ui
 
-import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.ReceiveChannel

@@ -21,6 +21,7 @@ import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.openWrtSupportNotice
+import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.InfoRow
@@ -77,7 +78,7 @@ fun StatusScreen(state: Loadable<StatusData>) {
         ) {
             if (error != null) item { ErrorBanner(stringResource(R.string.common_stale_data, error)) }
             openWrtSupportNotice(data.board.release.version)?.let { notice ->
-                item { NoticeCard(stringResource(R.string.status_untested_openwrt), notice) }
+                item { NoticeCard(stringResource(R.string.status_untested_openwrt), notice.text()) }
             }
             item { SystemCard(data.board, data.info) }
             item { ResourcesCard(data.info) }

@@ -1,7 +1,5 @@
 package dev.angel.wrtcontrol.ui.login
 
-import dev.angel.wrtcontrol.text
-import dev.angel.wrtcontrol.Txt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,8 +37,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.BuildConfig
 import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.userMessage
@@ -102,7 +102,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                state.notice?.let { ErrorBanner(it) }
+                state.notice?.let { ErrorBanner(it.text()) }
 
                 OutlinedTextField(
                     value = vm.address,

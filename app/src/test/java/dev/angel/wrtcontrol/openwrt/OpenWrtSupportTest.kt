@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.openwrt
 
+import dev.angel.wrtcontrol.es
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -15,11 +16,11 @@ class OpenWrtSupportTest {
         }
         for (v in listOf("22.03.7", "23.05.6", "23.05-SNAPSHOT")) {
             assertEquals(v, OpenWrtSupport.MayWork, openWrtSupport(v))
-            assertTrue(v, openWrtSupportNotice(v)!!.contains("24.10 o superior"))
+            assertTrue(v, openWrtSupportNotice(v)!!.es.contains("24.10 o superior"))
         }
         for (v in listOf("21.02.7", "19.07.10")) {
             assertEquals(v, OpenWrtSupport.Unsupported, openWrtSupport(v))
-            assertTrue(v, openWrtSupportNotice(v)!!.contains("demasiado antiguo"))
+            assertTrue(v, openWrtSupportNotice(v)!!.es.contains("demasiado antiguo"))
         }
         assertEquals(OpenWrtSupport.Unknown, openWrtSupport(""))
         assertNull(openWrtSupportNotice("ImmortalWrt"))

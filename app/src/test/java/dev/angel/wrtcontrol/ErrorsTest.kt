@@ -73,7 +73,7 @@ class ErrorsTest {
         assertEquals("Hola.", describeError(UbusException.Refused("Hola.")).es)
         assertEquals("Escribe algo.", describeError(UserFacingException("Escribe algo.")).es)
         // También envueltos en un fallo de red (p. ej. el acceso remoto que no conecta).
-        val tunnel = dev.angel.wrtcontrol.data.TunnelUnavailableException("El acceso remoto no conecta.")
+        val tunnel = dev.angel.wrtcontrol.data.TunnelUnavailableException(raw("El acceso remoto no conecta."))
         assertEquals("El acceso remoto no conecta.", describeError(network(tunnel)).es)
     }
 

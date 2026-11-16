@@ -18,8 +18,6 @@ class HardcodedTextTest {
         .map(::File).first { it.isDirectory }
 
     private val pending = setOf(
-        "Format.kt",
-        "Loadable.kt",
         "parental/ParentalFormat.kt",
         "parental/ParentalViewModel.kt",
         "addons/AddonsViewModel.kt",

@@ -1,6 +1,5 @@
 package dev.angel.wrtcontrol.ui
 
-import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.text
 
 @Composable
 fun InfoCard(

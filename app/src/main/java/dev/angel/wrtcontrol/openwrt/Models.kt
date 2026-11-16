@@ -1,5 +1,8 @@
 package dev.angel.wrtcontrol.openwrt
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.txt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -163,12 +166,8 @@ fun openWrtSupport(version: String): OpenWrtSupport {
 }
 
 /** El aviso para el usuario con esa versión, o null si no hace falta. */
-fun openWrtSupportNotice(version: String): String? = when (openWrtSupport(version)) {
+fun openWrtSupportNotice(version: String): Txt? = when (openWrtSupport(version)) {
     OpenWrtSupport.Tested, OpenWrtSupport.Unknown -> null
-    OpenWrtSupport.MayWork ->
-        "La app se prueba con OpenWrt 24.10 o superior. Con $version puede funcionar, pero si algo falla, " +
-            "actualiza el router."
-    OpenWrtSupport.Unsupported ->
-        "OpenWrt $version es demasiado antiguo: el control parental necesita el firewall de 22.03 o superior " +
-            "(fw4). Lo demás puede funcionar; actualiza el router para usarlo todo."
+    OpenWrtSupport.MayWork -> txt(R.string.router_openwrt_may_work, version)
+    OpenWrtSupport.Unsupported -> txt(R.string.router_openwrt_too_old, version)
 }

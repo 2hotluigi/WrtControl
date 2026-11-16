@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="router_address_empty">Enter the router\'s address (for example, 192.168.1.1).</string>
+    <string name="router_address_invalid">\"%1$s\" isn\'t a valid address. Enter the router\'s IP, for example 192.168.1.1.</string>
+    <string name="router_tunnel_unavailable">Remote access isn\'t available right now. Try again in a moment.</string>
+    <string name="router_tunnel_missing">This version of the app doesn\'t include remote access.</string>
+    <string name="router_tunnel_no_address">The router can\'t be reached and remote access doesn\'t know where to look: set up dynamic DNS from home.</string>
+    <string name="router_tunnel_changed">Remote access changed while connecting. Try again.</string>
+    <string name="router_tunnel_failed">Couldn\'t reach the router through remote access (tried: %1$s). The network you\'re on may not have IPv6, or the router may be off.</string>
+    <string name="router_saved_password_rejected">The router rejected the saved password. Connect again.</string>
+    <string name="router_session_ended">The session ended. Connect again.</string>
+    <string name="router_password_rejected">The router didn\'t accept the new password. Try another one.</string>
+    <string name="router_service_failed">The router couldn\'t change the %1$s service. Try again; if it keeps happening, restart the router.</string>
+    <string name="router_openwrt_may_work">The app is tested with OpenWrt 24.10 or later. It may work with %1$s, but if something fails, update the router.</string>
+    <string name="router_openwrt_too_old">OpenWrt %1$s is too old: parental controls need the firewall from 22.03 or later (fw4). The rest may work; update the router to use everything.</string>
+</resources>
