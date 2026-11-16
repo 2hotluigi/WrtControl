@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.openwrt.uciApply
 import dev.angel.wrtcontrol.openwrt.uciConfirm
 import dev.angel.wrtcontrol.openwrt.uciRollback
@@ -38,19 +39,19 @@ private const val UBUS_NO_DATA = 5
 private const val UBUS_PERMISSION_DENIED = 6
 
 /** Otra sesión tiene un `uci apply` pendiente de confirmar. */
-class PendingChangeException : Exception(
+class PendingChangeException : UserFacing, Exception(
     "El router tiene otro cambio pendiente de confirmar (quizá desde LuCI u otro teléfono). " +
         "Espera un minuto y vuelve a intentarlo.",
 )
 
 /** El cambio se aplicó pero no funcionó como se esperaba, y se deshizo. */
-class ChangeRevertedException(message: String) : Exception(message)
+class ChangeRevertedException(message: String) : Exception(message), UserFacing
 
 /** Lo lanza la comprobación cuando el fallo es definitivo y no vale la pena seguir esperando. */
 class VerificationFailed(message: String) : Exception(message)
 
 /** No se pudo comprobar el cambio y tampoco que se deshiciera: hay que mirar cómo quedó el router. */
-class ChangeUncertainException : Exception(
+class ChangeUncertainException : UserFacing, Exception(
     "No se pudo comprobar que el cambio funcionara y el router no confirmó que lo deshiciera. " +
         "Revisa cómo quedó antes de volver a intentarlo.",
 )

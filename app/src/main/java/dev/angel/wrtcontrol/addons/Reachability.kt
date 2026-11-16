@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.data.RouterTransport
 import dev.angel.wrtcontrol.data.TunnelConfig
 import kotlinx.coroutines.async
@@ -27,7 +28,7 @@ enum class ProbeOutcome {
 }
 
 /** Los datos móviles no están disponibles (apagados, sin SIM o sin cobertura). */
-class NoMobileDataException(message: String) : IOException(message)
+class NoMobileDataException(message: String) : IOException(message), UserFacing
 
 /** El camino hacia internet por los datos móviles, mientras dura una prueba. */
 interface OutsideLink {

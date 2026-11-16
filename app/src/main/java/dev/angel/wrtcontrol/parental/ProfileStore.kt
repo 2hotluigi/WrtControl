@@ -2,6 +2,7 @@ package dev.angel.wrtcontrol.parental
 
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
+import dev.angel.wrtcontrol.userRequire
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -240,15 +241,15 @@ fun validateProfiles(profiles: List<Profile>) {
     val owner = mutableMapOf<String, String>()
     for (p in profiles) {
         require(ID_PATTERN.matches(p.id)) { "Identificador de perfil no válido: ${p.id}" }
-        require(p.name.isNotBlank() && p.name == cleanProfileName(p.name)) { "El nombre del perfil no es válido" }
+        userRequire(p.name.isNotBlank() && p.name == cleanProfileName(p.name)) { "Ponle un nombre al perfil (sin comillas)." }
         for (mac in p.macs) {
             require(normalizeMac(mac) == mac) { "MAC no válida: $mac" }
             val other = owner.put(mac, p.name)
-            require(other == null) { "El dispositivo $mac está en dos perfiles: $other y ${p.name}" }
+            userRequire(other == null) { "El dispositivo $mac está en dos perfiles ($other y ${p.name}): quítalo de uno." }
         }
         for (s in p.schedules) {
             require(ID_PATTERN.matches(s.id)) { "Identificador de horario no válido: ${s.id}" }
-            require(s.days.isNotEmpty()) { "Cada horario necesita al menos un día" }
+            userRequire(s.days.isNotEmpty()) { "Cada horario necesita al menos un día." }
             require(s.start.second == 0 && s.end.second == 0) { "Los horarios van en minutos exactos" }
         }
         require(p.cutEpoch == 0 || p.cutEpoch in CUT_EPOCHS) { "Época de corte no válida" }

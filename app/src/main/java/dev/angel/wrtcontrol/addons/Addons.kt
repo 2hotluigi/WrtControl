@@ -1,7 +1,10 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.UserFacing
+import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.InterfaceDump
+import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.PackageTool
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.UciSection
@@ -13,15 +16,14 @@ import dev.angel.wrtcontrol.openwrt.protoHandlers
 import dev.angel.wrtcontrol.openwrt.serviceInstances
 import dev.angel.wrtcontrol.openwrt.uciAdd
 import dev.angel.wrtcontrol.openwrt.uciDelete
-import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.uciSection
 import dev.angel.wrtcontrol.openwrt.uciSections
 import dev.angel.wrtcontrol.openwrt.uciSet
 import dev.angel.wrtcontrol.parental.applySafely
 import dev.angel.wrtcontrol.parental.ensureNoPendingApply
 import dev.angel.wrtcontrol.ubus.UbusClient
-import dev.angel.wrtcontrol.ubus.UbusSession
 import dev.angel.wrtcontrol.ubus.UbusException
+import dev.angel.wrtcontrol.ubus.UbusSession
 import dev.angel.wrtcontrol.ubus.callAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -139,7 +141,7 @@ data class AddonsState(
 internal const val SQM_SETTLE_POLLS = 10
 
 /** Ya hay otra cola de SQM activa en ese dispositivo: sqm-scripts aplicaría las dos. */
-class SqmConflictException(device: String) : Exception("Ya hay otra cola de SQM activa en $device. Desactívala antes.")
+class SqmConflictException(device: String) : Exception("Ya hay otra cola de SQM activa en $device. Desactívala antes."), UserFacing
 
 class AddonsApi(
     private val ubus: UbusClient,
@@ -208,7 +210,7 @@ class AddonsApi(
      * Se da por bueno cuando los actualizadores están en marcha. Devuelve un aviso para el usuario.
      */
     suspend fun saveDdns(edit: DdnsEdit): String? = writeLock.withLock {
-        ddnsProblem(edit)?.let { throw IllegalArgumentException(it) }
+        ddnsProblem(edit)?.let { throw UserFacingException(it) }
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val sections = tx.uciSections("ddns")
@@ -420,7 +422,7 @@ class AddonsApi(
             found
         } ?: throw UbusException.Network("El router no volvió a responder después de reiniciar la red.")
         if (proto !in handlers) {
-            throw IllegalStateException("El router instaló el paquete pero no lo cargó. Reinícialo para terminar.")
+            throw UserFacingException("El router instaló el paquete pero no lo cargó. Reinícialo para terminar.")
         }
     }
 
@@ -429,7 +431,7 @@ class AddonsApi(
      * (p. ej. con una velocidad tan baja que la conexión de la app se corta), lo deshace solo.
      */
     suspend fun saveSqm(edit: SqmEdit) = writeLock.withLock {
-        sqmProblem(edit)?.let { throw IllegalArgumentException(it) }
+        sqmProblem(edit)?.let { throw UserFacingException(it) }
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val sections = tx.uciSections("sqm", "queue")
@@ -457,7 +459,7 @@ class AddonsApi(
             )
         } else {
             val current = sections.firstOrNull { it.name == edit.section }
-                ?: throw IllegalStateException("Esa cola de SQM ya no existe en el router.")
+                ?: throw UserFacingException("Esa cola de SQM ya no existe en el router: alguien la quitó desde LuCI. Recarga la pantalla.")
             // Sin cambios, rpcd no deja nada pendiente y `uci apply` respondería "sin datos".
             val changed = values.filter { (k, v) -> current.text(k) != v }
             if (changed.isEmpty()) return@withLock
@@ -494,7 +496,7 @@ class AddonsApi(
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val section = tx.uciSections("upnpd", "upnpd").firstOrNull()
-            ?: throw IllegalStateException("UPnP no tiene configuración en el router. Reinstálalo.")
+            ?: throw UserFacingException("UPnP no tiene configuración en el router. Reinstálalo.")
         val values = buildMap {
             enabled?.let { put("enabled", if (it) "1" else "0") }
             secureMode?.let { put("secure_mode", if (it) "1" else "0") }
@@ -540,7 +542,9 @@ class AddonsApi(
             buildJsonObject { put("token", mapping.token) },
         )
         val result = (reply["result"] as? kotlinx.serialization.json.JsonPrimitive)?.content
-        if (result != null && result != "OK") throw UbusException.Protocol("El router no cerró el puerto ($result)")
+        if (result != null && result != "OK") {
+            throw UbusException.Refused("El router no pudo cerrar ese puerto. Recarga la pantalla y vuelve a intentarlo.")
+        }
     }
 }
 

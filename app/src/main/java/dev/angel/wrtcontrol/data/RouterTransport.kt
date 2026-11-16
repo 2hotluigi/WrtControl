@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.UserFacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,7 +41,7 @@ interface TunnelHandle {
 enum class Link { Direct, Connecting, Tunnel }
 
 /** No se pudo entrar por el acceso remoto; el mensaje explica por qué. */
-class TunnelUnavailableException(message: String) : IOException(message)
+class TunnelUnavailableException(message: String) : IOException(message), UserFacing
 
 /**
  * Lleva las conexiones de OkHttp al router.

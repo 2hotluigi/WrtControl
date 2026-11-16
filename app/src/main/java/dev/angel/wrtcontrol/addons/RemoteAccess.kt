@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.UserFacing
+import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
@@ -198,7 +200,7 @@ internal fun nextPeerAddress(routerAddress: String, prefixLength: Int, used: Set
         .filter { it != router }
         .map(::longToIpv4)
         .firstOrNull { it !in used }
-        ?: throw IllegalStateException("No quedan direcciones libres en el túnel del router.")
+        ?: throw UserFacingException("No quedan direcciones libres en el acceso remoto del router: quita algún teléfono que ya no uses.")
 }
 
 /**
@@ -234,7 +236,7 @@ private fun ipv4Range(address: String, mask: Int): LongRange {
 data class WebTarget(val address: String?, val ports: List<Int>)
 
 /** uhttpd no escucha en ninguna IPv4 a la que se pueda llegar por el túnel. */
-class WebUnreachableException(message: String) : Exception(message)
+class WebUnreachableException(message: String) : Exception(message), UserFacing
 
 /**
  * Dónde escucha la web del router (uhttpd: "80", "0.0.0.0:80", "192.168.1.1:80", "[::]:80"):

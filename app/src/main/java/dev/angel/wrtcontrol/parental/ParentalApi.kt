@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.Lookup
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.UciValue
@@ -179,7 +180,7 @@ class ParentalApi(
         val zones = tx.routerTimezones() + ("UTC" to "GMT0")
         val wanted = if (zoneId in UTC_ALIASES) "UTC" else zoneId
         val zone = zones.keys.firstOrNull { sameZone(it, wanted) }
-            ?: throw IllegalArgumentException("El router no conoce la zona horaria $zoneId")
+            ?: throw UserFacingException("El router no conoce la zona horaria $zoneId. Elígela a mano en LuCI (Sistema → Sistema).")
         val system = tx.systemSection() ?: throw UbusException.Protocol("El router no tiene sección system")
         val oldOffset = tx.offsetSeconds()
         // Si el router trae horario de verano para una zona que ya no lo tiene, manda el teléfono.
@@ -289,7 +290,7 @@ class ParentalApi(
             tx.fileWrite(include.path, include.content, mode = FILE_MODE)
         } catch (e: UbusException.Status) {
             throw if (e.code == 6) {
-                UbusException.Protocol("El router no deja escribir en $INCLUDE_DIR (¿tiene LuCI instalado?)")
+                UbusException.Refused("El router no deja a la app guardar las reglas del control parental. ¿Tiene LuCI completo instalado?")
             } else {
                 e
             }

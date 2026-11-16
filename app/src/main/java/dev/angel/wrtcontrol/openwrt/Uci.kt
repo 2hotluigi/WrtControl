@@ -165,7 +165,7 @@ suspend fun UbusCaller.setPassword(username: String, password: String) {
         put("password", password)
     })
     if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
-        throw UbusException.Protocol("El router no aceptó la contraseña nueva")
+        throw UbusException.Refused("El router no aceptó la contraseña nueva. Prueba con otra.")
     }
 }
 
@@ -186,7 +186,9 @@ suspend fun UbusCaller.initAction(service: String, action: String) {
         return
     }
     if ((result["result"] as? JsonPrimitive)?.contentOrNull == "false") {
-        throw UbusException.Protocol("El router no pudo hacer \"$action\" con $service")
+        throw UbusException.Refused(
+            "El router no pudo ${initVerb(action)} el servicio $service. Vuelve a intentarlo; si se repite, reinicia el router.",
+        )
     }
 }
 
@@ -277,4 +279,15 @@ internal fun parseNslookup(out: String): Resolution {
         .filter { it.isNotEmpty() }
     val cnames = lines.mapNotNull { line -> line.substringAfter("canonical name =", "").trim().takeIf { it.isNotEmpty() } }
     return Resolution(Lookup.Resolved, addresses.distinct(), cnames.distinct())
+}
+
+/** La acción de un servicio de /etc/init.d en palabras. */
+internal fun initVerb(action: String): String = when (action) {
+    "start" -> "arrancar"
+    "stop" -> "parar"
+    "restart" -> "reiniciar"
+    "reload" -> "recargar"
+    "enable" -> "activar"
+    "disable" -> "desactivar"
+    else -> "cambiar"
 }

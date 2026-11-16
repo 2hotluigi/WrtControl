@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import java.net.URLEncoder
 
@@ -69,7 +70,7 @@ private fun dynv6Call(domain: String, token: String, records: DdnsRecords): Ddns
 }
 
 /** El proveedor dijo que no al nombre o al token: no tiene sentido configurar el router así. */
-class DdnsRejectedException(message: String) : IllegalArgumentException(message)
+class DdnsRejectedException(message: String) : IllegalArgumentException(message), UserFacing
 
 /**
  * Deja el nombre con [records] desde el teléfono. Devuelve un aviso para el usuario (o null) y lanza
@@ -84,9 +85,9 @@ internal suspend fun syncDdnsRecords(http: DdnsHttp, edit: DdnsEdit, records: Dd
         val call = calls.next()
         val response = try {
             http.get(call.url)
-        } catch (e: java.io.IOException) {
+        } catch (_: java.io.IOException) {
             null.also {
-                notice = "No se pudo avisar a $title desde el teléfono (${e.message ?: "sin conexión"}). " +
+                notice = "No se pudo avisar a $title desde el teléfono (sin conexión con su servidor). " +
                     "El router publicará su dirección en unos minutos, pero puede quedar publicada una dirección antigua."
             }
         }
@@ -95,7 +96,7 @@ internal suspend fun syncDdnsRecords(http: DdnsHttp, edit: DdnsEdit, records: Dd
         if (response.code !in SERVER_ERROR) {
             throw DdnsRejectedException("$title rechazó el nombre o el token: revisa que el nombre sea tuyo y el token esté bien copiado.")
         }
-        notice = "$title no respondió bien (error ${response.code}). El router lo volverá a intentar."
+        notice = "El servidor de $title falló. El router lo volverá a intentar en unos minutos."
     }
     if (notice == null && edit.provider == DdnsProvider.Dynv6 && records.ipv6 == null) {
         notice = "dynv6 no deja borrar la dirección IPv6 desde aquí: si el nombre tenía una antigua, quítala en dynv6.com."

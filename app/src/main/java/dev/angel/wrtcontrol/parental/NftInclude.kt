@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.userRequire
 import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -144,8 +145,11 @@ internal fun buildInclude(
 
     if (settings.quarantine) {
         val approved = (settings.approved + profiles.flatMap { it.macs } + admins).distinct().sorted()
-        require(env.homeZones.isNotEmpty()) { "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena" }
-        require(approved.isNotEmpty()) { "Aprueba al menos un dispositivo antes de activar la cuarentena" }
+        userRequire(env.homeZones.isNotEmpty()) {
+            "No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena. " +
+                "Revisa las zonas del firewall en LuCI."
+        }
+        userRequire(approved.isNotEmpty()) { "Aprueba al menos un dispositivo antes de activar la cuarentena." }
         val marks = QUARANTINE_MARK or WAN_MARK
         val match = "meta mark & ${hex(marks)} == ${hex(QUARANTINE_MARK)} ct direction original ether saddr != ${macSet(approved)}"
         forward += rejectBoth(match, "cuarentena")
