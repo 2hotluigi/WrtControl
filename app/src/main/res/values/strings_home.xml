@@ -1,9 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
-    <string name="home_tab_status">Estado</string>
+    <string name="home_tab_overview">Inicio</string>
     <string name="home_tab_devices">Dispositivos</string>
-    <string name="home_tab_parental">Control</string>
-    <string name="home_tab_addons">Paquetes</string>
+    <string name="home_tab_family">Familia</string>
+    <string name="home_tab_security">Seguridad</string>
+    <string name="home_tab_more">Más</string>
+    <string name="common_back">Volver</string>
+    <string name="overview_online">Conectado a internet</string>
+    <string name="overview_online_since">Sin cortes desde hace %1$s</string>
+    <string name="overview_offline">Sin conexión a internet</string>
+    <string name="overview_offline_detail">El router no tiene salida a internet ahora mismo. Revisa el cable que va al módem y que el módem esté encendido.</string>
+    <string name="overview_devices_label">en la red de casa</string>
+    <plurals name="overview_devices">
+        <item quantity="one">%1$d dispositivo</item>
+        <item quantity="other">%1$d dispositivos</item>
+        <item quantity="many">%1$d dispositivos</item>
+    </plurals>
+    <plurals name="overview_profiles">
+        <item quantity="one">%1$d perfil</item>
+        <item quantity="other">%1$d perfiles</item>
+        <item quantity="many">%1$d perfiles</item>
+    </plurals>
+    <string name="overview_profiles_none">Sin perfiles</string>
+    <string name="overview_profiles_none_label">crea uno por persona</string>
+    <string name="overview_profiles_active">ninguno en pausa</string>
+    <plurals name="overview_profiles_paused">
+        <item quantity="one">%1$d en pausa</item>
+        <item quantity="other">%1$d en pausa</item>
+        <item quantity="many">%1$d en pausa</item>
+    </plurals>
+    <plurals name="overview_new_devices_title">
+        <item quantity="one">%1$d dispositivo nuevo</item>
+        <item quantity="other">%1$d dispositivos nuevos</item>
+        <item quantity="many">%1$d dispositivos nuevos</item>
+    </plurals>
+    <string name="overview_new_devices_body">No tendrán internet hasta que los apruebes.</string>
+    <string name="overview_new_devices_action">Revisar</string>
+    <string name="overview_no_password_title">El router no tiene contraseña</string>
+    <string name="overview_no_password_body">Cualquiera que se conecte a tu red puede cambiar su configuración.</string>
+    <string name="overview_no_password_action">Poner contraseña</string>
+    <string name="overview_rules_inactive_title">Las reglas no están activas</string>
+    <string name="overview_rules_inactive_body">Las pausas y los horarios no se están aplicando ahora mismo.</string>
+    <string name="overview_rules_inactive_action">Ver qué pasa</string>
+    <string name="overview_pause_action">Pausar a…</string>
+    <string name="more_features_title">Funciones del router</string>
+    <string name="more_features_detail">Entrar desde fuera de casa, nombre fijo, calidad de la conexión y puertos</string>
+    <string name="more_router_title">Router</string>
+    <string name="more_router_detail">Detalles técnicos: sistema, memoria, redes y qué puede hacer</string>
+    <string name="more_sign_out_detail">Olvida la contraseña guardada en este teléfono</string>
     <string name="home_router_fallback">Router</string>
     <string name="home_link_connecting">%1$s · conectando por el acceso remoto…</string>
     <string name="home_link_tunnel">%1$s · por el acceso remoto</string>

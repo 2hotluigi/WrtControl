@@ -25,6 +25,9 @@ import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.ubus.SessionAcl
+import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.Overview
+import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,6 +82,26 @@ class ScreenshotTest {
                 OutlinedButton(onClick = {}) { Text("Wi-Fi de invitados") }
             }
         }
+    }
+
+    @Test
+    fun inicio() = both("inicio") {
+        OverviewContent(
+            Overview(
+                online = true,
+                onlineSeconds = 23_160,
+                devices = 16,
+                profiles = 3,
+                paused = 1,
+                newDevices = 2,
+                attention = listOf(Attention.NoPassword, Attention.NewDevices),
+            ),
+        )
+    }
+
+    @Test
+    fun `inicio sin internet`() = both("inicio-sin-internet") {
+        OverviewContent(Overview(online = false, onlineSeconds = null, devices = 16, profiles = 0, paused = 0, newDevices = 0, attention = emptyList()))
     }
 
     @Test

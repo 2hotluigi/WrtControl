@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -28,8 +27,8 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.ui.LocalRepository
-import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 import dev.angel.wrtcontrol.ui.parental.ParentalScreen
+import dev.angel.wrtcontrol.ui.parental.ParentalSection
 import dev.angel.wrtcontrol.ui.watchAsState
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
@@ -37,11 +36,13 @@ import kotlin.time.Duration.Companion.minutes
 /** El nombre del router, arriba: casi nunca cambia. */
 private val NAME_REFRESH = 1.minutes
 
+/** Las pestañas: lo de cada día a la izquierda, lo que se toca poco al final. */
 private enum class Tab(@StringRes val label: Int, val icon: Int) {
-    Status(R.string.home_tab_status, R.drawable.ic_dashboard),
+    Overview(R.string.home_tab_overview, R.drawable.ic_home),
     Devices(R.string.home_tab_devices, R.drawable.ic_devices),
-    Parental(R.string.home_tab_parental, R.drawable.ic_shield),
-    Addons(R.string.home_tab_addons, R.drawable.ic_extension),
+    Family(R.string.home_tab_family, R.drawable.ic_family),
+    Security(R.string.home_tab_security, R.drawable.ic_shield),
+    More(R.string.home_tab_more, R.drawable.ic_more),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +51,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
     val repo = LocalRepository.current
     val scope = rememberCoroutineScope()
     val board by repo.monitor.board.watchAsState(NAME_REFRESH)
-    var tab by rememberSaveable { mutableIntStateOf(Tab.Status.ordinal) }
+    var tab by rememberSaveable { mutableIntStateOf(Tab.Overview.ordinal) }
     val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
 
     Scaffold(
@@ -71,11 +72,6 @@ fun HomeScreen(connection: Connection.SignedIn) {
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = { scope.launch { repo.signOut() } }) {
-                        Icon(painterResource(R.drawable.ic_logout), contentDescription = stringResource(R.string.home_sign_out))
-                    }
-                },
             )
         },
         bottomBar = {
@@ -85,19 +81,40 @@ fun HomeScreen(connection: Connection.SignedIn) {
                         selected = tab == t.ordinal,
                         onClick = { tab = t.ordinal },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                        label = { Text(stringResource(t.label)) },
+                        label = { TabLabel(t) },
+                        modifier = Modifier.testTag("tab-${t.name}"),
                     )
                 }
             }
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            when (Tab.entries[tab]) {
-                Tab.Status -> StatusScreen()
-                Tab.Devices -> DevicesScreen()
-                Tab.Parental -> ParentalScreen(connection)
-                Tab.Addons -> AddonsScreen(connection.address)
-            }
+            TabContent(Tab.entries[tab], connection, onTab = { tab = it.ordinal }, onSignOut = { scope.launch { repo.signOut() } })
         }
+    }
+}
+
+/** Cinco pestañas: que "Dispositivos" no se parta en teléfonos estrechos. */
+@Composable
+private fun TabLabel(tab: Tab) {
+    Text(stringResource(tab.label), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall)
+}
+
+@Composable
+private fun TabContent(tab: Tab, connection: Connection.SignedIn, onTab: (Tab) -> Unit, onSignOut: () -> Unit) {
+    when (tab) {
+        Tab.Overview -> OverviewScreen(connection) { link ->
+            onTab(
+                when (link) {
+                    OverviewLink.Devices -> Tab.Devices
+                    OverviewLink.Family -> Tab.Family
+                    OverviewLink.Security -> Tab.Security
+                },
+            )
+        }
+        Tab.Devices -> DevicesScreen()
+        Tab.Family -> ParentalScreen(connection, ParentalSection.Family)
+        Tab.Security -> ParentalScreen(connection, ParentalSection.Security)
+        Tab.More -> MoreScreen(connection, onSignOut)
     }
 }

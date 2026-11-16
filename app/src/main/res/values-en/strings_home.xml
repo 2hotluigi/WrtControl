@@ -1,9 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_tab_status">Status</string>
+    <string name="home_tab_overview">Home</string>
     <string name="home_tab_devices">Devices</string>
-    <string name="home_tab_parental">Controls</string>
-    <string name="home_tab_addons">Packages</string>
+    <string name="home_tab_family">Family</string>
+    <string name="home_tab_security">Security</string>
+    <string name="home_tab_more">More</string>
+    <string name="common_back">Back</string>
+    <string name="overview_online">Connected to the internet</string>
+    <string name="overview_online_since">No drops for %1$s</string>
+    <string name="overview_offline">No internet connection</string>
+    <string name="overview_offline_detail">The router has no way out to the internet right now. Check the cable to the modem and that the modem is on.</string>
+    <string name="overview_devices_label">on your home network</string>
+    <plurals name="overview_devices">
+        <item quantity="one">%1$d device</item>
+        <item quantity="other">%1$d devices</item>
+    </plurals>
+    <plurals name="overview_profiles">
+        <item quantity="one">%1$d profile</item>
+        <item quantity="other">%1$d profiles</item>
+    </plurals>
+    <string name="overview_profiles_none">No profiles</string>
+    <string name="overview_profiles_none_label">create one per person</string>
+    <string name="overview_profiles_active">none paused</string>
+    <plurals name="overview_profiles_paused">
+        <item quantity="one">%1$d paused</item>
+        <item quantity="other">%1$d paused</item>
+    </plurals>
+    <plurals name="overview_new_devices_title">
+        <item quantity="one">%1$d new device</item>
+        <item quantity="other">%1$d new devices</item>
+    </plurals>
+    <string name="overview_new_devices_body">They won\'t have internet until you approve them.</string>
+    <string name="overview_new_devices_action">Review</string>
+    <string name="overview_no_password_title">The router has no password</string>
+    <string name="overview_no_password_body">Anyone who joins your network can change its settings.</string>
+    <string name="overview_no_password_action">Set a password</string>
+    <string name="overview_rules_inactive_title">The rules aren\'t active</string>
+    <string name="overview_rules_inactive_body">Pauses and schedules aren\'t being applied right now.</string>
+    <string name="overview_rules_inactive_action">See what\'s wrong</string>
+    <string name="overview_pause_action">Pause someone…</string>
+    <string name="more_features_title">Router features</string>
+    <string name="more_features_detail">Access from outside, fixed name, connection quality and ports</string>
+    <string name="more_router_title">Router</string>
+    <string name="more_router_detail">Technical details: system, memory, networks and what it can do</string>
+    <string name="more_sign_out_detail">Forgets the password saved on this phone</string>
     <string name="home_router_fallback">Router</string>
     <string name="home_link_connecting">%1$s · connecting through remote access…</string>
     <string name="home_link_tunnel">%1$s · through remote access</string>
