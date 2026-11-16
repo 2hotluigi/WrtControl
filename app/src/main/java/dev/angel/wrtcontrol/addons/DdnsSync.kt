@@ -1,7 +1,10 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.txt
 import java.net.URLEncoder
 
 /*
@@ -70,16 +73,16 @@ private fun dynv6Call(domain: String, token: String, records: DdnsRecords): Ddns
 }
 
 /** El proveedor dijo que no al nombre o al token: no tiene sentido configurar el router así. */
-class DdnsRejectedException(message: String) : IllegalArgumentException(message), UserFacing
+class DdnsRejectedException(override val text: Txt) : IllegalArgumentException(text.toString()), UserFacing
 
 /**
  * Deja el nombre con [records] desde el teléfono. Devuelve un aviso para el usuario (o null) y lanza
  * [DdnsRejectedException] si el proveedor rechaza el nombre o el token. Si no se puede llegar al
  * proveedor, no es grave: el router publicará lo suyo igualmente, solo puede quedar la otra familia.
  */
-internal suspend fun syncDdnsRecords(http: DdnsHttp, edit: DdnsEdit, records: DdnsRecords): String? {
+internal suspend fun syncDdnsRecords(http: DdnsHttp, edit: DdnsEdit, records: DdnsRecords): Txt? {
     val title = edit.provider.title
-    var notice: String? = null
+    var notice: Txt? = null
     val calls = ddnsSyncCalls(edit, records).iterator()
     while (notice == null && calls.hasNext()) {
         val call = calls.next()
@@ -87,19 +90,18 @@ internal suspend fun syncDdnsRecords(http: DdnsHttp, edit: DdnsEdit, records: Dd
             http.get(call.url)
         } catch (_: java.io.IOException) {
             null.also {
-                notice = "No se pudo avisar a $title desde el teléfono (sin conexión con su servidor). " +
-                    "El router publicará su dirección en unos minutos, pero puede quedar publicada una dirección antigua."
+                notice = txt(R.string.addons_ddns_sync_unreachable, title)
             }
         }
         if (response == null || call.accepted(response)) continue
         // 5xx: el proveedor falla. Lo demás (deSEC: 401 badauth; DuckDNS: "KO"): nombre o token que no valen.
         if (response.code !in SERVER_ERROR) {
-            throw DdnsRejectedException("$title rechazó el nombre o el token: revisa que el nombre sea tuyo y el token esté bien copiado.")
+            throw DdnsRejectedException(txt(R.string.addons_ddns_sync_rejected, title))
         }
-        notice = "El servidor de $title falló. El router lo volverá a intentar en unos minutos."
+        notice = txt(R.string.addons_ddns_sync_server_error, title)
     }
     if (notice == null && edit.provider == DdnsProvider.Dynv6 && records.ipv6 == null) {
-        notice = "dynv6 no deja borrar la dirección IPv6 desde aquí: si el nombre tenía una antigua, quítala en dynv6.com."
+        notice = txt(R.string.addons_ddns_sync_dynv6_ipv6)
     }
     return notice
 }

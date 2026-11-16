@@ -1,6 +1,5 @@
 package dev.angel.wrtcontrol.ui.addons
 
-import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +64,8 @@ import dev.angel.wrtcontrol.addons.fullDomain
 import dev.angel.wrtcontrol.addons.sqmProblem
 import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.openwrt.UciSection
+import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.LoadableContent
@@ -106,12 +107,12 @@ fun AddonsScreen(address: String) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.addons_stale_data, loadError)) }
-                vm.busy?.let { item { BusyBanner(it) } }
+                vm.busy?.let { item { BusyBanner(it.text()) } }
                 if (installing == null && editingSqm == null && !newSqm && !editingDdns) {
                     vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                     vm.notice?.let { notice ->
                         item {
-                            NoticeCard(stringResource(R.string.addons_ddns_title), notice) {
+                            NoticeCard(stringResource(R.string.addons_ddns_title), notice.text()) {
                                 TextButton(onClick = { vm.notice = null }) { Text(stringResource(R.string.addons_got_it)) }
                             }
                         }
@@ -272,8 +273,8 @@ private fun AddonCard(
         AddonStatus.Partial -> stringResource(R.string.addons_status_partial) to false
         AddonStatus.NeedsRestart -> stringResource(R.string.addons_status_needs_restart) to false
     }
-    InfoCard(addon.title, modifier = Modifier.testTag("addon-${addon.name}"), trailing = { StatusPill(label, ok) }) {
-        Text(addon.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    InfoCard(addon.title.text(), modifier = Modifier.testTag("addon-${addon.name}"), trailing = { StatusPill(label, ok) }) {
+        Text(addon.summary.text(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         when (status) {
             AddonStatus.Installed -> content()
             AddonStatus.Missing -> Button(onClick = onInstall, enabled = canInstall && !busy, modifier = Modifier.testTag("install-${addon.name}")) {
@@ -301,7 +302,7 @@ private fun AddonCard(
 private fun InstallDialog(addon: Addon, freeKiB: Long?, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.addons_install_title, addon.title)) },
+        title = { Text(stringResource(R.string.addons_install_title, addon.title.text())) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.addons_install_download, addon.luciPackage))
@@ -348,7 +349,8 @@ private fun OutsideCheckContent(
         Text(stringResource(if (running) R.string.addons_outside_checking else R.string.addons_outside_check))
     }
     when (check) {
-        is OutsideCheck.Failed -> Text(check.message.text(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        is OutsideCheck.Failed ->
+            Text(check.message.text(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         is OutsideCheck.Done -> {
             val advice = check.advice
             val (headline, color) = when {
@@ -357,7 +359,7 @@ private fun OutsideCheckContent(
                 else -> stringResource(R.string.addons_outside_fail) to MaterialTheme.colorScheme.error
             }
             Text(headline, style = MaterialTheme.typography.bodyMedium, color = color)
-            advice.lines.forEach { Text("• " + it, style = MaterialTheme.typography.bodySmall) }
+            advice.lines.forEach { Text("• " + it.text(), style = MaterialTheme.typography.bodySmall) }
             advice.publishOnly?.let { families ->
                 val and = stringResource(R.string.addons_and)
                 val names = families.sorted().joinToString(and) { if (it == IpFamily.V6) "IPv6" else "IPv4" }
@@ -504,7 +506,7 @@ private fun DdnsContent(
         HorizontalDivider()
         Text(own.domain, style = MaterialTheme.typography.titleSmall)
         Text(
-            own.provider?.title ?: own.serviceName ?: stringResource(R.string.addons_ddns_custom_provider),
+            own.provider?.title?.text() ?: own.serviceName ?: stringResource(R.string.addons_ddns_custom_provider),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -521,7 +523,7 @@ private fun DdnsContent(
                 stringResource(if (svc.running) R.string.addons_ddns_status else R.string.addons_ddns_status_stopped, family, update),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            svc.lastError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            svc.lastError?.let { Text(it.text(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             if (svc.ipv6 && publicAddresses.none { ':' in it }) {
                 Text(
                     stringResource(R.string.addons_ddns_no_public_ipv6),
@@ -576,10 +578,10 @@ private fun DdnsDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DdnsProvider.entries.forEach { p ->
-                        FilterChip(selected = p == provider, onClick = { provider = p }, label = { Text(p.title) })
+                        FilterChip(selected = p == provider, onClick = { provider = p }, label = { Text(p.title.text()) })
                     }
                 }
-                Text(provider.help, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(provider.help.text(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = domain, onValueChange = { domain = it }, singleLine = true,
                     label = { Text(stringResource(R.string.addons_ddns_name)) },
@@ -623,7 +625,7 @@ private fun DdnsDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (domain.isNotBlank() && token.isNotBlank()) problem?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(it.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 error?.let { ErrorBanner(it) }
             }
@@ -696,8 +698,8 @@ private fun SqmDialog(
     val enabled = queue?.enabled ?: true
     val edit = SqmEdit(queue?.section, enabled, device, parseMbit(down) ?: -1, parseMbit(up) ?: -1)
     val problem = when {
-        listOf(down, up).any { THOUSANDS.matches(it.trim()) } -> stringResource(R.string.addons_sqm_no_thousands)
-        parseMbit(down) == null || parseMbit(up) == null -> stringResource(R.string.addons_sqm_both_speeds)
+        listOf(down, up).any { THOUSANDS.matches(it.trim()) } -> txt(R.string.addons_sqm_no_thousands)
+        parseMbit(down) == null || parseMbit(up) == null -> txt(R.string.addons_sqm_both_speeds)
         else -> sqmProblem(edit)
     }
 
@@ -734,7 +736,7 @@ private fun SqmDialog(
                     modifier = Modifier.fillMaxWidth().testTag("sqm-up"),
                 )
                 if (down.isNotBlank() && up.isNotBlank()) problem?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(it.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 error?.let { ErrorBanner(it) }
             }

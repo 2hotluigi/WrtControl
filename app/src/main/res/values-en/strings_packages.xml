@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Installing packages: each failure, when updating the lists or when installing (%1$s: the packages) -->
+    <string name="packages_update_denied">The router doesn\'t let the app update the package list (LuCI permissions).</string>
+    <string name="packages_install_denied">The router doesn\'t let the app install %1$s (LuCI permissions).</string>
+    <string name="packages_update_unexpected">Unexpected reply from the package manager while updating the package list.</string>
+    <string name="packages_install_unexpected">Unexpected reply from the package manager while installing %1$s.</string>
+    <string name="packages_update_no_space">The router doesn\'t have enough free space to update the package list.</string>
+    <string name="packages_install_no_space">The router doesn\'t have enough free space to install %1$s.</string>
+    <string name="packages_update_failed">The router\'s package manager couldn\'t update the package list (code %1$d).</string>
+    <string name="packages_install_failed">The router\'s package manager couldn\'t install %1$s (code %2$d).</string>
+
+    <!-- Typical opkg and apk failures -->
+    <string name="packages_locked">Another program is installing packages on the router (maybe LuCI). Wait a moment and try again.</string>
+    <string name="packages_kernel_mismatch">The package isn\'t compatible with this firmware\'s kernel (this happens with development builds or vendor firmware). Update the router to a stable OpenWrt release.</string>
+    <string name="packages_download_failed">The router couldn\'t download the packages: check that it has internet.</string>
+    <string name="packages_not_available">The package isn\'t available for this router.</string>
+</resources>

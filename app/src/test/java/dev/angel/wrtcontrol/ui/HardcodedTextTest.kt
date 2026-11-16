@@ -22,8 +22,6 @@ class HardcodedTextTest {
         "Loadable.kt",
         "parental/ParentalFormat.kt",
         "parental/ParentalViewModel.kt",
-        "addons/AddonsViewModel.kt",
-        "addons/OutsideCheckViewModel.kt",
     )
 
     /** Llamadas que muestran texto, con el literal que les llega. */

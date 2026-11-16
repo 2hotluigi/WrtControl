@@ -1,10 +1,13 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
+import dev.angel.wrtcontrol.txt
 
 /*
  * Acceso remoto: un servidor WireGuard en el router para que la app (y solo la app, con su propio
@@ -200,7 +203,7 @@ internal fun nextPeerAddress(routerAddress: String, prefixLength: Int, used: Set
         .filter { it != router }
         .map(::longToIpv4)
         .firstOrNull { it !in used }
-        ?: throw UserFacingException("No quedan direcciones libres en el acceso remoto del router: quita algún teléfono que ya no uses.")
+        ?: throw UserFacingException(txt(R.string.addons_remote_no_free_address))
 }
 
 /**
@@ -236,7 +239,7 @@ private fun ipv4Range(address: String, mask: Int): LongRange {
 data class WebTarget(val address: String?, val ports: List<Int>)
 
 /** uhttpd no escucha en ninguna IPv4 a la que se pueda llegar por el túnel. */
-class WebUnreachableException(message: String) : Exception(message), UserFacing
+class WebUnreachableException(override val text: Txt) : Exception(text.toString()), UserFacing
 
 /**
  * Dónde escucha la web del router (uhttpd: "80", "0.0.0.0:80", "192.168.1.1:80", "[::]:80"):
@@ -259,10 +262,7 @@ internal fun webTarget(uhttpd: List<UciSection>?, routerIpv4: Set<String>): WebT
     if (any.isNotEmpty()) return WebTarget(null, any.distinct().sorted())
     val bound = parsed.filter { (h, _) -> h in routerIpv4 && !h.startsWith("127.") }
     val host = bound.firstOrNull()?.first
-        ?: throw WebUnreachableException(
-            "La web del router (uhttpd) solo escucha en " + entries.joinToString() + ". Para el acceso remoto " +
-                "tiene que escuchar en todas las IPv4 (0.0.0.0) o en la dirección de la LAN.",
-        )
+        ?: throw WebUnreachableException(txt(R.string.addons_remote_web_unreachable, entries.joinToString()))
     return WebTarget(host, bound.filter { it.first == host }.map { it.second }.distinct().sorted())
 }
 

@@ -1,8 +1,11 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.data.RouterTransport
 import dev.angel.wrtcontrol.data.TunnelConfig
+import dev.angel.wrtcontrol.txt
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -28,7 +31,7 @@ enum class ProbeOutcome {
 }
 
 /** Los datos móviles no están disponibles (apagados, sin SIM o sin cobertura). */
-class NoMobileDataException(message: String) : IOException(message), UserFacing
+class NoMobileDataException(override val text: Txt) : IOException(text.toString()), UserFacing
 
 /** El camino hacia internet por los datos móviles, mientras dura una prueba. */
 interface OutsideLink {
@@ -98,7 +101,7 @@ suspend fun checkFromOutside(
  */
 data class ReachabilityAdvice(
     val ok: Boolean,
-    val lines: List<String>,
+    val lines: List<Txt>,
     val publishOnly: Set<IpFamily>? = null,
     val untested: Boolean = false,
 )
@@ -123,42 +126,35 @@ fun adviseReachability(report: ReachabilityReport, router: RouterReachContext): 
     val (ddnsLines, publishOnly) = ddnsAdvice(report, router)
     lines += ddnsLines
     if (router.ddnsFamilies == null && reached.isNotEmpty()) {
-        lines += "Sin DNS dinámico, si tu proveedor le cambia la dirección al router, la app no lo encontrará: configúralo abajo."
+        lines += txt(R.string.addons_reach_no_ddns)
     }
     val untested = reached.isEmpty() && report.probes.none { it.outcome == ProbeOutcome.NoReply }
     return ReachabilityAdvice(ok = reached.isNotEmpty(), lines = lines, publishOnly = publishOnly, untested = untested)
 }
 
-private fun ipv6Line(p: FamilyProbe?): String = when (p?.outcome) {
-    ProbeOutcome.Reached -> "IPv6 (${p.address}): se llega."
-    ProbeOutcome.NoReply -> "IPv6 (${p.address}): el router no contestó. Casi siempre es el módem del proveedor, que " +
-        "descarta lo que entra por IPv6: en su página, baja el nivel del cortafuegos IPv6 o pon el router en su DMZ."
-    ProbeOutcome.CannotSend -> "IPv6: tus datos móviles no tienen IPv6, así que no se ha podido probar. Desde redes con " +
-        "IPv6 puede que sí se llegue."
-    null -> "IPv6: el router no tiene una IPv6 pública. Si tu proveedor da IPv6, revisa la WAN6 del router."
+private fun ipv6Line(p: FamilyProbe?): Txt = when (p?.outcome) {
+    ProbeOutcome.Reached -> txt(R.string.addons_reach_reached, "IPv6", p.address)
+    ProbeOutcome.NoReply -> txt(R.string.addons_reach_v6_no_reply, p.address)
+    ProbeOutcome.CannotSend -> txt(R.string.addons_reach_v6_cannot_send)
+    null -> txt(R.string.addons_reach_v6_none)
 }
 
-private fun ipv4Line(p: FamilyProbe?, router: RouterReachContext): String {
+private fun ipv4Line(p: FamilyProbe?, router: RouterReachContext): Txt {
     val behind = router.privateWanIpv4
     return when (p?.outcome) {
-        ProbeOutcome.Reached -> "IPv4 (${p.address}): se llega."
+        ProbeOutcome.Reached -> txt(R.string.addons_reach_reached, "IPv4", p.address)
         ProbeOutcome.NoReply -> if (behind != null) {
-            "IPv4 (${p.address}): no entra. El router está detrás de otro aparato (su WAN tiene $behind): " +
-                "en ese aparato, abre el puerto UDP ${router.port} hacia el router o ponlo en su DMZ."
+            txt(R.string.addons_reach_v4_no_reply_behind, p.address, behind, router.port)
         } else {
-            "IPv4 (${p.address}): el router no contestó. Puede que algo delante descarte lo que entra."
+            txt(R.string.addons_reach_v4_no_reply, p.address)
         }
-        ProbeOutcome.CannotSend -> "IPv4: tus datos móviles no tienen IPv4, así que no se ha podido probar."
-        null -> if (behind != null) {
-            "IPv4: el router está detrás de otro aparato o de un CGNAT (su WAN tiene $behind), así que por IPv4 no se llega."
-        } else {
-            "IPv4: el router no tiene una IPv4 pública."
-        }
+        ProbeOutcome.CannotSend -> txt(R.string.addons_reach_v4_cannot_send)
+        null -> if (behind != null) txt(R.string.addons_reach_v4_behind, behind) else txt(R.string.addons_reach_v4_none)
     }
 }
 
 /** Lo que da el nombre desde fuera comparado con lo que entra, y qué familias convendría publicar. */
-private fun ddnsAdvice(report: ReachabilityReport, router: RouterReachContext): Pair<List<String>, Set<IpFamily>?> {
+private fun ddnsAdvice(report: ReachabilityReport, router: RouterReachContext): Pair<List<Txt>, Set<IpFamily>?> {
     val families = router.ddnsFamilies
     val published = report.published
     if (families == null || published.isNullOrEmpty()) {
@@ -166,28 +162,28 @@ private fun ddnsAdvice(report: ReachabilityReport, router: RouterReachContext): 
         // móviles, un nombre que solo publica IPv6 parece vacío.
         val untestable = report.probes.filter { it.outcome == ProbeOutcome.CannotSend }.map { it.family }.toSet()
         val empty = published?.isEmpty() == true && families != null && !untestable.containsAll(families)
-        return listOfNotNull(EMPTY_NAME.takeIf { empty }) to null
+        return listOfNotNull(txt(R.string.addons_reach_ddns_empty).takeIf { empty }) to null
     }
-    val lines = mutableListOf<String>()
+    val lines = mutableListOf<Txt>()
     val routerFamilies = router.publicAddresses.map(::familyOf).toSet()
     val stale = published.filter { it !in router.publicAddresses && familyOf(it) in routerFamilies }
     if (stale.isNotEmpty()) {
-        lines += "El DNS dinámico aún da ${stale.joinToString()}, que ya no es del router (se actualiza cada pocos minutos)."
+        lines += txt(R.string.addons_reach_ddns_stale, stale.joinToString())
     }
     val dead = published.map(::familyOf).toSet()
         .filter { f -> report.probes.any { it.family == f && it.outcome == ProbeOutcome.NoReply } }
     val keep = families intersect report.reached
     val publishOnly = keep.takeIf { dead.isNotEmpty() && it.isNotEmpty() && it != families }
     if (publishOnly != null) {
-        lines += "El DNS dinámico publica " + dead.joinToString(" y ") { familyName(it) } + ", que no entra: algunos " +
-            "programas la prueban primero y no conectan (WireGuard en Windows, p. ej.). Mejor publicar solo " +
-            publishOnly.sorted().joinToString(" y ") { familyName(it) } + "."
+        // Son una familia cada una: las que no entran y las que sí no se solapan, y ninguna está vacía.
+        lines += txt(
+            R.string.addons_reach_ddns_dead,
+            dead.joinToString(", ") { familyName(it) },
+            publishOnly.sorted().joinToString(", ") { familyName(it) },
+        )
     }
     return lines to publishOnly
 }
-
-private const val EMPTY_NAME =
-    "Desde fuera, el nombre del DNS dinámico aún no da ninguna dirección: el proveedor puede tardar unos minutos."
 
 private fun familyName(f: IpFamily) = if (f == IpFamily.V6) "IPv6" else "IPv4"
 

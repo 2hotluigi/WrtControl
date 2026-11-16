@@ -1,6 +1,9 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.UciSection
+import dev.angel.wrtcontrol.txt
 
 /*
  * SQM (sqm-scripts + luci-app-sqm): reparte la conexión para que no se forme cola en el módem
@@ -36,13 +39,13 @@ const val SQM_MIN_KBIT = 256L
 data class SqmEdit(val section: String?, val enabled: Boolean, val device: String, val downloadKbit: Long, val uploadKbit: Long)
 
 /** Motivo por el que [edit] no vale, o null. */
-fun sqmProblem(edit: SqmEdit): String? = when {
-    edit.device.isBlank() -> "Elige la conexión a internet."
-    !Regex("^[A-Za-z0-9._@-]+$").matches(edit.device) -> "Ese nombre de dispositivo no es válido."
-    edit.downloadKbit < 0 || edit.uploadKbit < 0 -> "Las velocidades no pueden ser negativas."
-    edit.enabled && edit.downloadKbit == 0L && edit.uploadKbit == 0L -> "Indica al menos una de las dos velocidades."
+fun sqmProblem(edit: SqmEdit): Txt? = when {
+    edit.device.isBlank() -> txt(R.string.addons_sqm_pick_device)
+    !Regex("^[A-Za-z0-9._@-]+$").matches(edit.device) -> txt(R.string.addons_sqm_invalid_device)
+    edit.downloadKbit < 0 || edit.uploadKbit < 0 -> txt(R.string.addons_sqm_negative_speed)
+    edit.enabled && edit.downloadKbit == 0L && edit.uploadKbit == 0L -> txt(R.string.addons_sqm_no_speed)
     edit.downloadKbit in 1 until SQM_MIN_KBIT || edit.uploadKbit in 1 until SQM_MIN_KBIT ->
-        "Con menos de ${SQM_MIN_KBIT} kbit/s el router se quedaría casi sin conexión."
+        txt(R.string.addons_sqm_too_slow, SQM_MIN_KBIT.toString())
     else -> null
 }
 

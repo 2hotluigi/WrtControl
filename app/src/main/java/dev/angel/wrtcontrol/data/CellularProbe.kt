@@ -5,12 +5,14 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.ParcelFileDescriptor
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.addons.NoMobileDataException
 import dev.angel.wrtcontrol.addons.OutsideLink
 import dev.angel.wrtcontrol.addons.OutsideNetwork
 import dev.angel.wrtcontrol.addons.ProbeOutcome
 import dev.angel.wrtcontrol.addons.isGlobalIpv6
 import dev.angel.wrtcontrol.go.wrtcvpn.Wrtcvpn
+import dev.angel.wrtcontrol.txt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -51,9 +53,7 @@ class CellularOutsideNetwork(private val connectivity: ConnectivityManager) : Ou
                 }
                 callback = cb
                 connectivity.requestNetwork(request, cb, MOBILE_DATA_WAIT_MS)
-            } ?: throw NoMobileDataException(
-                "No se pudo usar los datos móviles. Actívalos (puedes seguir en el Wi-Fi: la prueba solo gasta unos KB) y repite.",
-            )
+            } ?: throw NoMobileDataException(txt(R.string.addons_reach_no_mobile_data))
             val ipv6 = connectivity.getLinkProperties(network)?.linkAddresses.orEmpty()
                 .any { it.address is Inet6Address && isGlobalIpv6(RouterTransport.ipText(it.address)) }
             return withContext(Dispatchers.IO) { block(MobileLink(network, ipv6)) }

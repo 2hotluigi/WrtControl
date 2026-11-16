@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.openwrt
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.FakeRouter
 import dev.angel.wrtcontrol.ubus.Reply
@@ -67,20 +68,19 @@ class PackagesTest {
 
     @Test
     fun `explica los fallos tipicos del gestor de paquetes`() {
-        val what = "instalar luci-app-sqm"
-        assertTrue(explainFailure(255, "Failed to acquire lock", what).contains("Otro programa"))
-        assertTrue(explainFailure(1, "ERROR: luci-app-sqm: No space left on device", what).contains("espacio"))
-        assertTrue(
-            explainFailure(1, "ERROR: unable to select packages:\n  kernel-6.12.1~abc-r1:\n    breaks: kmod-wireguard", what)
-                .contains("kernel"),
-        )
-        assertTrue(explainFailure(1, "ERROR: unable to select packages:\n  foo (no such package)", what).contains("no está disponible"))
-        assertTrue(
-            explainFailure(255, "Collected errors:\n * opkg_download: Failed to download https://downloads.openwrt.org/x", what)
-                .contains("internet"),
-        )
+        val step = PackageStep.Install(listOf("luci-app-sqm"))
+        fun explain(code: Int, output: String) = explainFailure(code, output, step).es
+        assertTrue(explain(255, "Failed to acquire lock").contains("Otro programa"))
+        assertTrue(explain(1, "ERROR: luci-app-sqm: No space left on device").contains("espacio libre suficiente para instalar luci-app-sqm"))
+        assertTrue(explain(1, "ERROR: unable to select packages:\n  kernel-6.12.1~abc-r1:\n    breaks: kmod-wireguard").contains("kernel"))
+        assertTrue(explain(1, "ERROR: unable to select packages:\n  foo (no such package)").contains("no está disponible"))
+        assertTrue(explain(255, "Collected errors:\n * opkg_download: Failed to download https://downloads.openwrt.org/x").contains("internet"))
         // Que el nombre de un paquete lleve "dns" no hace pensar en un fallo de red.
-        assertTrue(explainFailure(1, "luci-app-ddns: conflicting files", what).contains("código 1"))
+        assertEquals(
+            "El gestor de paquetes del router no pudo instalar luci-app-sqm (código 1).",
+            explain(1, "luci-app-ddns: conflicting files"),
+        )
+        assertTrue(explainFailure(1, "No space left", PackageStep.Update).es.contains("para actualizar la lista de paquetes"))
     }
 
     @Test

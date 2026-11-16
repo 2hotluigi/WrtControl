@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.addons
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
@@ -22,6 +24,8 @@ import dev.angel.wrtcontrol.openwrt.uciSections
 import dev.angel.wrtcontrol.openwrt.uciSet
 import dev.angel.wrtcontrol.parental.applySafely
 import dev.angel.wrtcontrol.parental.ensureNoPendingApply
+import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusSession
@@ -42,32 +46,31 @@ import kotlinx.serialization.json.put
  * maneja; [corePackages], lo que hace que funcionen.
  */
 enum class Addon(
-    val title: String,
-    val summary: String,
+    val title: Txt,
+    val summary: Txt,
     val luciPackage: String,
     val corePackages: List<String>,
     /** netifd solo carga protocolos nuevos al arrancar: hay que reiniciar la red después. */
     val restartsNetwork: Boolean = false,
 ) {
     WireGuard(
-        "WireGuard",
-        "Túnel cifrado para que la app llegue al router cuando no estás en casa.",
+        raw("WireGuard"),
+        txt(R.string.addons_wireguard_description),
         "luci-proto-wireguard", listOf("wireguard-tools"), restartsNetwork = true,
     ),
     Ddns(
-        "DNS dinámico",
-        "Un nombre fijo para el router, aunque tu proveedor le cambie la dirección.",
+        txt(R.string.addons_ddns_title),
+        txt(R.string.addons_ddns_description),
         "luci-app-ddns", listOf("ddns-scripts"),
     ),
     Sqm(
-        "SQM (calidad de la conexión)",
-        "Evita que la conexión se atasque cuando alguien descarga: videollamadas y juegos siguen fluidos.",
+        txt(R.string.addons_sqm_title),
+        txt(R.string.addons_sqm_description),
         "luci-app-sqm", listOf("sqm-scripts"),
     ),
     Upnp(
-        "UPnP",
-        "Deja que consolas y juegos abran puertos solos (NAT abierto). Es cómodo, pero cualquier " +
-            "dispositivo de casa puede abrirlos.",
+        raw("UPnP"),
+        txt(R.string.addons_upnp_description),
         "luci-app-upnp", listOf("miniupnpd-nftables", "miniupnpd"),
     ),
 }
@@ -142,7 +145,9 @@ data class AddonsState(
 internal const val SQM_SETTLE_POLLS = 10
 
 /** Ya hay otra cola de SQM activa en ese dispositivo: sqm-scripts aplicaría las dos. */
-class SqmConflictException(device: String) : Exception("Ya hay otra cola de SQM activa en $device. Desactívala antes."), UserFacing
+class SqmConflictException(device: String) : Exception("SQM conflict on $device"), UserFacing {
+    override val text: Txt = txt(R.string.addons_sqm_conflict, device)
+}
 
 class AddonsApi(
     private val ubus: UbusClient,
@@ -210,7 +215,7 @@ class AddonsApi(
      * familia ([syncDdnsRecords]): si el proveedor rechaza el nombre o el token, no se toca el router.
      * Se da por bueno cuando los actualizadores están en marcha. Devuelve un aviso para el usuario.
      */
-    suspend fun saveDdns(edit: DdnsEdit): String? = writeLock.withLock {
+    suspend fun saveDdns(edit: DdnsEdit): Txt? = writeLock.withLock {
         ddnsProblem(edit)?.let { throw UserFacingException(it) }
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
@@ -423,7 +428,7 @@ class AddonsApi(
             found
         } ?: throw UbusException.Network("El router no volvió a responder después de reiniciar la red.")
         if (proto !in handlers) {
-            throw UserFacingException("El router instaló el paquete pero no lo cargó. Reinícialo para terminar.")
+            throw UserFacingException(txt(R.string.addons_protocol_not_loaded))
         }
     }
 
@@ -460,7 +465,7 @@ class AddonsApi(
             )
         } else {
             val current = sections.firstOrNull { it.name == edit.section }
-                ?: throw UserFacingException("Esa cola de SQM ya no existe en el router: alguien la quitó desde LuCI. Recarga la pantalla.")
+                ?: throw UserFacingException(txt(R.string.addons_sqm_queue_gone))
             // Sin cambios, rpcd no deja nada pendiente y `uci apply` respondería "sin datos".
             val changed = values.filter { (k, v) -> current.text(k) != v }
             if (changed.isEmpty()) return@withLock
@@ -497,7 +502,7 @@ class AddonsApi(
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val section = tx.uciSections("upnpd", "upnpd").firstOrNull()
-            ?: throw UserFacingException("UPnP no tiene configuración en el router. Reinstálalo.")
+            ?: throw UserFacingException(txt(R.string.addons_upnp_no_config))
         val values = buildMap {
             enabled?.let { put("enabled", if (it) "1" else "0") }
             secureMode?.let { put("secure_mode", if (it) "1" else "0") }
@@ -544,7 +549,7 @@ class AddonsApi(
         )
         val result = (reply["result"] as? kotlinx.serialization.json.JsonPrimitive)?.content
         if (result != null && result != "OK") {
-            throw UbusException.Refused("El router no pudo cerrar ese puerto. Recarga la pantalla y vuelve a intentarlo.")
+            throw UbusException.Refused(txt(R.string.addons_upnp_close_failed))
         }
     }
 }
