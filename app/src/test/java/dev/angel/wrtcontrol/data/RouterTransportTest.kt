@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.data
 
+import dev.angel.wrtcontrol.es
 import com.sun.net.httpserver.HttpServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -144,7 +145,7 @@ class RouterTransportTest {
             get(client(t))
             fail("tenía que fallar")
         } catch (e: TunnelUnavailableException) {
-            assertTrue(e.message!!, e.message!!.startsWith("No se pudo llegar al router por el acceso remoto"))
+            assertTrue(e.text.es, e.text.es.startsWith("No se pudo llegar al router por el acceso remoto"))
         }
         assertEquals(4, engine.stopped)
         assertEquals(Link.Direct, t.link.value)
@@ -178,7 +179,7 @@ class RouterTransportTest {
             t.startTunnel(bare, "router.lan", 80)
             fail("tenía que fallar")
         } catch (e: TunnelUnavailableException) {
-            assertTrue(e.message!!.contains("DNS dinámico"))
+            assertTrue(e.text.es.contains("DNS dinámico"))
         }
     }
 
