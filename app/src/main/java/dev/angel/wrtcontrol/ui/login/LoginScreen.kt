@@ -94,7 +94,7 @@ fun LoginScreen(state: Connection.SignedOut) {
             ) {
                 Text("Conectar al router", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Usa la dirección del router OpenWrt (22.03 o superior) en tu red y sus credenciales de LuCI.",
+                    "Usa la dirección del router OpenWrt (24.10 o superior) en tu red y sus credenciales de LuCI.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

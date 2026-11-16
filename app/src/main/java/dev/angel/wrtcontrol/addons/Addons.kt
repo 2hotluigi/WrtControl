@@ -14,6 +14,7 @@ import dev.angel.wrtcontrol.openwrt.installPackages
 import dev.angel.wrtcontrol.openwrt.installedPackages
 import dev.angel.wrtcontrol.openwrt.protoHandlers
 import dev.angel.wrtcontrol.openwrt.serviceInstances
+import dev.angel.wrtcontrol.openwrt.serviceRunning
 import dev.angel.wrtcontrol.openwrt.uciAdd
 import dev.angel.wrtcontrol.openwrt.uciDelete
 import dev.angel.wrtcontrol.openwrt.uciSection
@@ -163,7 +164,7 @@ class AddonsApi(
         val wgLive = async { optional { ubus.callAs<Map<String, WgInstance>>("luci.wireguard", "getWgInstances") } }
         val sqm = async { optional { ubus.uciSections("sqm", "queue").map(::parseSqmQueue) } }
         val upnpConfig = async { optional { ubus.uciSections("upnpd", "upnpd").firstOrNull() } }
-        val upnpRunning = async { optional { ubus.serviceInstances("miniupnpd") } }
+        val upnpRunning = async { optional { ubus.serviceRunning("miniupnpd") } }
         val upnpStatus = async { optional { ubus.callAs<UpnpStatus>("luci.upnp", "get_status") } }
         val ddns = async { optional { ubus.uciSections("ddns") } }
         val ddnsStatus = async { optional { ubus.callAs<Map<String, DdnsStatusJson>>("luci.ddns", "get_services_status") } }
@@ -184,7 +185,7 @@ class AddonsApi(
             wireguard = network.await()?.let { parseWireGuard(it, wgLive.await(), interfaces) },
             wireguardLoaded = loaded,
             sqm = sqm.await(),
-            upnp = upnpConfig.await()?.let { parseUpnp(it, upnpRunning.await()?.values?.any { r -> r }, upnpStatus.await()) },
+            upnp = upnpConfig.await()?.let { parseUpnp(it, upnpRunning.await(), upnpStatus.await()) },
             ddnsConfig = ddns.await(),
             remote = network.await()?.let(::parseRemoteServer),
             publicAddresses = publicAddresses(interfaces),
@@ -515,16 +516,16 @@ class AddonsApi(
             isReverted = { fresh -> fresh.uciSections("upnpd", "upnpd").firstOrNull() == section },
             isLive = {
                 if (enabled == null) true else {
-                    val instances = tx.serviceInstances("miniupnpd")
-                    if (instances == null) {
-                        // Sin `service list` (hasta 24.10 con el ACL de LuCI): se arranca o para a mano y basta.
+                    // Con `service list` o, si el ACL no lo deja (24.10), con `rc list`.
+                    val running = tx.serviceRunning("miniupnpd")
+                    if (running == null) {
+                        // Sin ninguna de las dos: se arranca o para a mano y basta.
                         if (!kicked) {
                             kicked = true
                             optional { tx.initAction("miniupnpd", if (enabled) "restart" else "stop") }
                         }
                         return@applySafely true
                     }
-                    val running = instances.values.any { it }
                     if (running != enabled && !kicked) {
                         kicked = true
                         optional { tx.initAction("miniupnpd", if (enabled) "start" else "stop") }

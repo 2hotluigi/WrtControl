@@ -183,9 +183,8 @@ class AddonsVmTest {
         val (_, api) = api()
         resetUpnp()
         assertEquals(false, api.state().upnp!!.enabled)
-        // Límite conocido: sin `service list` (24.10 con el ACL de LuCI) la app no ve que miniupnpd no
-        // arrancó y no lo deshace. Pendiente en el Hito 0 (versión mínima 24.10).
-        assumeTrue("24.10: sin service list no se detecta que UPnP no arrancó", api.state().upnp!!.running != null)
+        // En 24.10 el ACL de LuCI no deja `service list`: se sabe con `rc list`.
+        assertTrue("se sabe si miniupnpd está en marcha", api.state().upnp!!.running != null)
         // miniupnpd no arranca con una dirección externa reservada.
         ssh("uci set upnpd.config.external_ip=203.0.113.10; uci commit upnpd")
         val t0 = System.currentTimeMillis()

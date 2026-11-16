@@ -6,6 +6,23 @@ plugins {
     alias(libs.plugins.kover)
 }
 
+/** "1.4.12" → 10412: sube siempre que sube la versión (cada parte, hasta 99). */
+val appVersion = providers.gradleProperty("wrtc.version").get()
+val appVersionCode = appVersion.split('.').map { it.toInt() }.let { (major, minor, patch) ->
+    require(minor < 100 && patch < 100) { "wrtc.version: cada parte, de 0 a 99" }
+    major * 10000 + minor * 100 + patch
+}
+
+/**
+ * Firma de la versión release: de variables de entorno (la CI, con los secrets) o de propiedades
+ * de Gradle (~/.gradle/gradle.properties en el PC de quien publica). Sin ellas, la release sale
+ * sin firmar. La clave nunca va en el repositorio.
+ */
+fun signingValue(name: String): String? =
+    providers.environmentVariable(name).orElse(providers.gradleProperty(name.lowercase().replace('_', '.'))).orNull
+
+val releaseKeystore = signingValue("WRTC_KEYSTORE")
+
 android {
     namespace = "dev.angel.wrtcontrol"
     compileSdk = 37
@@ -14,8 +31,19 @@ android {
         applicationId = "dev.angel.wrtcontrol"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersion
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = signingValue("WRTC_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("WRTC_KEY_ALIAS")
+                keyPassword = signingValue("WRTC_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -27,6 +55,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             buildConfigField("String", "DEFAULT_ROUTER", "\"192.168.1.1\"")
         }
     }
