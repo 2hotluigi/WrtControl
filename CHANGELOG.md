@@ -9,6 +9,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ### Cambiado
 - La app, en inglés si el teléfono está en inglés: pantallas, mensajes de error, consejos del
   acceso remoto, horarios, filtros y descripciones de los paquetes.
+- Al cambiar de pestaña se ve al momento lo último que se sabía del router, en vez de esperar a
+  que vuelva a cargar. La app le hace menos llamadas: cada dato se pide una sola vez aunque lo
+  usen varias pantallas.
 
 ## [0.2.0]
 

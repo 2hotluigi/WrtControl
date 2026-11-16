@@ -2,12 +2,14 @@ package dev.angel.wrtcontrol.data
 
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +29,10 @@ sealed interface Connection {
     data class SignedIn(val address: String, val username: String, val emptyPassword: Boolean = false) : Connection
 }
 
-/** Punto único de acceso al router: conexión, credenciales guardadas y API. */
+/** Punto único de acceso al router: conexión, credenciales guardadas, API y lo que se lee de él. */
 class RouterRepository(
+    /** Vive lo que la app: en él se lee del router y se apunta lo que se va sabiendo. */
+    scope: CoroutineScope,
     private val store: RouterStore,
     private val http: OkHttpClient,
     /** Camino hasta el router: directo en casa, por el acceso remoto fuera. */
@@ -37,9 +41,21 @@ class RouterRepository(
     private val ddnsHttp: dev.angel.wrtcontrol.addons.DdnsHttp? = null,
     /** Los datos móviles, para probar el acceso remoto desde fuera sin salir de casa. */
     val outside: dev.angel.wrtcontrol.addons.OutsideNetwork? = null,
-) {
+    /** Cómo se le cuenta al usuario un fallo al leer del router. */
+    describe: (Throwable) -> Txt = ::describeError,
+    /** Reloj en milisegundos que no retrocede. */
+    clock: () -> Long = { System.nanoTime() / NANOS_PER_MILLI },
+) : RouterAccess {
     private val _state = MutableStateFlow<Connection>(Connection.Loading)
     val state: StateFlow<Connection> = _state.asStateFlow()
+
+    /** Lo que se lee del router para enseñarlo, compartido entre las pantallas. */
+    val monitor = RouterMonitor(scope, this, describe, clock)
+
+    private val _tunnel = MutableStateFlow<TunnelConfig?>(null)
+
+    /** Acceso remoto de este teléfono al router conectado, si lo tiene y ya se sabe qué router es. */
+    val tunnel: StateFlow<TunnelConfig?> = _tunnel.asStateFlow()
 
     @Volatile
     private var api: OpenWrtApi? = null
@@ -55,6 +71,11 @@ class RouterRepository(
     var routerId: String? = null
         private set
 
+    init {
+        // Aparte de las lecturas: qué router es y por dónde se llega a él desde fuera.
+        scope.followRouter(monitor, onIdentified = ::rememberRouterId, onAddresses = ::refreshTunnelAddresses)
+    }
+
     /** Al arrancar la app: si hay un router guardado con contraseña, se entra directamente. */
     suspend fun restore() {
         val saved = store.load()
@@ -64,7 +85,7 @@ class RouterRepository(
         }
         // El login real se hace en la primera llamada (UbusClient renueva la sesión solo).
         routerId = saved.routerId
-        transport?.config = tunnelFor(saved.address, saved.routerId)
+        useTunnel(tunnelFor(saved.address, saved.routerId))
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
         _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
     }
@@ -74,7 +95,7 @@ class RouterRepository(
         val endpoint = RouterAddress.endpoint(address)
         // Si ya se conocía este router, se entra por su acceso remoto (que comprueba que es él).
         val known = store.load()?.takeIf { it.address == address.trim() }?.routerId
-        transport?.config = tunnelFor(address.trim(), known)
+        useTunnel(tunnelFor(address.trim(), known))
         val newClient = UbusClient(endpoint, http)
         newClient.login(Credentials(username, password))
         val id = try {
@@ -86,17 +107,18 @@ class RouterRepository(
         }
         store.save(SavedRouter(address.trim(), username, password, id ?: known))
         routerId = id ?: known
-        if (id != null && id != known) transport?.config = tunnelFor(address.trim(), id)
+        if (id != null && id != known) useTunnel(tunnelFor(address.trim(), id))
         open(newClient)
         _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty())
     }
 
     suspend fun signOut(notice: Txt? = null) {
-        transport?.config = null
+        useTunnel(null)
         routerId = null
         client?.forget()
         client = null
         api = null
+        monitor.reset()
         store.forgetPassword()
         val saved = store.load()
         _state.value = Connection.SignedOut(notice, saved?.address, saved?.username)
@@ -106,15 +128,19 @@ class RouterRepository(
      * Ejecuta [block] con la API del router. Si el router ya no acepta las credenciales
      * guardadas (p. ej. cambiaron la contraseña), cierra la sesión y avisa al usuario.
      */
-    suspend fun <T> use(block: suspend (OpenWrtApi) -> T): T {
+    override suspend fun <T> use(block: suspend (OpenWrtApi) -> T): T {
         val current = api ?: throw UbusException.SessionExpired()
         try {
             return block(current)
-        } catch (e: UbusException.AuthFailed) {
-            signOut(txt(R.string.router_saved_password_rejected))
-            throw e
-        } catch (e: UbusException.SessionExpired) {
-            signOut(txt(R.string.router_session_ended))
+        } catch (e: UbusException) {
+            // Solo si la sesión que falló sigue siendo la de ahora: una lectura que venía de la
+            // anterior (se salió, o se entró en otro router) no cierra la nueva.
+            val notice = when (e) {
+                is UbusException.AuthFailed -> R.string.router_saved_password_rejected
+                is UbusException.SessionExpired -> R.string.router_session_ended
+                else -> null
+            }
+            if (notice != null && api === current) signOut(txt(notice))
             throw e
         }
     }
@@ -157,15 +183,15 @@ class RouterRepository(
     }
 
     /**
-     * Apunta el identificador del router conectado (lo averiguan las pantallas al leer el router).
-     * Si cambia, el acceso remoto que se use es el de este router.
+     * Apunta el identificador del router conectado (se averigua con la primera lectura de la
+     * sesión). Si cambia, el acceso remoto que se use es el de este router.
      */
     suspend fun rememberRouterId(id: String) {
         val signed = _state.value as? Connection.SignedIn ?: return
         if (id == routerId) return
         routerId = id
         store.saveRouterId(id)
-        transport?.config = tunnelFor(signed.address, id)
+        useTunnel(tunnelFor(signed.address, id))
     }
 
     /** Acceso remoto de este teléfono al router conectado (ver [TunnelConfig]), si se sabe cuál es. */
@@ -179,7 +205,7 @@ class RouterRepository(
         val signed = _state.value as? Connection.SignedIn ?: return
         require(config == null || config.routerId == routerId)
         store.saveTunnel(signed.address, routerId, config?.toJson())
-        if (routerId == this.routerId) transport?.config = config
+        if (routerId == this.routerId) useTunnel(config)
     }
 
     /**
@@ -199,9 +225,20 @@ class RouterRepository(
     private suspend fun tunnelFor(address: String, id: String?): TunnelConfig? =
         id?.let { parseTunnel(store.loadTunnel(address, it))?.takeIf { t -> t.routerId == id } }
 
+    private fun useTunnel(config: TunnelConfig?) {
+        transport?.config = config
+        _tunnel.value = config
+    }
+
     private fun open(newClient: UbusClient) {
         client?.forget()
         client = newClient
         api = OpenWrtApi(newClient, ddnsHttp)
+        // Lo leído con la sesión anterior puede ser de otro router.
+        monitor.reset()
+    }
+
+    private companion object {
+        const val NANOS_PER_MILLI = 1_000_000
     }
 }

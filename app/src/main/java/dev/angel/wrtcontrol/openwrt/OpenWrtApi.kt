@@ -3,14 +3,15 @@ package dev.angel.wrtcontrol.openwrt
 import android.util.Log
 import dev.angel.wrtcontrol.addons.AddonsApi
 import dev.angel.wrtcontrol.parental.ParentalApi
-import kotlinx.coroutines.sync.Mutex
 import dev.angel.wrtcontrol.ubus.UbusClient
+import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.coroutines.coroutineScope
 
 /**
  * Llamadas tipadas a OpenWrt (22.03+). Solo usan objetos ubus que trae LuCI:
@@ -37,20 +38,24 @@ class OpenWrtApi(
 
     /**
      * Identifica el aparato (para no mezclar copias de routers distintos en la misma dirección):
-     * el modelo y la MAC de la red de casa, que no cambian al restablecerlo.
+     * el modelo y la MAC de la red de casa, que no cambian al restablecerlo. [board] e [interfaces],
+     * si ya se han leído, ahorran pedirlos otra vez.
      */
-    suspend fun routerId(): String = coroutineScope {
-        val board = async { board() }
+    suspend fun routerId(board: BoardInfo? = null, interfaces: List<NetInterface>? = null): String = coroutineScope {
+        val known = async { board ?: board() }
         val lanMac = try {
-            val lan = interfaces().firstOrNull { it.name == "lan" }
+            val lan = (interfaces ?: interfaces()).firstOrNull { it.name == "lan" }
             val device = lan?.device ?: lan?.l3Device
             device?.let { ubus.callAs<DeviceStatus>("network.device", "status", buildJsonObject { put("name", it) }).macaddr }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: UbusException.Network) {
+            // No se llegó al router: no es que no deje verla. Con una MAC vacía parecería otro router.
+            throw e
         } catch (_: Exception) {
             null
         }
-        board.await().model + "|" + lanMac.orEmpty().uppercase()
+        known.await().model + "|" + lanMac.orEmpty().uppercase()
     }
 
     suspend fun systemInfo(): SystemInfo = ubus.callAs("system", "info")
@@ -58,10 +63,11 @@ class OpenWrtApi(
     suspend fun interfaces(): List<NetInterface> =
         ubus.callAs<InterfaceDump>("network.interface", "dump").interfaces.filter { it.name != "loopback" }
 
-    suspend fun devices(): List<Device> = coroutineScope {
+    /** Los equipos de casa. [knownInterfaces], si ya se han leído, ahorra pedirlas otra vez. */
+    suspend fun devices(knownInterfaces: List<NetInterface>? = null): List<Device> = coroutineScope {
         val hints = async { ubus.callAs<Map<String, HostHint>>("luci-rpc", "getHostHints") }
         val leases = async { ubus.callAs<DhcpLeases>("luci-rpc", "getDHCPLeases") }
-        val ifaces = async { interfaces() }
+        val ifaces = async { knownInterfaces ?: interfaces() }
         buildDeviceList(hints.await(), leases.await(), ifaces.await())
     }
 }

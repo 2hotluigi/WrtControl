@@ -7,70 +7,44 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dev.angel.wrtcontrol.R
-import dev.angel.wrtcontrol.addons.publicAddresses
-import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.data.Loadable
+import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
-import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.openWrtSupportNotice
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.InfoRow
-import dev.angel.wrtcontrol.ui.Loadable
 import dev.angel.wrtcontrol.ui.LoadableContent
+import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.StatusPill
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.formatLoad
 import dev.angel.wrtcontrol.ui.fraction
-import dev.angel.wrtcontrol.ui.pollingFlow
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import dev.angel.wrtcontrol.ui.watchAsState
 import kotlin.time.Duration.Companion.seconds
 
-data class StatusData(val board: BoardInfo, val info: SystemInfo, val interfaces: List<NetInterface>)
+/** Carga y memoria cambian a cada momento. */
+private val STATUS_REFRESH = 5.seconds
 
-class StatusViewModel(repo: RouterRepository) : ViewModel() {
-
-    /** Sesión con la que se averiguó qué router es (otra sesión puede ser otro router). */
-    @Volatile
-    private var identifiedWith: OpenWrtApi? = null
-
-    val state: StateFlow<Loadable<StatusData>> = pollingFlow(5.seconds) {
-        repo.use { api ->
-            coroutineScope {
-                val board = async { api.board() }
-                val info = async { api.systemInfo() }
-                val interfaces = async { api.interfaces() }
-                val data = StatusData(board.await(), info.await(), interfaces.await())
-                // Esta recarga está siempre en marcha con la app abierta: aquí se averigua qué router
-                // es y se apuntan sus direcciones públicas, para el acceso remoto.
-                if (identifiedWith !== api) {
-                    repo.rememberRouterId(api.routerId())
-                    identifiedWith = api
-                }
-                repo.refreshTunnelAddresses(publicAddresses(data.interfaces))
-                data
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
+@Composable
+fun StatusScreen() {
+    val state by LocalRepository.current.monitor.status.watchAsState(STATUS_REFRESH)
+    StatusContent(state)
 }
 
 @Composable
-fun StatusScreen(state: Loadable<StatusData>) {
+fun StatusContent(state: Loadable<StatusData>) {
     LoadableContent(state) { data, error ->
         LazyColumn(
             contentPadding = PaddingValues(16.dp),

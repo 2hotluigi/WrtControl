@@ -19,35 +19,22 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.R
-import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.ui.ErrorBanner
-import dev.angel.wrtcontrol.ui.Loadable
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.formatDuration
-import dev.angel.wrtcontrol.ui.pollingFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import dev.angel.wrtcontrol.ui.watchAsState
 import kotlin.time.Duration.Companion.seconds
 
-class DevicesViewModel(repo: RouterRepository) : ViewModel() {
-    val state: StateFlow<Loadable<List<Device>>> = pollingFlow(10.seconds) { repo.use { it.devices() } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
-}
+/** La lista de equipos cambia despacio. */
+private val DEVICES_REFRESH = 10.seconds
 
 @Composable
-fun DevicesScreen(routerAddress: String) {
-    val repo = LocalRepository.current
-    val vm: DevicesViewModel = viewModel(key = "devices:$routerAddress") { DevicesViewModel(repo) }
-    val state by vm.state.collectAsStateWithLifecycle()
+fun DevicesScreen() {
+    val state by LocalRepository.current.monitor.devices.watchAsState(DEVICES_REFRESH)
 
     LoadableContent(state) { devices, error ->
         LazyColumn(

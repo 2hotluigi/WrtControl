@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
@@ -21,19 +22,19 @@ import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.parental.parseBackup
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ui.Loadable
-import dev.angel.wrtcontrol.ui.pollingFlow
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -54,7 +55,10 @@ data class ParentalData(
 
 class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
 
-    private val refresh = Channel<Unit>(Channel.CONFLATED)
+    private val monitor = repo.monitor
+
+    /** Sube para volver a mirar la copia guardada aunque en el router no haya cambiado nada. */
+    private val recheck = MutableStateFlow(0)
 
     /** IPv4 de este teléfono, para reconocerlo en la lista de dispositivos del router. */
     @Volatile
@@ -67,46 +71,65 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     @Volatile
     private var routerKey: String? = null
 
-    /** Sesión con la que se calculó [routerKey]: otra sesión puede ser otro router en la misma dirección. */
-    @Volatile
-    private var keyApi: OpenWrtApi? = null
-
     /** Última copia guardada, para no reescribirla en cada recarga. */
     @Volatile
     private var savedBackup: String? = null
 
-    val state: StateFlow<Loadable<ParentalData>> = pollingFlow(15.seconds, refresh) {
-        repo.use { api ->
-            coroutineScope {
-                val snapshot = async { api.parental.load() }
-                val list = async { api.devices() }
-                if (keyApi !== api) {
-                    routerKey = null
-                    savedBackup = null
-                }
-                val key = routerKey ?: api.routerId().also { routerKey = it; keyApi = api }
-                val s = snapshot.await()
-                devices = list.await()
-                val empty = s.profiles.isEmpty() && s.settings.copy(admins = emptyList()) == ParentalSettings()
-                // Router vacío con copia guardada: se ofrece restaurarla y, hasta que el usuario
-                // decida, no se sustituye (aunque mientras tanto cree otro perfil).
-                var pending = repo.backupPending(key)
-                val stored = parseBackup(repo.loadBackup(key))
-                if (empty && stored != null && !pending) {
-                    repo.setBackupPending(key, true)
-                    pending = true
-                }
-                // Si los perfiles de la copia ya vuelven a estar (los restauró otro teléfono o se
-                // rehicieron), ya no hay nada que ofrecer.
-                if (pending && !empty && (stored == null || s.profiles.map { it.id }.containsAll(stored.profiles.map { it.id }))) {
-                    repo.setBackupPending(key, false)
-                    pending = false
-                }
-                if (!pending) keepBackup(s.config)
-                ParentalData(s, devices, backup = if (pending) stored else null, phoneMacs = phoneMacs())
-            }
+    /** Lo último que se enseñó, por si falla algo al preparar lo siguiente. */
+    private var shown: ParentalData? = null
+
+    val state: StateFlow<Loadable<ParentalData>> =
+        combine(monitor.parental.watch(REFRESH), monitor.devices.watch(REFRESH), recheck) { parental, list, _ -> parental to list }
+            .map { (parental, list) -> assemble(parental, list) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
+
+    /** Junta los perfiles con los equipos y con lo que haya que ofrecer de la copia del teléfono. */
+    private suspend fun assemble(parental: Loadable<ParentalSnapshot>, list: Loadable<List<Device>>): Loadable<ParentalData> {
+        val snapshot = parental.data
+        val found = list.data
+        val error = parental.error ?: list.error
+        if (snapshot == null || found == null) {
+            shown = null
+            return Loadable(error = error)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
+        devices = found
+        return try {
+            val key = monitor.identity.fresh(Duration.INFINITE)
+            if (key != routerKey) {
+                routerKey = key
+                savedBackup = null
+            }
+            Loadable(ParentalData(snapshot, found, pendingBackup(key, snapshot), phoneMacs()).also { shown = it }, error)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Loadable(shown, e.userMessage())
+        }
+    }
+
+    /**
+     * La copia que hay que ofrecer restaurar, si la hay. Si no hay nada que ofrecer, la copia del
+     * teléfono se pone al día con lo que hay en el router.
+     */
+    private suspend fun pendingBackup(key: String, s: ParentalSnapshot): ParentalConfig? {
+        val empty = s.profiles.isEmpty() && s.settings.copy(admins = emptyList()) == ParentalSettings()
+        // Router vacío con copia guardada: se ofrece restaurarla y, hasta que el usuario
+        // decida, no se sustituye (aunque mientras tanto cree otro perfil).
+        var pending = repo.backupPending(key)
+        val stored = parseBackup(repo.loadBackup(key))
+        if (empty && stored != null && !pending) {
+            repo.setBackupPending(key, true)
+            pending = true
+        }
+        // Si los perfiles de la copia ya vuelven a estar (los restauró otro teléfono o se
+        // rehicieron), ya no hay nada que ofrecer.
+        if (pending && !empty && (stored == null || s.profiles.map { it.id }.containsAll(stored.profiles.map { it.id }))) {
+            repo.setBackupPending(key, false)
+            pending = false
+        }
+        if (!pending) keepBackup(s.config)
+        return if (pending) stored else null
+    }
 
     /** Qué se está aplicando ahora mismo en el router (null si nada). */
     var busy by mutableStateOf<Txt?>(null)
@@ -251,7 +274,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
                 repo.setBackupPending(it, false)
             }
             savedBackup = null
-            refresh.trySend(Unit)
+            recheck.update { it + 1 }
         }
     }
 
@@ -320,12 +343,14 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
                 error = e.userMessage()
             } finally {
                 busy = null
-                refresh.trySend(Unit)
+                monitor.parental.refresh()
             }
         }
     }
 
     private companion object {
         const val TAG = "WrtControl"
+
+        val REFRESH = 15.seconds
     }
 }
