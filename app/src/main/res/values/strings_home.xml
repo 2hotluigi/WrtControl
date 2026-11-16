@@ -10,6 +10,18 @@
     <string name="overview_online_since">Sin cortes desde hace %1$s</string>
     <string name="overview_offline">Sin conexión a internet</string>
     <string name="overview_offline_detail">El router no tiene salida a internet ahora mismo. Revisa el cable que va al módem y que el módem esté encendido.</string>
+    <string name="overview_cable_speed">cable a %1$d Mbps</string>
+    <string name="overview_cable_title">Revisa el cable de internet</string>
+    <string name="link_no_cable">El cable de internet está suelto o el módem está apagado: el router no detecta nada al otro lado.</string>
+    <plurals name="link_flapping">
+        <item quantity="one">El cable de internet se desconectó %1$d vez en los últimos %2$d minutos.</item>
+        <item quantity="other">El cable de internet se desconectó %1$d veces en los últimos %2$d minutos.</item>
+        <item quantity="many">El cable de internet se desconectó %1$d veces en los últimos %2$d minutos.</item>
+    </plurals>
+    <string name="link_flapping_since_boot">El cable de internet se ha desconectado %1$d veces desde que se encendió el router.</string>
+    <string name="link_slow">Va a %1$d Mbps, aunque el router y el módem admiten %2$d.</string>
+    <string name="link_replace_cable">Suele ser el cable: cambia el que va del módem al router.</string>
+    <string name="link_no_internet">El router está conectado al módem, pero no llega a internet. Reinicia el módem; si sigue igual, es cosa de tu proveedor.</string>
     <string name="overview_devices_label">en la red de casa</string>
     <plurals name="overview_devices">
         <item quantity="one">%1$d dispositivo</item>

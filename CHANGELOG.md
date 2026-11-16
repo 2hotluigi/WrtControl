@@ -20,6 +20,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   "Más → Funciones del router" y los datos técnicos a "Más → Router". Desconectar también está en Más.
 
 ### Añadido
+- Salud del cable de internet: Inicio avisa si el cable entre el módem y el router se desconecta
+  a ratos o va más lento de lo que admiten los dos aparatos, y dice qué hacer. "Conectado a
+  internet" ahora se comprueba con un ping desde el router, y si falla distingue el cable suelto
+  de un problema del módem o del proveedor.
 - Inicio: si el router tiene internet y desde cuándo, cuántos dispositivos hay, los perfiles en
   pausa y lo que pide atención (router sin contraseña, reglas sin aplicar, dispositivos nuevos).
 - "Qué puede hacer este router", en Estado: cada función de la app aparece como disponible, se

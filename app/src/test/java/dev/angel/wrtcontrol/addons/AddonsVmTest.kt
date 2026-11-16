@@ -123,6 +123,19 @@ class AddonsVmTest {
         assertEquals(Availability.Ready, capabilities().availability(Feature.RemoteAccess))
     }
 
+    @Test
+    fun `salud del cable - el router dice como esta el enlace de la salida a internet`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        val router = OpenWrtApi(api().first)
+        val link = router.wanLink(router.interfaces())
+        log("enlace WAN: $link")
+        // Una VM puede no dar enlace que mirar; si lo da, está en pie (por él se sale a internet).
+        if (link != null) {
+            assertTrue(link.carrier)
+            assertTrue("sin caídas el registro no hace falta; con ellas se tienen que poder fechar", link.dropsAgoSeconds != null)
+        }
+    }
+
     private suspend fun capabilities(): Capabilities {
         val router = OpenWrtApi(api().first)
         return router.capabilities(router.board(), router.systemInfo())
