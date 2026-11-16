@@ -1,0 +1,70 @@
+# Publica una versión al subir una etiqueta vX.Y.Z (ver "Publicar una versión" en el README):
+# comprueba que la etiqueta, gradle.properties y CHANGELOG.md coinciden, pasa las pruebas, compila
+# la release firmada y crea la release de GitHub con el APK y sus notas.
+#
+# Secrets del repositorio (Settings → Secrets and variables → Actions):
+#   WRTC_KEYSTORE_BASE64   el .jks en base64 (base64 -w0 clave.jks)
+#   WRTC_KEYSTORE_PASSWORD, WRTC_KEY_ALIAS, WRTC_KEY_PASSWORD
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Etiqueta, versión y CHANGELOG
+        id: version
+        run: |
+          tag=${GITHUB_REF_NAME#v}
+          version=$(sed -n 's/^wrtc.version=//p' gradle.properties)
+          [ "$tag" = "$version" ] || { echo "::error::La etiqueta v$tag no coincide con wrtc.version=$version"; exit 1; }
+          # Las notas: la sección "## [X.Y.Z]" de CHANGELOG.md, hasta la siguiente.
+          awk -v v="## [$version]" '$0 == v {on=1; next} /^## \[/ {on=0} /^\[.*\]: http/ {on=0} on' CHANGELOG.md > "$RUNNER_TEMP/notas.md"
+          grep -q '[^[:space:]]' "$RUNNER_TEMP/notas.md" || { echo "::error::CHANGELOG.md no tiene la sección ## [$version]"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pruebas
+        run: ./gradlew :app:testDebugUnitTest :app:detekt
+
+      - name: Clave de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.WRTC_KEYSTORE_BASE64 }}
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::Falta el secret WRTC_KEYSTORE_BASE64 (ver la cabecera de release.yml)"; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/wrtc.jks"
+
+      - name: Release firmada
+        env:
+          WRTC_KEYSTORE: ${{ runner.temp }}/wrtc.jks
+          WRTC_KEYSTORE_PASSWORD: ${{ secrets.WRTC_KEYSTORE_PASSWORD }}
+          WRTC_KEY_ALIAS: ${{ secrets.WRTC_KEY_ALIAS }}
+          WRTC_KEY_PASSWORD: ${{ secrets.WRTC_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease
+          apk=app/build/outputs/apk/release/app-release.apk
+          [ -f "$apk" ] || { echo "::error::No salió firmada (¿faltan secrets?)"; exit 1; }
+          cp "$apk" "$RUNNER_TEMP/WrtControl-${{ steps.version.outputs.version }}.apk"
+          rm -f "$RUNNER_TEMP/wrtc.jks"
+
+      - name: Release de GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/WrtControl-${{ steps.version.outputs.version }}.apk" \
+            --title "WrtControl ${{ steps.version.outputs.version }}" --notes-file "$RUNNER_TEMP/notas.md"

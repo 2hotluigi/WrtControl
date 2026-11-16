@@ -126,3 +126,49 @@ data class DhcpLeases(
         val expires: JsonPrimitive? = null,
     )
 }
+
+// ---------- versiones de OpenWrt ----------
+
+/** Qué se sabe de la app con una versión de OpenWrt (ver "Versiones de OpenWrt" en el README). */
+enum class OpenWrtSupport {
+    /** 24.10 en adelante (y las de desarrollo): las pruebas de la CI corren en ella. */
+    Tested,
+
+    /** 22.03 y 23.05: tienen fw4 y las reglas se comprueban, pero la app no se prueba entera. */
+    MayWork,
+
+    /** Antes de 22.03 (iptables, sin fw4): el control parental no funciona. */
+    Unsupported,
+
+    /** No se reconoce la versión. */
+    Unknown,
+}
+
+/** Versiones como número (24.10 → 2410): la primera probada y la primera con fw4. */
+private const val FIRST_TESTED = 2410
+private const val FIRST_FW4 = 2203
+private const val MINOR_DIGITS = 100
+
+/** [version] como la da system.board ("24.10.4", "25.12-SNAPSHOT", "SNAPSHOT"...). */
+fun openWrtSupport(version: String): OpenWrtSupport {
+    val v = version.trim()
+    val n = Regex("""^(\d+)\.(\d+)""").find(v)?.destructured?.let { (major, minor) -> major.toInt() * MINOR_DIGITS + minor.toInt() }
+    return when {
+        v.equals("SNAPSHOT", ignoreCase = true) -> OpenWrtSupport.Tested
+        n == null -> OpenWrtSupport.Unknown
+        n >= FIRST_TESTED -> OpenWrtSupport.Tested
+        n >= FIRST_FW4 -> OpenWrtSupport.MayWork
+        else -> OpenWrtSupport.Unsupported
+    }
+}
+
+/** El aviso para el usuario con esa versión, o null si no hace falta. */
+fun openWrtSupportNotice(version: String): String? = when (openWrtSupport(version)) {
+    OpenWrtSupport.Tested, OpenWrtSupport.Unknown -> null
+    OpenWrtSupport.MayWork ->
+        "La app se prueba con OpenWrt 24.10 o superior. Con $version puede funcionar, pero si algo falla, " +
+            "actualiza el router."
+    OpenWrtSupport.Unsupported ->
+        "OpenWrt $version es demasiado antiguo: el control parental necesita el firewall de 22.03 o superior " +
+            "(fw4). Lo demás puede funcionar; actualiza el router para usarlo todo."
+}

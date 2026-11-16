@@ -1,6 +1,6 @@
 # WrtControl
 
-App Android (Kotlin + Jetpack Compose) para administrar routers **OpenWrt 22.03 o superior**
+App Android (Kotlin + Jetpack Compose) para administrar routers **OpenWrt 24.10 o superior**
 desde el celular: estado, dispositivos y control parental (perfiles, pausas, horarios con tiempo
 extra, filtro de contenido con búsqueda segura, dispositivos nuevos en cuarentena y protección
 contra los intentos de saltárselo). También instala y configura paquetes opcionales (WireGuard,
@@ -9,6 +9,18 @@ la VPN de Android.
 
 Habla con el router por **ubus JSON-RPC** (`/ubus`, el mismo endpoint que usa LuCI). Para lo
 básico no hay que instalar nada en el router: basta con LuCI.
+
+## Versiones de OpenWrt
+
+| Versión | Soporte | Qué se comprueba |
+|---|---|---|
+| 24.10, 25.12 y snapshot | Probadas | Todas las pruebas de VM cada noche y en los PR que tocan el router, y las reglas con su `nft` y `fw4` |
+| 22.03 y 23.05 | Puede funcionar | Solo que las reglas que genera la app analizan con su `nft` y `fw4`. La app avisa en Estado |
+| 21.02 y anteriores | No | Sin fw4 (nftables) no hay control parental. La app lo avisa |
+
+Cuando una versión deja de tener actualizaciones de OpenWrt, pasa a "puede funcionar"; se retira
+del todo solo si mantenerla obliga a renunciar a algo de las nuevas. En 24.10 el ACL de LuCI no
+deja usar `service list`: para saber si UPnP está en marcha, la app usa `rc list`.
 
 ## Compilar y probar
 
@@ -472,6 +484,25 @@ Límites del acceso remoto:
 - La librería del túnel añade unos 6–7 MB por arquitectura al APK.
 - Una actualización del firmware borra los paquetes instalados (la configuración se queda): la app
   los muestra como no instalados y se pueden volver a instalar.
+
+## Publicar una versión
+
+1. En un PR: subir `wrtc.version` en `gradle.properties` (de ahí sale también `versionCode`:
+   1.4.12 → 10412) y pasar lo de "Sin publicar" de `CHANGELOG.md` a una sección `## [X.Y.Z]`.
+2. Fusionado, etiquetar ese commit: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. El flujo `release.yml` comprueba que la etiqueta, la versión y el CHANGELOG coinciden, pasa
+   las pruebas, compila la release firmada y crea la release de GitHub con el APK y sus notas.
+
+La clave de firma no va en el repositorio. La CI la lee de los secrets `WRTC_KEYSTORE_BASE64`,
+`WRTC_KEYSTORE_PASSWORD`, `WRTC_KEY_ALIAS` y `WRTC_KEY_PASSWORD`. Para compilar una release
+firmada en el PC, las mismas en variables de entorno, con `WRTC_KEYSTORE` como ruta al `.jks`, o en
+`~/.gradle/gradle.properties` como `wrtc.keystore=…`, `wrtc.keystore.password=…`, etc. Sin clave,
+`assembleRelease` la deja sin firmar. Si se pierde la clave, las versiones nuevas no se pueden
+instalar encima de las anteriores: guárdala con una copia fuera del PC.
+
+Cada PR, pequeño y con su definición de hecho (la plantilla de PR): pruebas, CI en verde (incluidas
+las VM si toca el router), README y ROADMAP al día, línea en el CHANGELOG y captura si cambia una
+pantalla.
 
 ## Hoja de ruta
 

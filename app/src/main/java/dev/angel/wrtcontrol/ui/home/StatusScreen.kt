@@ -13,16 +13,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.angel.wrtcontrol.addons.publicAddresses
 import dev.angel.wrtcontrol.data.RouterRepository
-import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.openWrtSupportNotice
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.InfoRow
 import dev.angel.wrtcontrol.ui.Loadable
 import dev.angel.wrtcontrol.ui.LoadableContent
+import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.StatusPill
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
@@ -72,6 +74,9 @@ fun StatusScreen(state: Loadable<StatusData>) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (error != null) item { ErrorBanner("Datos sin actualizar: $error") }
+            openWrtSupportNotice(data.board.release.version)?.let { notice ->
+                item { NoticeCard("Versión de OpenWrt sin probar", notice) }
+            }
             item { SystemCard(data.board, data.info) }
             item { ResourcesCard(data.info) }
             items(data.interfaces, key = { it.name }) { InterfaceCard(it) }

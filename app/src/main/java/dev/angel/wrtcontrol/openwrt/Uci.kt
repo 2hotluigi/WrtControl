@@ -241,6 +241,26 @@ suspend fun UbusCaller.serviceInstances(service: String): Map<String, Boolean>? 
     return instances.mapValues { (_, v) -> ((v as? JsonObject)?.get("running") as? JsonPrimitive)?.content == "true" }
 }
 
+/**
+ * ¿Está en marcha [service]? Con `service list` si se puede; si no (el ACL de LuCI de 24.10 no lo
+ * deja), con `rc list`, que sí deja (lo usa la página de arranque de LuCI) aunque no distingue
+ * instancias. null si no se puede saber de ninguna forma.
+ */
+suspend fun UbusCaller.serviceRunning(service: String): Boolean? =
+    serviceInstances(service)?.values?.any { it } ?: rcRunning(service)
+
+/** `rc list` de [service]: en marcha o no, o null si no se puede preguntar. */
+private suspend fun UbusCaller.rcRunning(service: String): Boolean? {
+    val response = try {
+        callAs<JsonObject>("rc", "list", buildJsonObject { put("name", service) })
+    } catch (_: UbusException.AccessDenied) {
+        null
+    } catch (_: UbusException.Status) {
+        null // procd sin `rc` (versiones antiguas)
+    }
+    return response?.let { ((it[service] as? JsonObject)?.get("running") as? JsonPrimitive)?.content == "true" }
+}
+
 enum class Lookup { Resolved, NxDomain, Failed, Unavailable }
 
 /** Respuesta de [resolve]: el resultado, las direcciones (tras seguir los CNAME) y los CNAME por el camino. */
