@@ -344,11 +344,12 @@ private fun OutsideCheckContent(
         is OutsideCheck.Failed -> Text(check.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         is OutsideCheck.Done -> {
             val advice = check.advice
-            Text(
-                if (advice.ok) "Desde fuera se llega al router." else "Desde fuera no se llega al router.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (advice.ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
+            val (headline, color) = when {
+                advice.ok -> "Desde fuera se llega al router." to MaterialTheme.colorScheme.primary
+                advice.untested -> "Con estos datos móviles no se puede comprobar." to MaterialTheme.colorScheme.onSurface
+                else -> "Desde fuera no se llega al router." to MaterialTheme.colorScheme.error
+            }
+            Text(headline, style = MaterialTheme.typography.bodyMedium, color = color)
             advice.lines.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
             advice.publishOnly?.let { families ->
                 val names = families.sorted().joinToString(" y ") { if (it == IpFamily.V6) "IPv6" else "IPv4" }
