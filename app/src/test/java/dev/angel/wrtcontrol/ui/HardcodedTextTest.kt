@@ -8,16 +8,17 @@ import java.io.File
 /**
  * Los textos de las pantallas van en strings.xml (español en values/, inglés en values-en/), no en
  * el código. Falla si en un fichero de la interfaz aparece un texto fijo donde se muestra algo.
- *
- * [pending]: lo que aún no se ha pasado (fase 2: los ViewModels y los formatos, que se usan
- * también fuera de Compose). Cuando se pase un fichero, se quita de aquí.
  */
 class HardcodedTextTest {
 
     private val uiDir = listOf("src/main/java/dev/angel/wrtcontrol/ui", "app/src/main/java/dev/angel/wrtcontrol/ui")
         .map(::File).first { it.isDirectory }
 
-    private val pending = emptySet<String>()
+    /** Llamadas que muestran texto, con el literal que les llega. */
+    private val shown = Regex(
+        """\b(?:Text|InfoCard|InfoRow|NoticeCard|ErrorBanner|StatusPill|OutlinedButton|TextButton)\(\s*"([^"]*)"""" +
+            """|\b(?:contentDescription|label|title|text|placeholder|supportingText)\s*=\s*"([^"]*)"""",
+    )
 
     /** Nombres técnicos que no se traducen. */
     private val technical = Regex("""\b(?:IPv4|IPv6|DNS|MAC|IP|DHCP|WireGuard|OpenWrt|LuCI|SQM|UPnP|WrtControl)\b""")
@@ -32,7 +33,6 @@ class HardcodedTextTest {
     fun `las pantallas no llevan textos fijos`() {
         val offenders = uiDir.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
-            .filter { it.relativeTo(uiDir).invariantSeparatorsPath !in pending }
             .flatMap { f ->
                 f.readLines().mapIndexedNotNull { i, line ->
                     val code = line.substringBefore("//")

@@ -200,4 +200,11 @@
     <string name="addons_reach_ddns_stale">El DNS dinámico aún da %1$s, que ya no es del router (se actualiza cada pocos minutos).</string>
     <string name="addons_reach_ddns_dead">El DNS dinámico publica %1$s, que no entra: algunos programas la prueban primero y no conectan (WireGuard en Windows, p. ej.). Mejor publicar solo %2$s.</string>
     <string name="addons_reach_ddns_empty">Desde fuera, el nombre del DNS dinámico aún no da ninguna dirección: el proveedor puede tardar unos minutos.</string>
+    <string name="addons_ddns_not_started">El DNS dinámico no arrancó en el router, así que se dejó como estaba.</string>
+    <string name="addons_ddns_not_removed">El router no quitó el DNS dinámico, así que se dejó como estaba.</string>
+    <string name="addons_remote_not_removed">El router no quitó el acceso remoto, así que se dejó como estaba.</string>
+    <string name="addons_remote_not_started">El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.</string>
+    <string name="addons_sqm_reverted">El router dejó de responder con el SQM nuevo, así que se deshizo el cambio.</string>
+    <string name="addons_upnp_not_started">UPnP no arrancó en el router, así que se dejó como estaba.</string>
+    <string name="addons_upnp_not_applied">El router no aplicó el cambio de UPnP, así que se dejó como estaba.</string>
 </resources>

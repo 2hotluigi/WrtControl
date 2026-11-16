@@ -67,11 +67,11 @@ class ErrorsTest {
 
     @Test
     fun `los errores escritos para el usuario se muestran tal cual`() {
-        val reverted = ChangeRevertedException("El cliente perdió internet, así que se deshizo.")
-        assertEquals(reverted.message, describeError(reverted).es)
+        val reverted = ChangeRevertedException(raw("El cliente perdió internet, así que se deshizo."))
+        assertEquals("El cliente perdió internet, así que se deshizo.", describeError(reverted).es)
         assertTrue(describeError(PendingChangeException()).es.contains("otro cambio pendiente"))
-        assertEquals("Hola.", describeError(UbusException.Refused("Hola.")).es)
-        assertEquals("Escribe algo.", describeError(UserFacingException("Escribe algo.")).es)
+        assertEquals("Hola.", describeError(UbusException.Refused(raw("Hola."))).es)
+        assertEquals("Escribe algo.", describeError(UserFacingException(raw("Escribe algo."))).es)
         // También envueltos en un fallo de red (p. ej. el acceso remoto que no conecta).
         val tunnel = dev.angel.wrtcontrol.data.TunnelUnavailableException(raw("El acceso remoto no conecta."))
         assertEquals("El acceso remoto no conecta.", describeError(network(tunnel)).es)
@@ -79,8 +79,8 @@ class ErrorsTest {
 
     @Test
     fun `userRequire es un require con mensaje para el usuario`() {
-        userRequire(true) { "no" }
-        val e = runCatching { userRequire(false) { "Falta el nombre." } }.exceptionOrNull()
+        userRequire(true) { raw("no") }
+        val e = runCatching { userRequire(false) { raw("Falta el nombre.") } }.exceptionOrNull()
         assertTrue(e is UserFacingException && e is IllegalArgumentException)
         assertEquals("Falta el nombre.", describeError(e!!).es)
     }

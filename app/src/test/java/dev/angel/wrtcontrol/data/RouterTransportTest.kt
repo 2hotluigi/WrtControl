@@ -1,7 +1,7 @@
 package dev.angel.wrtcontrol.data
 
-import dev.angel.wrtcontrol.es
 import com.sun.net.httpserver.HttpServer
+import dev.angel.wrtcontrol.es
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.After

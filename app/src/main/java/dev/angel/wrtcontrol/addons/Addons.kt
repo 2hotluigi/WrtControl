@@ -256,8 +256,7 @@ class AddonsApi(
         val removed = before.map { it.name }.filter { it in DDNS_SECTIONS && it !in running }
         var kicked = false
         tx.applySafely(
-            failure = if (running.isNotEmpty()) "El DNS dinámico no arrancó en el router, así que se dejó como estaba." else
-                "El router no quitó el DNS dinámico, así que se dejó como estaba.",
+            failure = txt(if (running.isNotEmpty()) R.string.addons_ddns_not_started else R.string.addons_ddns_not_removed),
             isReverted = { fresh -> fresh.uciSections("ddns") == before },
             isLive = {
                 val instances = tx.serviceInstances("ddns")
@@ -364,8 +363,7 @@ class AddonsApi(
         }
         val uptimeBefore = interfaces.firstOrNull { it.name == VPN_INTERFACE }?.uptime
         tx.applySafely(
-            failure = if (peers.isEmpty()) "El router no quitó el acceso remoto, así que se dejó como estaba." else
-                "El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.",
+            failure = txt(if (peers.isEmpty()) R.string.addons_remote_not_removed else R.string.addons_remote_not_started),
             isReverted = { fresh ->
                 fresh.uciSections("network").filter { it.name.startsWith(VPN_PREFIX) } +
                     fresh.uciSections("firewall").filter { it.name.startsWith(VPN_PREFIX) } == before
@@ -474,7 +472,7 @@ class AddonsApi(
         var polls = 0
         var answered = 0
         tx.applySafely(
-            failure = "El router dejó de responder con el SQM nuevo, así que se deshizo el cambio.",
+            failure = txt(R.string.addons_sqm_reverted),
             isReverted = { fresh -> fresh.uciSections("sqm", "queue").map(::parseSqmQueue) == before },
             // procd recarga sqm un segundo después del apply y run.sh tarda unos segundos más: se
             // confirma solo si el router sigue respondiendo bien pasado ese rato.
@@ -516,8 +514,7 @@ class AddonsApi(
         // paró el servicio (LuCI → Sistema → Arranque), no hay disparador: se arranca o para a mano.
         var kicked = false
         tx.applySafely(
-            failure = if (enabled == true) "UPnP no arrancó en el router, así que se dejó como estaba." else
-                "El router no aplicó el cambio de UPnP, así que se dejó como estaba.",
+            failure = txt(if (enabled == true) R.string.addons_upnp_not_started else R.string.addons_upnp_not_applied),
             isReverted = { fresh -> fresh.uciSections("upnpd", "upnpd").firstOrNull() == section },
             isLive = {
                 if (enabled == null) true else {

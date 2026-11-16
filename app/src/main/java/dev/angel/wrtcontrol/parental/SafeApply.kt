@@ -6,7 +6,6 @@ import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.openwrt.uciApply
 import dev.angel.wrtcontrol.openwrt.uciConfirm
 import dev.angel.wrtcontrol.openwrt.uciRollback
-import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusSession
@@ -57,10 +56,7 @@ class NewerSchemaException : Exception(NEWER_SCHEMA.toString()), UserFacing {
 private val NEWER_SCHEMA = txt(R.string.parental_error_newer_schema)
 
 /** El cambio se aplicó pero no funcionó como se esperaba, y se deshizo. */
-class ChangeRevertedException(override val text: Txt) : Exception(logMessage(text)), UserFacing {
-    // TRANSITORIO (fase 2 de los textos): mientras los complementos pasen el fallo en español.
-    constructor(message: String) : this(raw(message))
-}
+class ChangeRevertedException(override val text: Txt) : Exception(logMessage(text)), UserFacing
 
 /** Lo lanza la comprobación cuando el fallo es definitivo y no vale la pena seguir esperando. */
 class VerificationFailed(val text: Txt) : Exception(text.toString())
@@ -152,15 +148,6 @@ internal suspend fun UbusSession.applySafely(
     }
     uciConfirm()
 }
-
-// TRANSITORIO (fase 2 de los textos): mientras los complementos pasen el fallo en español.
-internal suspend fun UbusSession.applySafely(
-    failure: String,
-    isReverted: suspend (fresh: UbusSession) -> Boolean,
-    afterApply: suspend () -> Unit = {},
-    afterRevert: suspend () -> Unit = {},
-    isLive: suspend () -> Boolean,
-) = applySafely(raw(failure), isReverted, afterApply, afterRevert, isLive)
 
 /**
  * Mientras el apply sigue pendiente, rpcd da esta misma sesión a cualquier login del usuario: hasta

@@ -231,7 +231,7 @@ class AddonsApiTest {
             api.setUpnp(enabled = true)
             fail("tenía que deshacerse")
         } catch (e: ChangeRevertedException) {
-            assertEquals("UPnP no arrancó en el router, así que se dejó como estaba.", e.message)
+            assertEquals("UPnP no arrancó en el router, así que se dejó como estaba.", e.text.es)
         }
         assertEquals("0", f.fake.option("config", "enabled"))
     }

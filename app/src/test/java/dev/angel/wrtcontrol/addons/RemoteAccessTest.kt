@@ -199,7 +199,7 @@ class RemoteAccessTest {
             api.enableRemoteAccess("abcd1234", "Pixel 8", X25519.publicKey(phone), psk)
             fail("tenía que deshacerse")
         } catch (e: dev.angel.wrtcontrol.parental.ChangeRevertedException) {
-            assertEquals("El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.", e.message)
+            assertEquals("El router no levantó el acceso remoto (WireGuard), así que se dejó como estaba.", e.text.es)
         }
         assertTrue(f.fake.committed.keys.none { it.startsWith(VPN_PREFIX) })
     }

@@ -8,15 +8,13 @@ import java.net.NoRouteToHostException
 import java.net.SocketException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
-import kotlin.experimental.ExperimentalTypeInference
 
 /**
  * Un error que ya trae su texto para el usuario ([text]: qué pasó y qué hacer). Se muestra tal
  * cual. El resto de errores (de ubus, de red o fallos de la app) se traducen en [describeError].
  */
 interface UserFacing {
-    // TRANSITORIO (fase 2 de los textos): mientras quede algún error con el mensaje en español.
-    val text: Txt get() = raw((this as Throwable).message.orEmpty())
+    val text: Txt
 }
 
 /**
@@ -25,22 +23,11 @@ interface UserFacing {
  * El mensaje de la excepción (para el registro) es el nombre del recurso y sus datos.
  */
 class UserFacingException(override val text: Txt, cause: Throwable? = null) :
-    IllegalArgumentException(text.toString(), cause), UserFacing {
-    // TRANSITORIO (fase 2 de los textos).
-    constructor(message: String) : this(raw(message))
-}
+    IllegalArgumentException(text.toString(), cause), UserFacing
 
 /** Como `require`, pero con un texto para el usuario (ver [UserFacingException]). */
-@OptIn(ExperimentalTypeInference::class)
-@OverloadResolutionByLambdaReturnType
 inline fun userRequire(value: Boolean, text: () -> Txt) {
     if (!value) throw UserFacingException(text())
-}
-
-// TRANSITORIO (fase 2 de los textos).
-@JvmName("userRequireRaw")
-inline fun userRequire(value: Boolean, message: () -> String) {
-    if (!value) throw UserFacingException(raw(message()))
 }
 
 /**
