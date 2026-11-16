@@ -16,7 +16,11 @@ import kotlinx.coroutines.coroutineScope
  * Llamadas tipadas a OpenWrt (22.03+). Solo usan objetos ubus que trae LuCI:
  * no hace falta instalar nada en el router.
  */
-class OpenWrtApi(private val ubus: UbusClient) {
+class OpenWrtApi(
+    private val ubus: UbusClient,
+    /** Para hablar con el proveedor del DNS dinámico por internet, no por el router. */
+    ddnsHttp: dev.angel.wrtcontrol.addons.DdnsHttp? = null,
+) {
 
     /** Un cambio a la vez: rpcd solo admite un `uci apply` pendiente de confirmar. */
     private val writeLock = Mutex()
@@ -25,7 +29,7 @@ class OpenWrtApi(private val ubus: UbusClient) {
     val parental = ParentalApi(ubus, log = { Log.d("WrtControl", it) }, writeLock = writeLock)
 
     /** Paquetes opcionales: WireGuard, DNS dinámico, SQM y UPnP. */
-    val addons = AddonsApi(ubus, writeLock)
+    val addons = AddonsApi(ubus, writeLock, ddnsHttp = ddnsHttp)
 
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 

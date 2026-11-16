@@ -27,6 +27,30 @@ class AddonsVmTest {
     private val vm: String? = System.getenv("WRTCONTROL_VM")
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
 
+    /** Contraseña de root (la VM y la CI no tienen; un router de verdad, sí). */
+    private val password: String = System.getenv("WRTCONTROL_PASSWORD").orEmpty()
+
+    /**
+     * Este PC visto desde el router, para el "proveedor" de DNS dinámico. En la NAT de VirtualBox
+     * es 10.0.3.2; con un router de verdad, p. ej. la IP del PC en la LAN.
+     */
+    private val pcAddress: String = System.getenv("WRTCONTROL_PC_ADDRESS") ?: "10.0.3.2"
+
+    /** Puerto de ese "proveedor"; fijo si el firewall del PC solo deja entrar a uno (0: cualquiera). */
+    private val pcPort: Int = System.getenv("WRTCONTROL_PC_PORT")?.toIntOrNull() ?: 0
+
+    /**
+     * O el "proveedor" del internet de pruebas del router ("host:puerto", `netns-client.sh inet-up`:
+     * 198.51.100.2:47102), que no depende del firewall del PC.
+     */
+    private val ddnsTarget: String? = System.getenv("WRTCONTROL_DDNS_TARGET")
+
+    /** El cliente de pruebas es la .99 de la LAN del router (tools/vm/netns-client.sh). */
+    private val clientIp: String get() = vm!!.substringBeforeLast('.') + ".99"
+
+    /** IPv4 de la WAN según el propio router (10.0.3.15 en la VM). */
+    private fun wanIpv4(): String = ssh(". /lib/functions/network.sh; network_get_ipaddr ip wan; echo \$ip").lines().last()
+
     private fun ssh(command: String): String {
         var out = ""
         repeat(4) { attempt ->
@@ -43,6 +67,16 @@ class AddonsVmTest {
 
     private fun log(msg: String) = println("[${LocalTime.now().withNano(0)}] $msg")
 
+    /**
+     * Las pruebas dejan la función como al instalar el paquete. En un router que ya la usa (el de
+     * casa, al que se llega por el túnel de desarrollo) se saltan, para no borrar lo de verdad.
+     * [check]: un comando que solo escribe algo si está en uso.
+     */
+    private fun assumeNotInUse(what: String, check: String) {
+        val inUse = ssh("$check || true").trim()
+        assumeTrue("El router ya usa $what ($inUse): la prueba lo borraría", inUse.isEmpty())
+    }
+
     /** UPnP como lo deja el paquete: desactivado, sin dirección externa forzada y sin puertos. */
     private fun resetUpnp() = ssh(
         "uci set upnpd.config.enabled=0; uci set upnpd.config.secure_mode=1; uci -q delete upnpd.config.external_ip; " +
@@ -51,13 +85,17 @@ class AddonsVmTest {
 
     private fun api(): Pair<UbusClient, AddonsApi> {
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
-        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", ""))
+        val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
         return client to AddonsApi(client)
     }
 
     @Test
     fun `instala WireGuard desde cero y netifd lo carga`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        // Desinstala WireGuard: si el router tiene otro túnel en uso (p. ej. el de desarrollo a
+        // distancia), quien lanza la prueba por él se quedaría fuera.
+        val otherTunnels = ssh("uci show network | grep proto=.wireguard. | grep -v network.$VPN_INTERFACE.proto || true")
+        assumeTrue("El router usa WireGuard ($otherTunnels): no se desinstala", otherTunnels.isBlank())
         val (_, api) = api()
         // Punto de partida: sin WireGuard y con netifd sin el protocolo.
         // apk desde 25.12; opkg hasta 24.10.
@@ -80,6 +118,7 @@ class AddonsVmTest {
     @Test
     fun `UPnP abre un puerto desde el cliente y la app lo ve y lo cierra`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("UPnP", "uci -q get upnpd.config.enabled | grep -x 1")
         assumeTrue("Hace falta el cliente de pruebas (tools/vm/netns-client.sh up)", ssh("/usr/libexec/ip-full netns list").contains("wrtc_client"))
         val (_, api) = api()
         resetUpnp()
@@ -90,7 +129,7 @@ class AddonsVmTest {
         val before = api.state()
         assertEquals(AddonStatus.Installed, before.status(Addon.Upnp, packages))
         // La WAN de la VM tiene IP privada (doble NAT, como con CGNAT): miniupnpd no abre nada así.
-        assertEquals("10.0.3.15", before.internetIpv4)
+        assertEquals(wanIpv4(), before.internetIpv4)
         assertTrue(before.behindNat)
         // Para la prueba se le da una dirección externa pública (solo es un dato para miniupnpd).
         ssh("uci set upnpd.config.external_ip=1.2.3.4; uci commit upnpd")
@@ -102,12 +141,27 @@ class AddonsVmTest {
             // La prueba sí lo mira: miniupnpd tiene que estar en marcha para abrir el puerto.
             assertTrue("miniupnpd en marcha", ssh("pgrep miniupnpd >/dev/null && echo si || echo no").endsWith("si"))
 
-            val out = ssh("/usr/libexec/ip-full netns exec wrtc_client upnpc -m wrtc_v1 -e wrtcontrol-prueba -a 192.168.56.99 4444 4444 TCP 2>&1 | tail -3")
+            val out = ssh("/usr/libexec/ip-full netns exec wrtc_client upnpc -m wrtc_v1 -e wrtcontrol-prueba -a $clientIp 4444 4444 TCP 2>&1 | tail -3")
             log("upnpc: $out")
             val opened = api.state().upnp!!.mappings
             log("puertos: $opened")
+            if (opened.none { it.externalPort == 4444 }) {
+                // luci.upnp lee la cadena upnp_prerouting de fw4 y el fichero de concesiones.
+                val rules = ssh("nft list chain inet fw4 upnp_prerouting 2>&1 | grep 'dport 4444' || true")
+                log("tablas: ${ssh("nft list tables")}")
+                log("upnp en nft: ${ssh("nft list ruleset | grep -n -i -E 'upnp|4444' | head -20")}")
+                log("concesiones: ${ssh("cat \$(uci -q get upnpd.config.upnp_lease_file) 2>&1 | head -5")}")
+                log("get_status: ${ssh("ubus call luci.upnp get_status 2>&1 | head -30")}")
+                // Snapshot (nov. 2026): miniupnpd pone "counter packets N bytes N" antes del dnat y la
+                // expresión de luci.upnp (dport seguido de dnat) ya no reconoce la regla. Fallo de
+                // luci-app-upnp, no de la app: el ACL de LuCI solo deja verlo por get_status.
+                assumeTrue(
+                    "luci.upnp no lista las reglas con contador de miniupnpd (fallo de luci-app-upnp): $rules",
+                    !(rules.contains("dnat") && rules.contains("counter")),
+                )
+            }
             val mapping = opened.single { it.externalPort == 4444 }
-            assertEquals("192.168.56.99", mapping.address)
+            assertEquals(clientIp, mapping.address)
             assertEquals("TCP", mapping.protocol)
             assertEquals("wrtcontrol-prueba", mapping.description)
 
@@ -125,6 +179,7 @@ class AddonsVmTest {
     @Test
     fun `si UPnP no arranca el router lo deshace solo y la app lo dice`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("UPnP", "uci -q get upnpd.config.enabled | grep -x 1")
         val (_, api) = api()
         resetUpnp()
         assertEquals(false, api.state().upnp!!.enabled)
@@ -155,6 +210,7 @@ class AddonsVmTest {
     @Test
     fun `acceso remoto con un WireGuard de verdad desde el cliente`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("el acceso remoto de la app", "uci -q get network.$VPN_INTERFACE")
         assumeTrue("Hace falta el cliente de pruebas (tools/vm/netns-client.sh up)", ssh("/usr/libexec/ip-full netns list").contains("wrtc_client"))
         ssh("/usr/libexec/ip-full link set wrtc_v0 master br-lan up; sleep 2")
         val (client, api) = api()
@@ -176,7 +232,7 @@ class AddonsVmTest {
             client("/usr/libexec/ip-full link add wgc type wireguard")
             client(
                 "wg set wgc private-key /tmp/wgc.key peer ${setup.routerPublicKey} preshared-key /tmp/wgc.psk " +
-                    "endpoint 192.168.56.2:${setup.port} allowed-ips ${setup.routerTunnelAddress}/32,1.1.1.1/32 persistent-keepalive 5",
+                    "endpoint $vm:${setup.port} allowed-ips ${setup.routerTunnelAddress}/32,1.1.1.1/32 persistent-keepalive 5",
             )
             client("/usr/libexec/ip-full addr add ${setup.phoneAddress}/32 dev wgc")
             client("/usr/libexec/ip-full link set wgc up")
@@ -243,28 +299,45 @@ class AddonsVmTest {
     @Test
     fun `DNS dinamico avisa al proveedor con el nombre, la IP y el token`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeNotInUse("el DNS dinámico de la app", "uci show ddns | grep -E '^ddns.$DDNS_SECTION6?.domain=' | grep -v vmtest.example.org")
         val (_, api) = api()
         assertEquals(AddonStatus.Installed, api.state().status(Addon.Ddns, api.packages()))
 
-        // El "proveedor": un servidor HTTP aquí, al que la VM llega por la puerta de enlace del NAT de VirtualBox.
+        // El "proveedor": el del "internet" de pruebas del router (netns-client.sh inet-up), o un
+        // servidor HTTP aquí, al que la VM llega por la puerta de enlace del NAT de VirtualBox.
         val requests = java.util.concurrent.LinkedBlockingQueue<String>()
-        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(0), 0)
-        server.createContext("/") { ex ->
-            requests += ex.requestURI.toString()
-            val body = "good".toByteArray()
-            ex.sendResponseHeaders(200, body.size.toLong())
-            ex.responseBody.use { it.write(body) }
+        val server = if (ddnsTarget != null) null else {
+            com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(pcPort), 0).apply {
+                createContext("/") { ex ->
+                    requests += ex.requestURI.toString()
+                    val body = "good".toByteArray()
+                    ex.sendResponseHeaders(200, body.size.toLong())
+                    ex.responseBody.use { it.write(body) }
+                }
+                start()
+            }
         }
-        server.start()
+        val provider = ddnsTarget ?: "$pcAddress:${server!!.address.port}"
+        if (ddnsTarget != null) ssh(": > $ROUTER_DDNS_LOG")
+        // En el router, la primera línea de la petición: "GET /nic/update?... HTTP/1.1".
+        fun routerRequest(): String? =
+            ssh("head -1 $ROUTER_DDNS_LOG").lines().lastOrNull { it.startsWith("GET ") }?.split(' ')?.get(1)
+        fun nextRequest(): String? =
+            if (server != null) requests.poll(60, TimeUnit.SECONDS) else
+                (1..60).asSequence().map { routerRequest().also { if (it == null) Thread.sleep(1000) } }.firstOrNull { it != null }
         // La WAN de la VM tiene IP privada: ddns-scripts no la envía salvo que se le permita.
         ssh("uci set ddns.global.upd_privateip=1; uci commit ddns")
+        // Antes de avisar, ddns-scripts mira qué IP tiene registrada el nombre y, si no la saca,
+        // reintenta en vez de avisar. Que dependa del DNS de la WAN no sirve (el de algunos módems
+        // ni contesta por un nombre que no existe): dnsmasq da una IP vieja, distinta de la WAN.
+        ssh("uci add_list dhcp.@dnsmasq[0].address=/vmtest.example.org/$OLD_DDNS_IP; uci commit dhcp; /etc/init.d/dnsmasq reload")
         try {
-            val url = "http://10.0.3.2:${server.address.port}/nic/update?hostname=[DOMAIN]&myip=[IP]&pass=[PASSWORD]"
+            val url = "http://$provider/nic/update?hostname=[DOMAIN]&myip=[IP]&pass=[PASSWORD]"
             api.saveDdns(DdnsEdit(DdnsProvider.Custom, "vmtest.example.org", "secreto123", families = setOf(IpFamily.V4), updateUrl = url))
             log("ddns: ${ssh("uci show ddns.$DDNS_SECTION")}")
-            val request = requests.poll(60, TimeUnit.SECONDS)
+            val request = nextRequest()
             log("petición: $request")
-            assertEquals("/nic/update?hostname=vmtest.example.org&myip=10.0.3.15&pass=secreto123", request)
+            assertEquals("/nic/update?hostname=vmtest.example.org&myip=${wanIpv4()}&pass=secreto123", request)
 
             var own: DdnsService? = null
             repeat(10) {
@@ -279,10 +352,11 @@ class AddonsVmTest {
         } finally {
             api.removeDdns()
             ssh("uci set ddns.global.upd_privateip=0; uci commit ddns")
-            server.stop(0)
+            ssh("uci del_list dhcp.@dnsmasq[0].address=/vmtest.example.org/$OLD_DDNS_IP; uci commit dhcp; /etc/init.d/dnsmasq reload")
+            server?.stop(0)
         }
         assertTrue(api.state().ownDdns.isEmpty())
-        assertFalse(ssh("ubus call service list '{\"name\":\"ddns\"}'").contains(DDNS_SECTION))
+        assertFalse(ssh("ubus call service list").contains(DDNS_SECTION))
     }
 
     @Test
@@ -310,3 +384,9 @@ class AddonsVmTest {
         assertEquals(queue, api.state().sqm!!.first())
     }
 }
+
+/** La IP "registrada" que da dnsmasq al nombre de la prueba de DNS dinámico (de documentación). */
+private const val OLD_DDNS_IP = "203.0.113.7"
+
+/** Donde apunta las peticiones el proveedor de netns-client.sh. */
+private const val ROUTER_DDNS_LOG = "/tmp/wrtc_ddns_requests"

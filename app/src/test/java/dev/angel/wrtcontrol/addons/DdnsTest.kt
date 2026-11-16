@@ -123,14 +123,121 @@ class DdnsTest {
         assertEquals(DdnsLog(null, null), parseDdnsLog(null))
     }
 
+    @Test
+    fun `deSEC borra con un valor vacio y dynv6 con un guion`() {
+        val only6 = DdnsRecords(null, "2001:db8::1")
+        val desec = ddnsSyncCalls(DdnsEdit(DdnsProvider.Desec, "micasa", "t0k"), only6).single()
+        assertEquals(
+            "https://update.dedyn.io/update?username=micasa.dedyn.io&password=t0k&hostname=micasa.dedyn.io&myipv4=&myipv6=2001%3Adb8%3A%3A1",
+            desec.url,
+        )
+        assertTrue(desec.accepted(DdnsHttpResponse(200, "good")))
+        assertFalse(desec.accepted(DdnsHttpResponse(401, "badauth")))
+        val only4 = ddnsSyncCalls(DdnsEdit(DdnsProvider.Desec, "micasa", "t0k"), DdnsRecords("203.0.113.5", null)).single()
+        assertTrue(only4.url.endsWith("&myipv4=203.0.113.5&myipv6="))
+
+        val dynv6 = ddnsSyncCalls(DdnsEdit(DdnsProvider.Dynv6, "micasa.dynv6.net", "t"), only6).single()
+        assertEquals("https://dynv6.com/api/update?hostname=micasa.dynv6.net&token=t&ipv4=-&ipv6=2001%3Adb8%3A%3A1", dynv6.url)
+        assertTrue(dynv6.accepted(DdnsHttpResponse(200, "addresses updated")))
+        // El AAAA no se puede borrar en dynv6: no se manda ipv6 y se avisa.
+        val dynv6Only4 = ddnsSyncCalls(DdnsEdit(DdnsProvider.Dynv6, "micasa.dynv6.net", "t"), DdnsRecords("203.0.113.5", null)).single()
+        assertTrue(dynv6Only4.url.endsWith("&ipv4=203.0.113.5"))
+        assertTrue(ddnsSyncCalls(DdnsEdit(DdnsProvider.Custom, "a.example.org", "t", updateUrl = "https://x/?ip=[IP]"), only6).isEmpty())
+    }
+
+    @Test
+    fun `dynv6 avisa de que la IPv6 antigua hay que quitarla a mano`() = runTest {
+        val notice = syncDdnsRecords(
+            { DdnsHttpResponse(200, "addresses unchanged") },
+            DdnsEdit(DdnsProvider.Dynv6, "micasa.dynv6.net", "t"),
+            DdnsRecords("203.0.113.5", null),
+        )
+        assertTrue(notice!!.contains("quítala en dynv6.com"))
+    }
+
     // ---------- contra el router simulado ----------
 
-    private fun TestScope.setup(): Pair<FakeAddons, AddonsApi> {
+    private fun TestScope.setup(http: DdnsHttp? = null): Pair<FakeAddons, AddonsApi> {
         val f = FakeAddons()
         f.install("luci-app-ddns")
         f.fake.interfaces = mapOf("lan" to "br-lan", "wan" to "eth1")
         f.fake.clock = { testScheduler.currentTime }
-        return f to AddonsApi(f.router.client(Credentials("root", ""), io = StandardTestDispatcher(testScheduler)))
+        return f to AddonsApi(f.router.client(Credentials("root", ""), io = StandardTestDispatcher(testScheduler)), ddnsHttp = http)
+    }
+
+    /** El proveedor: apunta lo que se le pide y contesta [answer]. */
+    private class FakeProvider(var answer: (String) -> DdnsHttpResponse = { DdnsHttpResponse(200, "OK") }) : DdnsHttp {
+        val urls = mutableListOf<String>()
+        override suspend fun get(url: String): DdnsHttpResponse {
+            urls += url
+            return answer(url)
+        }
+    }
+
+    @Test
+    fun `con solo IPv6 el telefono borra en DuckDNS la IPv4 que tuviera el nombre`() = runTest {
+        // Como el GL-MT6000 tras el módem de Megacable: IPv4 privada en la WAN y una IPv6 global.
+        val provider = FakeProvider()
+        val (f, api) = setup(provider)
+        f.ipv4 = mapOf("wan" to "192.168.1.2")
+        f.prefixLocal = mapOf("lan" to "2001:db8:7::1")
+        f.ddnsLog = okLog
+
+        val notice = api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "tok"))
+
+        assertNull(notice)
+        assertEquals(
+            listOf(
+                "https://www.duckdns.org/update?domains=micasa&token=tok&clear=true",
+                // Sin ip=: DuckDNS pondría la IPv4 del teléfono.
+                "https://www.duckdns.org/update?domains=micasa&token=tok&ipv6=2001%3Adb8%3A7%3A%3A1",
+            ),
+            provider.urls,
+        )
+        assertNull(f.fake.committed[DDNS_SECTION])
+        assertEquals("1", f.fake.option(DDNS_SECTION6, "use_ipv6"))
+    }
+
+    @Test
+    fun `con IPv4 publica e IPv6 se publican las dos`() = runTest {
+        val provider = FakeProvider()
+        val (f, api) = setup(provider)
+        f.ipv4 = mapOf("wan" to "203.0.113.5")
+        f.prefixLocal = mapOf("lan" to "2001:db8:7::1")
+        f.ddnsLog = okLog
+
+        api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "tok"))
+
+        assertEquals("https://www.duckdns.org/update?domains=micasa&token=tok&ip=203.0.113.5&ipv6=2001%3Adb8%3A7%3A%3A1", provider.urls.last())
+        assertEquals("0", f.fake.option(DDNS_SECTION, "use_ipv6"))
+        assertEquals("1", f.fake.option(DDNS_SECTION6, "use_ipv6"))
+    }
+
+    @Test
+    fun `si el proveedor rechaza el token no se toca el router`() = runTest {
+        val provider = FakeProvider { DdnsHttpResponse(200, "KO") }
+        val (f, api) = setup(provider)
+        f.prefixLocal = mapOf("lan" to "2001:db8:7::1")
+
+        val e = runCatching { api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "malo")) }.exceptionOrNull()
+
+        assertTrue(e is DdnsRejectedException)
+        assertTrue(e!!.message!!.contains("rechazó el nombre o el token"))
+        assertEquals(1, provider.urls.size)
+        assertNull(f.fake.committed[DDNS_SECTION6])
+    }
+
+    @Test
+    fun `sin llegar al proveedor se configura el router igual y se avisa`() = runTest {
+        val provider = FakeProvider { throw java.io.IOException("sin conexión") }
+        val (f, api) = setup(provider)
+        f.prefixLocal = mapOf("lan" to "2001:db8:7::1")
+        f.ddnsLog = okLog
+
+        val notice = api.saveDdns(DdnsEdit(DdnsProvider.DuckDns, "micasa", "tok"))
+
+        assertTrue(notice!!.startsWith("No se pudo avisar a DuckDNS desde el teléfono"))
+        assertEquals("1", f.fake.option(DDNS_SECTION6, "use_ipv6"))
     }
 
     @Test

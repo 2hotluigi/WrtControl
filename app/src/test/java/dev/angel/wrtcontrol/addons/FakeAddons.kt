@@ -43,8 +43,11 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
 
     val protos = mutableSetOf("dhcp", "dhcpv6", "static", "ppp")
 
-    /** Acciones de luci.setInitAction: "network restart", "sqm enable"... */
+    /** Acciones de luci.setInitAction o de rc init: "network restart", "sqm enable"... */
     val initActions = mutableListOf<String>()
+
+    /** Como desde 25.12.6: el ACL de LuCI ya no deja luci.setInitAction, solo `rc init`. */
+    var noSetInitAction = false
 
     /** Comandos de cgi-exec, ya sin escapar. */
     val commands = mutableListOf<String>()
@@ -214,7 +217,7 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
                 }
                 ok("""{"code":0}""")
             }
-            "luci.setInitAction" -> {
+            "luci.setInitAction", "rc.init" -> if (noSetInitAction && call.name == "luci.setInitAction") accessDenied else {
                 initActions += "${arg("name")} ${arg("action")}"
                 if (arg("name") == "ddns" && arg("action") in setOf("start", "restart")) ddnsStarted = ddnsEnabled().toSet()
                 if (arg("name") == "ddns" && arg("action") == "stop") ddnsStarted = emptySet()
@@ -223,7 +226,7 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
                     "start", "restart" -> upnpStopped = false
                     "stop" -> upnpStopped = true
                 }
-                ok("""{"result":true}""")
+                if (call.name == "rc.init") ok() else ok("""{"result":true}""")
             }
             "service.list" -> if (oldRouter) accessDenied else when (arg("name")) {
                 "miniupnpd" -> ok(buildJsonObject {

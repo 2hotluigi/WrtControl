@@ -30,6 +30,8 @@ class RouterRepository(
     private val http: OkHttpClient,
     /** Camino hasta el router: directo en casa, por el acceso remoto fuera. */
     val transport: RouterTransport? = null,
+    /** Para avisar al proveedor del DNS dinámico por internet (no por el túnel). */
+    private val ddnsHttp: dev.angel.wrtcontrol.addons.DdnsHttp? = null,
 ) {
     private val _state = MutableStateFlow<Connection>(Connection.Loading)
     val state: StateFlow<Connection> = _state.asStateFlow()
@@ -195,6 +197,6 @@ class RouterRepository(
     private fun open(newClient: UbusClient) {
         client?.forget()
         client = newClient
-        api = OpenWrtApi(newClient)
+        api = OpenWrtApi(newClient, ddnsHttp)
     }
 }

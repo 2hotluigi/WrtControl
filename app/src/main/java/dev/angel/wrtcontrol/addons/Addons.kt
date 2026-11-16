@@ -147,6 +147,8 @@ class AddonsApi(
     /** Lo que se espera a que el router vuelva tras reiniciar la red. */
     private val restartWaitMs: Long = 45_000,
     private val pollMs: Long = 1_000,
+    /** Para avisar al proveedor del DNS dinámico desde el teléfono; null, no se avisa. */
+    private val ddnsHttp: DdnsHttp? = null,
 ) {
     /** Paquetes instalados (es un listado grande: no conviene pedirlo en cada recarga). */
     suspend fun packages(): InstalledPackages? = ubus.installedPackages()
@@ -200,22 +202,26 @@ class AddonsApi(
     }
 
     /**
-     * Crea o cambia el DNS dinámico de WrtControl (la sección `wrtcontrol`). Se da por bueno cuando
-     * su actualizador está en marcha; si el proveedor rechaza el token, se ve después en el estado.
+     * Crea o cambia el DNS dinámico de WrtControl (las secciones `wrtcontrol` y `wrtcontrol6`). Antes,
+     * el teléfono deja el nombre en el proveedor con las direcciones que se publican y borra la otra
+     * familia ([syncDdnsRecords]): si el proveedor rechaza el nombre o el token, no se toca el router.
+     * Se da por bueno cuando los actualizadores están en marcha. Devuelve un aviso para el usuario.
      */
-    suspend fun saveDdns(edit: DdnsEdit) = writeLock.withLock {
+    suspend fun saveDdns(edit: DdnsEdit): String? = writeLock.withLock {
         ddnsProblem(edit)?.let { throw IllegalArgumentException(it) }
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val sections = tx.uciSections("ddns")
         val interfaces = tx.callAs<InterfaceDump>("network.interface", "dump").interfaces
-        val wanted = edit.families.ifEmpty { ddnsFamilies(interfaces) }
-            .sorted().map { ddnsSection(edit, ddnsInterface(interfaces, it == IpFamily.V6), it) }
+        val families = edit.families.ifEmpty { ddnsFamilies(interfaces) }
+        val notice = ddnsHttp?.let { syncDdnsRecords(it, edit, ddnsRecords(interfaces, families)) }
+        val wanted = families.sorted().map { ddnsSection(edit, ddnsInterface(interfaces, it == IpFamily.V6), it) }
         val current = sections.filter { it.name in DDNS_SECTIONS }
-        if (current.toSet() == wanted.toSet()) return@withLock
+        if (current.toSet() == wanted.toSet()) return@withLock notice
         current.filter { it !in wanted }.forEach { tx.uciDelete("ddns", it.name) }
         wanted.filter { it !in current }.forEach { tx.uciAdd("ddns", it) }
         applyDdns(tx, sections, running = wanted.map { it.name }.toSet())
+        notice
     }
 
     /** Quita el DNS dinámico de WrtControl (los servicios de LuCI no se tocan). */

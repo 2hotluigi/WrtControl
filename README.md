@@ -71,6 +71,37 @@ WrtControl y en UTC.
 - DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
   le envía el nombre, la IP y el token.
 
+### Prueba contra un router de verdad
+
+Las mismas pruebas valen para un router físico (probadas en un GL.iNet GL-MT6000 con 25.12.6). El
+cliente de pruebas toma la LAN del router (la `.99`) y las direcciones se leen del router. Lo que
+cambia respecto a la VM:
+- El PC no siempre queda al otro lado de la WAN, así que el eco de las conexiones largas va en
+  otro namespace del router, dentro de la zona wan (`inet-up`, necesita `socat`).
+- Si el PC sale a internet por ese router, la cuarentena lo dejaría sin conexión:
+  `WRTCONTROL_KEEP_MACS` lo aprueba siempre.
+- El "proveedor" de DNS dinámico va también en ese "internet" (`WRTCONTROL_DDNS_TARGET`), sin abrir
+  el firewall del PC. También puede ir en el PC, que el router ve por la LAN (`WRTCONTROL_PC_ADDRESS`,
+  y `WRTCONTROL_PC_PORT` para fijar el puerto que se abre en su firewall). La IP que el nombre
+  tiene "registrada" la da dnsmasq del router, sin depender del DNS del módem.
+- Con contraseña de root, las pruebas la leen de `WRTCONTROL_PASSWORD`, y el SSH entra con una clave
+  (`WRTCONTROL_SSH_OPTS=-i ~/.ssh/clave -o IdentitiesOnly=yes`).
+- A distancia, por un WireGuard propio del router: si el router tiene un túnel WireGuard que no es
+  el de la app, la prueba que desinstala WireGuard se salta (dejaría fuera a quien la lanza).
+- Las pruebas dejan cada función como al instalar el paquete. Si el router ya usa el DNS dinámico,
+  el acceso remoto o UPnP de la app, esas pruebas se saltan para no borrar la configuración de verdad.
+
+```sh
+ssh root@192.168.8.1 'apk add ip-full kmod-veth socat miniupnpc'
+ssh root@192.168.8.1 'cat > /tmp/c.sh && sh /tmp/c.sh up && sh /tmp/c.sh inet-up' < tools/vm/netns-client.sh
+set WRTCONTROL_VM=192.168.8.1
+set WRTCONTROL_KEEP_MACS=AA:BB:CC:DD:EE:FF
+set WRTCONTROL_ECHO_TARGET=198.51.100.2 47101
+set WRTCONTROL_DDNS_TARGET=198.51.100.2:47102
+gradlew testDebugUnitTest --tests "*VmIntegrationTest*" --tests "*AddonsVmTest*" --rerun
+ssh root@192.168.8.1 'sh /tmp/c.sh inet-down; sh /tmp/c.sh down'
+```
+
 **En la CI** (`.github/workflows/vm.yml`) las dos pruebas se ejecutan cada noche contra 24.10, 25.12
 y snapshot (la última versión de cada serie), y en los PR que tocan `parental/`, `addons/`,
 `openwrt/`, `ubus/` o estas pruebas. `tools/vm/openwrt-qemu.sh` hace la imagen con el Image
@@ -305,7 +336,8 @@ miniupnpd están en marcha (lo muestra como desconocido; el DNS sí se comprueba
 instala el paquete de LuCI (que arrastra el resto y trae los permisos con los que la app lo
 configura) y explica en castellano los fallos típicos: sin espacio, sin internet, kernel de
 otra versión, otro programa instalando. netifd solo carga protocolos nuevos al arrancar: tras
-instalar WireGuard se reinicia la red (`luci.setInitAction`).
+instalar WireGuard se reinicia la red (`luci.setInitAction`; si el ACL de LuCI ya no lo deja, como
+en algunas compilaciones de 25.12.6 y en snapshot, `rc init`, que es lo que usa LuCI ahora).
 
 **Deshacer.** El ACL de LuCI no incluye `uci rollback` (solo `apply` y `confirm`). Si un cambio no
 funciona, la app deja de confirmarlo y espera, como LuCI, a que el router lo deshaga solo al vencer
@@ -358,6 +390,15 @@ con CGNAT solo queda la IPv6. Se publica la dirección de la interfaz que la ten
 hay prefijo delegado, la de la LAN, que netifd da en `ipv6-prefix-assignment`). Hasta 24.10 ddns no
 es un servicio de procd: aplicar no lo recarga, así que la app lo reinicia y mira el pid en
 `luci.ddns`. Del registro de ddns-scripts se sacan la última IP enviada y el último fallo posterior.
+
+ddns-scripts solo actualiza la familia de cada sección: el otro registro se queda como estuviera
+(DuckDNS pone un A con la IPv4 de quien crea el nombre; tras pasar a CGNAT queda la IPv4 de antes), y
+los clientes que prefieren IPv4, como WireGuard en Windows, van a una dirección que no es la de casa.
+Por eso, al guardar, el teléfono avisa él mismo al proveedor por internet (no por el túnel) con las
+direcciones que va a publicar el router y borra la otra familia: DuckDNS con `clear=true` y después
+las buenas, deSEC con el valor vacío (`myipv4=`) y dynv6 con `ipv4=-` (el AAAA no se puede borrar por
+su API: se avisa). Si el proveedor rechaza el nombre o el token, no se toca el router; si no se llega
+a él, se configura igual y se avisa. Con una URL propia no se sabe cómo, y no se hace.
 
 **El túnel en la app.** `tunnel/` es wireguard-go con la pila TCP/IP de gVisor (netstack): no hay
 interfaz TUN ni VPN de Android, así que no choca con otra VPN del teléfono y solo la app pasa por

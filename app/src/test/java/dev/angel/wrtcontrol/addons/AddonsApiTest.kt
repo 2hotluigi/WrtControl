@@ -95,6 +95,22 @@ class AddonsApiTest {
     }
 
     @Test
+    fun `desde 25_12_6 sin luci setInitAction reinicia la red y arranca UPnP con rc init`() = runTest {
+        val f = FakeAddons()
+        f.noSetInitAction = true
+        f.install("luci-app-upnp")
+        f.upnpStopped = true
+        val api = api(f)
+
+        api.install(Addon.WireGuard, PackageTool.PackageManager)
+        assertEquals(AddonStatus.Installed, api.state().status(Addon.WireGuard, api.packages()))
+        api.setUpnp(enabled = true)
+
+        assertEquals(listOf("network restart", "miniupnpd enable", "miniupnpd start"), f.initActions)
+        assertEquals(true, api.state().upnp!!.running)
+    }
+
+    @Test
     fun `WireGuard instalado sin cargar pide reiniciar la red y no la reinicia si ya esta cargado`() = runTest {
         val f = FakeAddons()
         f.install("luci-proto-wireguard") // como si se hubiera instalado desde la consola
