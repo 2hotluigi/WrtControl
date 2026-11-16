@@ -68,7 +68,8 @@ import java.time.Instant
 import java.time.ZoneId
 
 @Composable
-fun ParentalScreen(connection: Connection.SignedIn) {
+fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
+    val family = section == ParentalSection.Family
     val repo = LocalRepository.current
     val settings = LocalAppSettings.current
     val vm: ParentalViewModel = viewModel(key = "parental:${connection.address}") { ParentalViewModel(repo) }
@@ -106,7 +107,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                 if (editing == null && !askPassword) vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.parental_stale_data, loadError)) }
 
-                data.backup?.let { backup ->
+                if (family) data.backup?.let { backup ->
                     item {
                         val names = backup.profiles.joinToString { it.name }
                         NoticeCard(
@@ -133,13 +134,13 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         }
                     }
                 }
-                if (snapshot.newerSchema) item {
+                if (family && snapshot.newerSchema) item {
                     NoticeCard(
                         stringResource(R.string.parental_newer_schema_title),
                         stringResource(R.string.parental_newer_schema_body),
                     )
                 }
-                if (connection.emptyPassword) item {
+                if (!family && connection.emptyPassword) item {
                     NoticeCard(
                         stringResource(R.string.parental_no_password_title),
                         stringResource(R.string.parental_no_password_body),
@@ -149,7 +150,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         }
                     }
                 }
-                if (snapshot.rulesLoaded == false) item {
+                if (family && snapshot.rulesLoaded == false) item {
                     NoticeCard(
                         stringResource(R.string.parental_rules_inactive_title),
                         stringResource(R.string.parental_rules_inactive_body),
@@ -157,7 +158,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         Button(onClick = vm::reapply, enabled = !busy) { Text(stringResource(R.string.parental_reapply)) }
                     }
                 }
-                if (zone.mismatch) item {
+                if (family && zone.mismatch) item {
                     NoticeCard(
                         stringResource(R.string.parental_zone_mismatch_title),
                         stringResource(
@@ -173,34 +174,34 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         }
                     }
                 }
-                if (snapshot.flowOffloading) item {
+                if (family && snapshot.flowOffloading) item {
                     NoticeCard(
                         stringResource(R.string.parental_flow_offloading_title),
                         stringResource(R.string.parental_flow_offloading_body),
                     )
                 }
-                if (snapshot.markConflicts.isNotEmpty()) item {
+                if (family && snapshot.markConflicts.isNotEmpty()) item {
                     NoticeCard(
                         stringResource(R.string.parental_mark_conflicts_title),
                         stringResource(R.string.parental_mark_conflicts_body, snapshot.markConflicts.joinToString()),
                     )
                 }
 
-                item {
+                if (family) item {
                     Text(
                         stringResource(if (snapshot.profiles.isEmpty()) R.string.parental_title else R.string.parental_profiles),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
-                if (snapshot.profiles.isEmpty()) item {
+                if (family && snapshot.profiles.isEmpty()) item {
                     Text(
                         stringResource(R.string.parental_empty_hint),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
-                items(snapshot.profiles, key = { it.id }) { profile ->
+                if (family) items(snapshot.profiles, key = { it.id }) { profile ->
                     ProfileCard(
                         profile = profile,
                         data = data,
@@ -213,14 +214,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                     )
                 }
 
-                item {
-                    Text(
-                        stringResource(R.string.parental_protection),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
-                    )
-                }
-                item {
+                if (!family) item {
                     QuarantineCard(
                         data = data,
                         busy = busy,
@@ -231,7 +225,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                         onShowApproved = { showApproved = true },
                     )
                 }
-                item {
+                if (!family) item {
                     val lockEnableTitle = stringResource(R.string.parental_lock_enable)
                     val lockDisableTitle = stringResource(R.string.parental_lock_disable)
                     AppLockCard(
@@ -308,7 +302,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
         }
 
         val data = state.data
-        if (data != null) {
+        if (data != null && family) {
             val newProfileLabel = stringResource(R.string.parental_new_profile)
             ExtendedFloatingActionButton(
                 onClick = { editing = newProfile(data) },

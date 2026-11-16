@@ -53,15 +53,21 @@ Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pru
 
 Cambiar la cara, no el motor.
 
-Orden: ~~una sola fuente de estado~~ → ~~detección de capacidades~~ → sistema de diseño → navegación
-nueva e Inicio → salud del cable → dispositivos con identidad → motor de transacciones → puesta en
+Orden: ~~una sola fuente de estado~~ → ~~detección de capacidades~~ → sistema de diseño → ~~navegación
+nueva e Inicio~~ → salud del cable → dispositivos con identidad → motor de transacciones → puesta en
 marcha guiada. Cada uno se apoya en los anteriores.
 
-- **Navegación nueva:** Inicio · Dispositivos · Familia · Seguridad · Más. Desaparece "Paquetes"
-  como pestaña; kernel, carga e interfaces pasan a "Router → Detalles técnicos".
-- **Inicio = salud de la red:** internet sí/no y desde cuándo, dispositivos conectados, avisos
+- ~~**Navegación nueva:** Inicio · Dispositivos · Familia · Seguridad · Más. Desaparece "Paquetes"
+  como pestaña; kernel, carga e interfaces pasan a "Router → Detalles técnicos".~~
+  Hecho: Familia son los perfiles y sus avisos; Seguridad, la cuarentena, la contraseña del router
+  y el bloqueo de la app; Más lleva a "Funciones del router" (los paquetes), a "Router" (los
+  detalles técnicos) y a desconectar.
+- ~~**Inicio = salud de la red:** internet sí/no y desde cuándo, dispositivos conectados, avisos
   (dispositivos nuevos en cuarentena, router sin contraseña, reglas no activas) y accesos rápidos
-  ("Pausar a…", "Wi-Fi de invitados").
+  ("Pausar a…", "Wi-Fi de invitados").~~
+  Hecho, salvo dos cosas. "Conectado a internet" dice que el router tiene una salida en pie, no
+  que se llegue de verdad a internet: falta una comprobación real (irá con la salud del cable).
+  "Pausar a…" lleva a Familia; el acceso a "Wi-Fi de invitados" llegará con el Wi-Fi (Hito 2).
 - **Salud del cable de internet:** caídas del enlace WAN y velocidad negociada (netifd por ubus:
   `carrier`, `speed`; el registro del sistema para contarlas). En el GL-MT6000 un cable con un par
   dañado tiraba la WAN cada pocos minutos y la dejaba a 100 Mbps, y parecía un fallo de la app:

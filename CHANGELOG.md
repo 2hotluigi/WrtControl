@@ -16,7 +16,12 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Cara nueva: colores y tipografía propios (azul cobalto y Manrope), iguales en todos los
   teléfonos, en claro y en oscuro. El verde, el ámbar y el rojo quedan para decir cómo está algo.
 
+- Navegación nueva: Inicio · Dispositivos · Familia · Seguridad · Más. Los paquetes pasan a
+  "Más → Funciones del router" y los datos técnicos a "Más → Router". Desconectar también está en Más.
+
 ### Añadido
+- Inicio: si el router tiene internet y desde cuándo, cuántos dispositivos hay, los perfiles en
+  pausa y lo que pide atención (router sin contraseña, reglas sin aplicar, dispositivos nuevos).
 - "Qué puede hacer este router", en Estado: cada función de la app aparece como disponible, se
   instalará o no compatible, con el motivo y qué hacer. También dice qué Wi-Fi tiene el router.
 

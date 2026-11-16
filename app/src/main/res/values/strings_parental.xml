@@ -28,7 +28,6 @@
     <string name="parental_title">Control parental</string>
     <string name="parental_profiles">Perfiles</string>
     <string name="parental_empty_hint">Crea un perfil por persona y asígnale sus dispositivos. Después podrás pausarle internet o programar horarios sin conexión, como la hora de dormir.</string>
-    <string name="parental_protection">Protección</string>
     <string name="parental_lock_enable">Activar el bloqueo de WrtControl</string>
     <string name="parental_lock_disable">Quitar el bloqueo de WrtControl</string>
     <string name="parental_new_profile">Nuevo perfil</string>

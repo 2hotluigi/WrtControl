@@ -28,7 +28,6 @@
     <string name="parental_title">Parental control</string>
     <string name="parental_profiles">Profiles</string>
     <string name="parental_empty_hint">Create a profile for each person and assign their devices. Then you can pause their internet or schedule offline times, like bedtime.</string>
-    <string name="parental_protection">Protection</string>
     <string name="parental_lock_enable">Turn on the WrtControl lock</string>
     <string name="parental_lock_disable">Remove the WrtControl lock</string>
     <string name="parental_new_profile">New profile</string>

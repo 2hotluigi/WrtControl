@@ -96,10 +96,18 @@ private val DarkColors = darkColorScheme(
 
 /** Los colores de "va bien": el verde no existe en el esquema de Material. */
 @Immutable
-data class StatusColors(val ok: Color, val okContainer: Color, val onOkContainer: Color)
+data class StatusColors(
+    val ok: Color,
+    val okContainer: Color,
+    val onOkContainer: Color,
+    /** El punto de "en marcha" sobre el azul de marca. */
+    val signal: Color,
+)
 
-private val LightStatus = StatusColors(ok = Color(0xFF1B7F4B), okContainer = Color(0xFFDDF3E6), onOkContainer = Color(0xFF0E4A2B))
-private val DarkStatus = StatusColors(ok = Color(0xFF5FD08A), okContainer = Color(0xFF14301F), onOkContainer = Color(0xFFBFEBD0))
+private val LightStatus =
+    StatusColors(ok = Color(0xFF1B7F4B), okContainer = Color(0xFFDDF3E6), onOkContainer = Color(0xFF0E4A2B), signal = Color(0xFF7BE0A2))
+private val DarkStatus =
+    StatusColors(ok = Color(0xFF5FD08A), okContainer = Color(0xFF14301F), onOkContainer = Color(0xFFBFEBD0), signal = Color(0xFF1B7F4B))
 
 val LocalStatusColors = staticCompositionLocalOf { LightStatus }
 
