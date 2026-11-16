@@ -72,6 +72,18 @@ class VmIntegrationTest {
     }
 
     /**
+     * Los DNS a los que pregunta el cliente: el router por IPv4, uno externo y el router por IPv6.
+     * Este último solo si el cliente tiene ULA: con la /64 de la WAN pasada a la LAN en modo relay
+     * (IPv6 sin delegación de prefijo, como en el GL-MT6000 de casa), la LAN no la anuncia, y dnsmasq
+     * no contesta a una dirección que no es de sus redes.
+     */
+    private val dnsServers: List<String> by lazy {
+        val clientUla = ssh("$IP_FULL netns exec wrtc_client ip -6 addr show scope global").lines().any { it.trim().startsWith("inet6 fd") }
+        if (!clientUla) log("el cliente no tiene ULA (¿relay IPv6?): el DNS del router por IPv6 no se prueba")
+        listOfNotNull(vm!!, "8.8.8.8", routerIpv6.takeIf { clientUla })
+    }
+
+    /**
      * Ejecuta [command] en la VM. Con muchas conexiones seguidas, dropbear rechaza alguna de vez
      * en cuando (ssh termina con 255): se reintenta, para que eso no parezca un fallo del router.
      */
@@ -235,7 +247,7 @@ class VmIntegrationTest {
         client.login(Credentials("root", password))
         val api = ParentalApi(client, log = { if ("recargado=false" !in it) log(it) })
         api.updateProfiles { _, _ -> emptyList() }
-        val routers = listOf(vm!!, "8.8.8.8", routerIpv6) // IPv4, DNS externo e IPv6
+        val routers = dnsServers // IPv4, DNS externo e IPv6
 
         try {
             assertTrue("sin filtro resuelve", resolveFromClient("tiktok.com", vm!!).first().isDigit())
@@ -392,6 +404,19 @@ class VmIntegrationTest {
             "$IP_FULL netns exec wrtc_client nc $target > $out 2>&1 ) > /dev/null 2>&1 &",
     )
 
+    /**
+     * Como [echoConnection], pero la segunda línea sale cuando la prueba la manda ([sendLine]) y no
+     * a una hora fija: así sale después de la última recarga del firewall, que pone sus contadores a
+     * cero (si sale antes, la regla la corta pero el contador ya no lo cuenta).
+     */
+    private fun echoConnectionOnDemand(target: String, out: String, fifo: String) = ssh(
+        "rm -f $out $fifo; mkfifo $fifo; ( (sleep 1; echo antes; cat $fifo; sleep 3) | " +
+            "$IP_FULL netns exec wrtc_client nc $target > $out 2>&1 ) > /dev/null 2>&1 &",
+    )
+
+    /** En segundo plano: si ya nadie lee la FIFO, el echo no se queda esperando. */
+    private fun sendLine(fifo: String, line: String) = ssh("(echo $line > $fifo &) ; sleep 1; rm -f $fifo")
+
     @Test
     fun `proteccion con trafico real`() = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
@@ -436,7 +461,7 @@ class VmIntegrationTest {
 
             // 2. Perfil con filtro: búsqueda segura, YouTube restringido, DNS cifrado por IP y router protegido.
             // Antes, una conexión TCP abierta: responde ahora, y al endurecer el filtro debe cortarse.
-            echoConnection(echoAddress, "/tmp/wrtc_nc.out", first = 1, second = 20)
+            echoConnectionOnDemand(echoAddress, "/tmp/wrtc_nc.out", NC_FIFO)
             Thread.sleep(3000)
             assertTrue("la conexión de antes funciona", "OK antes" in ssh("cat /tmp/wrtc_nc.out"))
             // conntrack puede tardar un momento en mostrarla: se espera un poco antes de mirar la marca.
@@ -450,7 +475,7 @@ class VmIntegrationTest {
             log("filtro con protección aplicado en ${System.currentTimeMillis() - t0} ms")
             checkWith1_0_2(ssh("uci -q get firewall.$INCLUDE_SECTION.path").lines().last())
 
-            for (server in listOf(vm!!, "8.8.8.8", routerIpv6)) {
+            for (server in dnsServers) {
                 assertEquals("Google seguro vía $server", "216.239.38.120", resolveFromClient("www.google.com", server))
                 assertEquals("Google México seguro vía $server", "216.239.38.120", resolveFromClient("www.google.com.mx", server))
                 assertEquals("YouTube moderado vía $server", "216.239.38.119", resolveFromClient("www.youtube.com", server))
@@ -487,7 +512,9 @@ class VmIntegrationTest {
             // reconecta con la IP que tenía en caché) funciona al principio y se corta al acabarla.
             echoConnection(echoAddress, "/tmp/wrtc_nc2.out", first = 2, second = 100)
             val windowConnectionAt = System.currentTimeMillis()
-            Thread.sleep(20_000) // la conexión abierta antes del filtro manda su segunda línea ahora
+            // La conexión abierta antes del filtro manda ahora su segunda línea, ya sin más recargas.
+            sendLine(NC_FIFO, "despues")
+            Thread.sleep(20_000)
             val nc = ssh("cat /tmp/wrtc_nc.out")
             log("conexión abierta antes del filtro: ${nc.lines().filter { it.isNotBlank() }}")
             assertTrue("la conexión abierta antes del filtro se cortó", "OK antes" in nc && "OK despues" !in nc)
@@ -554,6 +581,8 @@ class VmIntegrationTest {
             log("tiempo extra comprobado")
         } finally {
             stopPing()
+            // Si falló antes de mandarla, el cat de la conexión sigue esperando en la FIFO.
+            ssh("[ -p $NC_FIFO ] && (echo fin > $NC_FIFO &) ; sleep 1; rm -f $NC_FIFO")
             echo?.close()
             api.update { _, _ -> ParentalConfig(emptyList()) }
         }
@@ -564,6 +593,9 @@ class VmIntegrationTest {
 
     private companion object {
         const val CLIENT_MAC = "02:00:00:00:00:99"
+
+        /** Por donde la prueba manda la segunda línea de la conexión abierta antes del filtro. */
+        const val NC_FIFO = "/tmp/wrtc_nc.in"
 
         /** Lo que dice uclient-fetch cuando la conexión se rechaza o no llega. */
         // "Connection failed": así informa el wget de 24.10 (mbedTLS) de un HTTPS rechazado.

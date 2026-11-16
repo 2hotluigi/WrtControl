@@ -145,6 +145,13 @@ class AddonsVmTest {
             log("upnpc: $out")
             val opened = api.state().upnp!!.mappings
             log("puertos: $opened")
+            if (opened.none { it.externalPort == 4444 }) {
+                // luci.upnp lee la cadena upnp_prerouting de fw4 y el fichero de concesiones.
+                log("tablas: ${ssh("nft list tables")}")
+                log("upnp en nft: ${ssh("nft list ruleset | grep -n -i -E 'upnp|4444' | head -20")}")
+                log("concesiones: ${ssh("cat \$(uci -q get upnpd.config.upnp_lease_file) 2>&1 | head -5")}")
+                log("get_status: ${ssh("ubus call luci.upnp get_status 2>&1 | head -30")}")
+            }
             val mapping = opened.single { it.externalPort == 4444 }
             assertEquals(clientIp, mapping.address)
             assertEquals("TCP", mapping.protocol)
