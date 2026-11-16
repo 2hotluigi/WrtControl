@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capability_title">What this router can do</string>
+    <string name="capability_parental">Profiles, pauses and schedules</string>
+    <string name="capability_content_filter">Content filter</string>
+    <string name="capability_remote_access">Access from outside your home</string>
+    <string name="capability_ddns">A fixed name for your home</string>
+    <string name="capability_sqm">Games and video calls without stutter</string>
+    <string name="capability_upnp">Open ports for consoles and games</string>
+    <string name="capability_ready">available</string>
+    <string name="capability_installable">will be installed</string>
+    <string name="capability_unsupported">not supported</string>
+    <string name="capability_installable_detail">When you turn it on, the app installs %1$s on the router.</string>
+    <string name="capability_reason_old_firewall">This router uses the old firewall (iptables). OpenWrt 22.03 or later is required.</string>
+    <string name="capability_reason_no_firewall_access">LuCI is missing its firewall part, which is what gives the app permission. Install luci-app-firewall from LuCI (System → Software).</string>
+    <string name="capability_reason_no_dnsmasq">The filter relies on dnsmasq, and this router doesn\'t use it for DNS or doesn\'t allow configuring it.</string>
+    <string name="capability_reason_no_installer">%1$s is missing and this router doesn\'t allow installing packages from the app. Install it from LuCI (System → Software).</string>
+    <string name="capability_reason_no_space">%1$s is missing and there\'s no room left on the router to install it.</string>
+    <string name="capability_wifi_none">This router has no Wi-Fi.</string>
+    <string name="capability_wifi">Wi-Fi: %1$s</string>
+    <string name="capability_wifi_generation">Wi-Fi %1$d</string>
+    <string name="capability_band_2">2.4 GHz</string>
+    <string name="capability_band_5">5 GHz</string>
+    <string name="capability_band_6">6 GHz</string>
+    <string name="capability_low_memory">It has little memory: features that load large lists may not fit.</string>
+</resources>

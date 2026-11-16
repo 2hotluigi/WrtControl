@@ -1,7 +1,12 @@
 package dev.angel.wrtcontrol.addons
 
 import dev.angel.wrtcontrol.data.RouterAddress
+import dev.angel.wrtcontrol.openwrt.Availability
+import dev.angel.wrtcontrol.openwrt.Capabilities
+import dev.angel.wrtcontrol.openwrt.Feature
+import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.PackageTool
+import dev.angel.wrtcontrol.openwrt.availability
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusClient
 import kotlinx.coroutines.runBlocking
@@ -104,6 +109,8 @@ class AddonsVmTest {
         val before = api.packages()!!
         assertEquals(PackageTool.PackageManager, before.tool)
         assertEquals(AddonStatus.Missing, api.state().status(Addon.WireGuard, before))
+        // Sin el listado de paquetes también se sabe: por los permisos de la sesión.
+        assertEquals(Availability.Installable(listOf("luci-proto-wireguard")), capabilities().availability(Feature.RemoteAccess))
 
         val t0 = System.currentTimeMillis()
         api.install(Addon.WireGuard, before.tool!!)
@@ -113,6 +120,30 @@ class AddonsVmTest {
         assertTrue("wireguard-tools" in after && "kmod-wireguard" in after && "luci-proto-wireguard" in after)
         assertEquals(AddonStatus.Installed, api.state().status(Addon.WireGuard, after))
         assertTrue(ssh("ubus call network get_proto_handlers").contains("\"wireguard\""))
+        assertEquals(Availability.Ready, capabilities().availability(Feature.RemoteAccess))
+    }
+
+    private suspend fun capabilities(): Capabilities {
+        val router = OpenWrtApi(api().first)
+        return router.capabilities(router.board(), router.systemInfo())
+    }
+
+    @Test
+    fun `capacidades de un OpenWrt con LuCI - lo de serie esta disponible y lo demas se puede instalar`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        val caps = capabilities()
+        log("OpenWrt ${caps.version} (${caps.target}), ${caps.memoryBytes / 1024 / 1024} MiB, libres ${caps.freeStorageKiB} KiB")
+        assertTrue(caps.version.isNotBlank() && caps.target.isNotBlank())
+        assertTrue("el router dice qué objetos de ubus tiene", caps.has("uci") && caps.has("network.interface"))
+        assertEquals("fw4", true, caps.features?.firewall4)
+        assertTrue("LuCI deja instalar paquetes", caps.canInstallPackages)
+        assertTrue(caps.acl.canCall("uci", "apply") && caps.acl.canCall("network.interface", "dump"))
+        assertEquals(Availability.Ready, caps.availability(Feature.Parental))
+        assertEquals(Availability.Ready, caps.availability(Feature.ContentFilter))
+        // Cada paquete opcional: o ya se puede configurar o la app puede instalarlo.
+        Feature.entries.filter { it.addon != null }.forEach {
+            assertFalse("${it.name}: ${caps.availability(it)}", caps.availability(it) is Availability.Unsupported)
+        }
     }
 
     @Test

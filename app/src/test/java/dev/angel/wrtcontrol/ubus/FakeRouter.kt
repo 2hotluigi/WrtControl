@@ -48,13 +48,18 @@ class FakeRouter(private val handler: (RecordedCall) -> Reply) {
         val body = Buffer().also { request.body!!.writeTo(it) }.readUtf8()
         if (request.url.encodedPath == "/cgi-bin/cgi-exec") return@Interceptor cgiExec(request, body)
         val msg = Json.parseToJsonElement(body).jsonObject
-        val params = msg.getValue("params").jsonArray
-        val call = RecordedCall(
-            sid = params[0].jsonPrimitive.content,
-            target = params[1].jsonPrimitive.content,
-            method = params[2].jsonPrimitive.content,
-            args = params[3].jsonObject,
-        )
+        // `list` (los objetos que hay) va sin sesión ni parámetros: se registra como "ubus.list".
+        val call = if (msg["method"]?.jsonPrimitive?.content == "list") {
+            RecordedCall(sid = "", target = "ubus", method = "list", args = JsonObject(emptyMap()))
+        } else {
+            val params = msg.getValue("params").jsonArray
+            RecordedCall(
+                sid = params[0].jsonPrimitive.content,
+                target = params[1].jsonPrimitive.content,
+                method = params[2].jsonPrimitive.content,
+                args = params[3].jsonObject,
+            )
+        }
         synchronized(calls) { calls += call }
 
         val (code, json) = when (val reply = handler(call)) {

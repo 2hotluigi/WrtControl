@@ -9,11 +9,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
@@ -69,6 +72,8 @@ data class SessionInfo(
     @SerialName("ubus_rpc_session") val id: String,
     val timeout: Int = 0,
     val expires: Int = 0,
+    /** Lo que el router deja hacer a esta sesión. */
+    val acls: SessionAcl = SessionAcl(),
 )
 
 val UbusJson = Json {
@@ -175,6 +180,30 @@ class UbusClient(
     suspend fun openSession(): UbusSession {
         val creds = credentials ?: throw UbusException.SessionExpired()
         return UbusSession(this, newSession(creds).id)
+    }
+
+    /**
+     * Lo que el router deja hacer ahora a este usuario. rpcd solo lo cuenta al iniciar sesión, así
+     * que se inicia una que no se usa (caduca sola): la sesión compartida no deja ver sus permisos,
+     * y cambian al instalar paquetes.
+     */
+    suspend fun acl(): SessionAcl {
+        val creds = credentials ?: throw UbusException.SessionExpired()
+        return newSession(creds).acls
+    }
+
+    /** Los objetos de ubus que hay en el router. No necesita sesión ni dice si se pueden llamar. */
+    suspend fun objects(): Set<String> {
+        val body = buildJsonObject {
+            put("jsonrpc", "2.0")
+            put("id", nextId.getAndIncrement())
+            put("method", "list")
+        }
+        return when (val result = post(body.toString(), "list")["result"]) {
+            is JsonArray -> result.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toSet()
+            is JsonObject -> result.keys // con parámetros, uhttpd devuelve además los métodos de cada uno
+            else -> throw UbusException.Protocol("list: respuesta sin resultado")
+        }
     }
 
     private suspend fun newSession(credentials: Credentials): SessionInfo {
@@ -339,34 +368,7 @@ class UbusClient(
                 add(args)
             }
         }.toString()
-
-        val request = Request.Builder().url(endpoint).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
-
-        val text = withContext(io) {
-            try {
-                http.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        throw UbusException.Network("El router respondió HTTP ${response.code}", response.code)
-                    }
-                    response.body.string()
-                }
-            } catch (e: IOException) {
-                throw UbusException.Network("No se pudo contactar con el router (${e.message ?: e.javaClass.simpleName})", cause = e)
-            }
-        }
-
-        val message = try {
-            json.parseToJsonElement(text).jsonObject
-        } catch (e: Exception) {
-            throw UbusException.Protocol("El router no respondió con JSON (¿es la dirección de un OpenWrt?)", e)
-        }
-
-        message["error"]?.let { error ->
-            val code = error.jsonObject["code"]?.jsonPrimitive?.intOrNull
-            if (code == RPC_ACCESS_DENIED) throw UbusException.AccessDenied("$target.$method")
-            val text = error.jsonObject["message"]?.jsonPrimitive?.content ?: "error $code"
-            throw UbusException.Protocol("$target.$method: $text")
-        }
+        val message = post(body, "$target.$method")
 
         val result = try {
             message["result"]?.jsonArray
@@ -377,5 +379,36 @@ class UbusClient(
         val status = result.firstOrNull()?.jsonPrimitive?.int ?: 9
         if (status != 0) throw UbusException.Status(status, "$target.$method")
         return result.getOrNull(1)
+    }
+
+    /** Manda una petición JSON-RPC y devuelve el mensaje de respuesta, ya sin errores de transporte ni de permiso. */
+    private suspend fun post(body: String, what: String): JsonObject {
+        val text = send(Request.Builder().url(endpoint).post(body.toRequestBody(JSON_MEDIA_TYPE)).build())
+        val message = try {
+            json.parseToJsonElement(text).jsonObject
+        } catch (e: Exception) {
+            throw UbusException.Protocol("El router no respondió con JSON (¿es la dirección de un OpenWrt?)", e)
+        }
+        message["error"]?.let { throw rpcError(it.jsonObject, what) }
+        return message
+    }
+
+    private suspend fun send(request: Request): String = withContext(io) {
+        try {
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw UbusException.Network("El router respondió HTTP ${response.code}", response.code)
+                }
+                response.body.string()
+            }
+        } catch (e: IOException) {
+            throw UbusException.Network("No se pudo contactar con el router (${e.message ?: e.javaClass.simpleName})", cause = e)
+        }
+    }
+
+    private fun rpcError(error: JsonObject, what: String): UbusException {
+        val code = error["code"]?.jsonPrimitive?.intOrNull
+        if (code == RPC_ACCESS_DENIED) return UbusException.AccessDenied(what)
+        return UbusException.Protocol("$what: " + (error["message"]?.jsonPrimitive?.content ?: "error $code"))
     }
 }

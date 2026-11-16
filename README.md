@@ -166,6 +166,25 @@ paquetes) es una lectura compartida, un `Feed` de `RouterMonitor`:
 - **Al cambiar de sesión** (se sale, o se entra en otro router) se olvida todo (`reset`) y lo que
   viniera de la sesión anterior no se publica.
 
+### Qué puede hacer el router
+
+`Capabilities` (paquete `openwrt`) dice, sin probar a hacerlo, si el router puede con cada función
+de la app: **disponible**, **se instalará** (falta un paquete y la app puede instalarlo) o **no
+compatible**, con el motivo y qué hacer. Sale de lo que el router cuenta de sí mismo, con llamadas
+pequeñas que ya permite LuCI:
+
+- **Los permisos de la sesión**, que rpcd devuelve al iniciar sesión: qué configuraciones se pueden
+  escribir, qué comandos se pueden lanzar y qué partes de LuCI hay instaladas (un grupo por
+  paquete). Como solo los da el login y cambian al instalar paquetes, se piden con un login aparte
+  que no se usa para nada más. Los nombres llevan comodines como los de `fnmatch` (`SessionAcl`).
+- **Los objetos de ubus que existen** (`list` de JSON-RPC, sin sesión).
+- **`luci.getFeatures`**: si el cortafuegos es fw4, si hay Wi-Fi, si el DNS es dnsmasq.
+- **Las radios** (`luci-rpc.getWirelessDevices`), la memoria y el espacio libre (`system.info`).
+
+No usa el listado de paquetes, que pesa cientos de KB. Lo que el router no deja preguntar no se da
+por malo. Hoy se enseña en "Estado"; la puesta en marcha guiada y las pantallas nuevas lo usarán
+para no ofrecer lo que no va a funcionar.
+
 Leer no tiene efectos. Lo que la app apunta a partir de lo leído (qué router es y por qué
 direcciones se llega a él desde fuera, para el acceso remoto) va aparte, en `followRouter`, que
 reacciona a las lecturas las haya pedido la pantalla que las haya pedido.

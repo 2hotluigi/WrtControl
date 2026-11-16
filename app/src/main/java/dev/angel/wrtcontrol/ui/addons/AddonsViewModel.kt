@@ -181,7 +181,10 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
                 error = e.userMessage()
             } finally {
                 // Aunque falle, la instalación pudo quedar a medias: se vuelve a mirar qué hay.
-                if (packagesChanged) monitor.packages.refresh()
+                if (packagesChanged) {
+                    monitor.packages.refresh()
+                    monitor.capabilities.refresh()
+                }
                 busy = null
                 monitor.addons.refresh()
             }
