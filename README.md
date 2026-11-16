@@ -26,12 +26,18 @@ solo falla por problemas nuevos. Al arreglar algo de la línea base, se regenera
 
 El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
 `app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar
-`tunnel/`, con Go, gomobile y el NDK de Android:
+`tunnel/`, con Go y el NDK de Android (gomobile lo instala el script, de la versión de `go.mod`):
 
 ```sh
 cd tunnel && go test ./...        # el túnel contra un "router" WireGuard en memoria
 sh tools/build-tunnel.sh          # vuelve a generar app/libs/wrtcvpn.aar (arm64, arm y x86_64)
 ```
+
+El `.aar` es reproducible: con las versiones fijadas en el script (Go, gomobile, NDK y JDK) sale
+igual en Windows y en Linux, sin rutas ni nombres de la máquina. El trabajo `tunnel-aar` de la CI
+lo compila y falla si no coincide con el del repositorio, así que el binario que se sube es
+siempre el que sale de `tunnel/`. Si no coincide (otro NDK, por ejemplo), `sh tools/fetch-tunnel-aar.sh`
+trae el que compiló la CI.
 
 La versión debug sugiere `192.168.56.2`, que es la VM de OpenWrt en VirtualBox (red host-only).
 El emulador de Android llega a esa red a través del PC.
