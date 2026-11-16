@@ -1,9 +1,11 @@
 package dev.angel.wrtcontrol.ui
 
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Route
+import dev.angel.wrtcontrol.openwrt.WanLink
 import dev.angel.wrtcontrol.parental.ParentalSettings
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
@@ -90,6 +92,24 @@ class OverviewTest {
         val off = overview(listOf(wan), devices, snapshot(profiles), false)
         assertEquals(0, off.newDevices)
         assertTrue(off.attention.isEmpty())
+    }
+
+    @Test
+    fun `el cable - sin enlace o sin internet no esta conectado, y lo que falla a ratos pide atencion`() {
+        val ok = WanLink("eth1", carrier = true, speedMbps = 1000, dropsSinceBoot = 0, dropsAgoSeconds = emptyList(), internet = true)
+        val fine = overview(listOf(wan), null, null, false, ok)
+        assertTrue(fine.online)
+        assertEquals(1000, fine.cableMbps)
+        assertNull(fine.linkAdvice)
+
+        val noInternet = overview(listOf(wan), null, null, false, ok.copy(internet = false))
+        assertFalse("la red está en pie, pero el ping no llega", noInternet.online)
+        assertTrue("proveedor" in noInternet.linkAdvice!!.es)
+        assertTrue("ya lo dice la tarjeta de arriba", noInternet.attention.isEmpty())
+
+        val flapping = overview(listOf(wan), null, null, true, ok.copy(dropsSinceBoot = 9, dropsAgoSeconds = listOf(30, 90, 200)))
+        assertTrue(flapping.online)
+        assertEquals(listOf(Attention.Cable, Attention.NoPassword), flapping.attention)
     }
 
     @Test

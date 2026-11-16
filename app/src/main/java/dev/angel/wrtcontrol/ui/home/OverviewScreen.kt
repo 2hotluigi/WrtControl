@@ -42,6 +42,9 @@ import kotlin.time.Duration.Companion.seconds
 private val NETWORK_REFRESH = 5.seconds
 private val PEOPLE_REFRESH = 15.seconds
 
+/** Cada lectura lanza un ping desde el router: sin prisa. */
+private val CABLE_REFRESH = 30.seconds
+
 /** Inicio: la salud de la red de un vistazo y lo que pide atención. */
 @Composable
 fun OverviewScreen(connection: Connection.SignedIn, onOpen: (OverviewLink) -> Unit) {
@@ -50,10 +53,11 @@ fun OverviewScreen(connection: Connection.SignedIn, onOpen: (OverviewLink) -> Un
     val devices by monitor.devices.watchAsState(PEOPLE_REFRESH)
     val parental by monitor.parental.watchAsState(PEOPLE_REFRESH)
     val board by monitor.board.watchAsState(PEOPLE_REFRESH)
+    val link by monitor.wanLink.watchAsState(CABLE_REFRESH)
 
     LoadableContent(interfaces) { networks, error ->
         OverviewContent(
-            overview = overview(networks, devices.data, parental.data, connection.emptyPassword),
+            overview = overview(networks, devices.data, parental.data, connection.emptyPassword, link.data?.link),
             error = error,
             versionNotice = board.data?.let { openWrtSupportNotice(it.release.version)?.text() },
             onOpen = onOpen,
@@ -119,8 +123,11 @@ private fun InternetCard(overview: Overview) {
                 )
             }
             val detail = when {
-                !overview.online -> stringResource(R.string.overview_offline_detail)
-                else -> overview.onlineSeconds?.let { stringResource(R.string.overview_online_since, formatDuration(it)) }
+                !overview.online -> overview.linkAdvice?.text() ?: stringResource(R.string.overview_offline_detail)
+                else -> listOfNotNull(
+                    overview.onlineSeconds?.let { stringResource(R.string.overview_online_since, formatDuration(it)) },
+                    overview.cableMbps?.let { stringResource(R.string.overview_cable_speed, it) },
+                ).joinToString(" · ").ifEmpty { null }
             }
             if (detail != null) Text(detail, style = MaterialTheme.typography.bodyMedium)
         }
@@ -139,7 +146,12 @@ private fun Tile(title: String, label: String, modifier: Modifier = Modifier, on
 
 @Composable
 private fun AttentionCard(attention: Attention, overview: Overview, onOpen: (OverviewLink) -> Unit) {
+    if (attention == Attention.Cable) {
+        NoticeCard(stringResource(R.string.overview_cable_title), overview.linkAdvice?.text().orEmpty(), Modifier.testTag("overview-Cable"))
+        return
+    }
     val (title, body) = when (attention) {
+        Attention.Cable -> "" to ""
         Attention.NoPassword -> stringResource(R.string.overview_no_password_title) to stringResource(R.string.overview_no_password_body)
         Attention.RulesInactive ->
             stringResource(R.string.overview_rules_inactive_title) to stringResource(R.string.overview_rules_inactive_body)
@@ -148,6 +160,7 @@ private fun AttentionCard(attention: Attention, overview: Overview, onOpen: (Ove
                 stringResource(R.string.overview_new_devices_body)
     }
     val (action, link) = when (attention) {
+        Attention.Cable -> 0 to OverviewLink.Devices
         Attention.NoPassword -> R.string.overview_no_password_action to OverviewLink.Security
         Attention.RulesInactive -> R.string.overview_rules_inactive_action to OverviewLink.Family
         Attention.NewDevices -> R.string.overview_new_devices_action to OverviewLink.Security

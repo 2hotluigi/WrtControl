@@ -1,7 +1,12 @@
 package dev.angel.wrtcontrol.ui.home
 
+import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.openwrt.WanLink
+import dev.angel.wrtcontrol.openwrt.linkAdvice
+import dev.angel.wrtcontrol.openwrt.problems
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 
@@ -9,15 +14,19 @@ import dev.angel.wrtcontrol.parental.Pause
 enum class OverviewLink { Devices, Family, Security }
 
 /** Algo que pide atención en Inicio, por orden de urgencia. */
-enum class Attention { NoPassword, RulesInactive, NewDevices }
+enum class Attention { Cable, NoPassword, RulesInactive, NewDevices }
 
 /**
  * Lo que enseña Inicio: cómo está la red de un vistazo. Lo que aún no se ha leído va a null (los
  * equipos y los perfiles tardan más que las redes) y no se enseña.
  */
 data class Overview(
-    /** El router tiene salida a internet (una red activa con la ruta por defecto). */
+    /** El router tiene salida a internet: una red activa con la ruta por defecto y, si se pudo probar, un ping que llega. */
     val online: Boolean,
+    /** A qué velocidad va el cable de internet, en Mbps. */
+    val cableMbps: Int? = null,
+    /** Lo que le pasa al cable o a la conexión, ya explicado; null si va bien. */
+    val linkAdvice: Txt? = null,
     /** Cuánto lleva esa salida sin caerse, en segundos. */
     val onlineSeconds: Long?,
     val devices: Int?,
@@ -33,7 +42,9 @@ fun overview(
     devices: List<Device>?,
     parental: ParentalSnapshot?,
     emptyPassword: Boolean,
+    link: WanLink? = null,
 ): Overview {
+    val problems = link?.problems().orEmpty()
     // Con IPv4 y con IPv6 hay dos salidas: cuenta la que lleva más tiempo en pie.
     val uplinks = interfaces.filter { it.up && it.hasDefaultRoute }
     val pending = if (parental?.settings?.quarantine == true && devices != null) {
@@ -49,13 +60,17 @@ fun overview(
         }
     }
     return Overview(
-        online = uplinks.isNotEmpty(),
+        online = uplinks.isNotEmpty() && link?.carrier != false && link?.internet != false,
+        cableMbps = link?.speedMbps,
+        linkAdvice = linkAdvice(problems),
         onlineSeconds = uplinks.mapNotNull { it.uptime }.maxOrNull(),
         devices = devices?.size,
         profiles = parental?.profiles?.size,
         paused = paused,
         newDevices = pending,
         attention = listOfNotNull(
+            // Sin cable o sin internet ya lo dice la tarjeta de arriba; aquí, lo que falla a ratos.
+            Attention.Cable.takeIf { problems.any { it !is LinkProblem.NoCable && it !is LinkProblem.NoInternet } },
             Attention.NoPassword.takeIf { emptyPassword },
             Attention.RulesInactive.takeIf { parental?.rulesLoaded == false },
             Attention.NewDevices.takeIf { pending > 0 },

@@ -11,6 +11,7 @@ import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.WanLink
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,9 @@ interface RouterAccess {
 
 /** Lo que enseña "Estado": el aparato, cómo va de carga y memoria, y sus redes. */
 data class StatusData(val board: BoardInfo, val info: SystemInfo, val interfaces: List<NetInterface>)
+
+/** [link] null: la salida a internet no va por una tarjeta de red con enlace que mirar. */
+data class WanLinkState(val link: WanLink?)
 
 /** [installed] null: el router no deja listar ni instalar paquetes desde la app. */
 data class PackageListing(val installed: InstalledPackages?)
@@ -71,6 +75,12 @@ class RouterMonitor(
     val devices: Feed<List<Device>> = feed {
         val known = interfaces.fresh(SHARED_MAX_AGE)
         router.use { it.devices(known) }
+    }
+
+    /** Cómo está el cable de la salida a internet; `link` null si no hay tarjeta que mirar. */
+    val wanLink: Feed<WanLinkState> = feed {
+        val known = interfaces.fresh(SHARED_MAX_AGE)
+        router.use { WanLinkState(it.wanLink(known)) }
     }
 
     /** Qué router es (modelo y MAC de la red de casa). Se averigua una vez por sesión. */

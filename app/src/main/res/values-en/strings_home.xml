@@ -10,6 +10,17 @@
     <string name="overview_online_since">No drops for %1$s</string>
     <string name="overview_offline">No internet connection</string>
     <string name="overview_offline_detail">The router has no way out to the internet right now. Check the cable to the modem and that the modem is on.</string>
+    <string name="overview_cable_speed">cable at %1$d Mbps</string>
+    <string name="overview_cable_title">Check the internet cable</string>
+    <string name="link_no_cable">The internet cable is loose or the modem is off: the router detects nothing on the other end.</string>
+    <plurals name="link_flapping">
+        <item quantity="one">The internet cable disconnected %1$d time in the last %2$d minutes.</item>
+        <item quantity="other">The internet cable disconnected %1$d times in the last %2$d minutes.</item>
+    </plurals>
+    <string name="link_flapping_since_boot">Internet cable disconnections since the router was turned on: %1$d.</string>
+    <string name="link_slow">It runs at %1$d Mbps, although the router and the modem support %2$d.</string>
+    <string name="link_replace_cable">It\'s usually the cable: replace the one between the modem and the router.</string>
+    <string name="link_no_internet">The router is connected to the modem but can\'t reach the internet. Restart the modem; if nothing changes, it\'s your provider.</string>
     <string name="overview_devices_label">on your home network</string>
     <plurals name="overview_devices">
         <item quantity="one">%1$d device</item>

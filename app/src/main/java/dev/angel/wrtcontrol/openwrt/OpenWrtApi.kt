@@ -81,6 +81,12 @@ class OpenWrtApi(
         )
     }
 
+    /**
+     * Cómo está el enlace de la salida a internet (ver [WanLink]); null si no es una tarjeta de red
+     * con enlace que mirar (una VM, un módem USB) o el router no deja verlo.
+     */
+    suspend fun wanLink(interfaces: List<NetInterface>): WanLink? = ubus.readWanLink(interfaces)
+
     /** Lo que el router puede no tener o no dejar ver: null en vez de error. Si no se llega a él, sí falla. */
     private suspend fun <T> optional(block: suspend () -> T): T? = try {
         block()

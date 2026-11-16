@@ -19,11 +19,13 @@ import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.IpAddress
+import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.LuciFeatures
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
+import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.Overview
@@ -94,7 +96,9 @@ class ScreenshotTest {
                 profiles = 3,
                 paused = 1,
                 newDevices = 2,
-                attention = listOf(Attention.NoPassword, Attention.NewDevices),
+                cableMbps = 100,
+                linkAdvice = linkAdvice(listOf(LinkProblem.Flapping(13, 10), LinkProblem.Slow(100, 1000))),
+                attention = listOf(Attention.Cable, Attention.NewDevices),
             ),
         )
     }
