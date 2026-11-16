@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.ui.login
 
+import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.Txt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +53,7 @@ class LoginViewModel(private val repo: RouterRepository, initial: Connection.Sig
     var password by mutableStateOf("")
     var busy by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<Txt?>(null)
         private set
 
     fun connect() {
@@ -129,7 +131,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     keyboardActions = KeyboardActions(onGo = { vm.connect() }),
                     modifier = Modifier.fillMaxWidth().testTag("password"),
                 )
-                vm.error?.let { ErrorBanner(it) }
+                vm.error?.let { ErrorBanner(it.text()) }
                 Button(
                     onClick = vm::connect,
                     enabled = !vm.busy,

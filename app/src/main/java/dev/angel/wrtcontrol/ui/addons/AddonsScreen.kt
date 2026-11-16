@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.addons
 
+import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,7 +108,7 @@ fun AddonsScreen(address: String) {
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.addons_stale_data, loadError)) }
                 vm.busy?.let { item { BusyBanner(it) } }
                 if (installing == null && editingSqm == null && !newSqm && !editingDdns) {
-                    vm.error?.let { item { DismissibleError(it) { vm.error = null } } }
+                    vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                     vm.notice?.let { notice ->
                         item {
                             NoticeCard(stringResource(R.string.addons_ddns_title), notice) {
@@ -200,7 +201,7 @@ fun AddonsScreen(address: String) {
                         currentUsername = section?.text("username")?.takeIf { it != own?.domain }.orEmpty(),
                         publicAddresses = s.publicAddresses,
                         busy = busy,
-                        error = vm.error,
+                        error = vm.error?.text(),
                         onDismiss = { if (!busy) { editingDdns = false; vm.error = null } },
                         onSave = { edit -> vm.saveDdns(edit) { editingDdns = false } },
                     )
@@ -230,7 +231,7 @@ fun AddonsScreen(address: String) {
                         devices = (s.devices + s.internetDevices).distinct(),
                         internetDevice = s.internetDevice,
                         busy = busy,
-                        error = vm.error,
+                        error = vm.error?.text(),
                         onDismiss = { if (!busy) { editingSqm = null; newSqm = false; vm.error = null } },
                         onSave = { edit -> vm.saveSqm(edit) { editingSqm = null; newSqm = false } },
                     )
@@ -347,7 +348,7 @@ private fun OutsideCheckContent(
         Text(stringResource(if (running) R.string.addons_outside_checking else R.string.addons_outside_check))
     }
     when (check) {
-        is OutsideCheck.Failed -> Text(check.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        is OutsideCheck.Failed -> Text(check.message.text(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         is OutsideCheck.Done -> {
             val advice = check.advice
             val (headline, color) = when {

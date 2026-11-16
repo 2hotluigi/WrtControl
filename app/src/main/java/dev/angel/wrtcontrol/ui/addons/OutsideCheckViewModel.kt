@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.addons
 
+import dev.angel.wrtcontrol.Txt
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +23,7 @@ sealed interface OutsideCheck {
 
     data class Done(val advice: ReachabilityAdvice) : OutsideCheck
 
-    data class Failed(val message: String) : OutsideCheck
+    data class Failed(val message: Txt) : OutsideCheck
 }
 
 /**

@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import dev.angel.wrtcontrol.Txt
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,7 +111,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         private set
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<Txt?>(null)
 
     /** MAC de este teléfono según el router (por su IP en la lista de dispositivos). */
     private fun phoneMacs(): Set<String> = devices.filter { d -> d.ipv4.any { it in phoneIps } }.map { it.mac }.toSet()

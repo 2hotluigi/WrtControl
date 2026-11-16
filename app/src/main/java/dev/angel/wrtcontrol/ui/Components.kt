@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui
 
+import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,10 +110,10 @@ fun NoticeCard(title: String, text: String, modifier: Modifier = Modifier, actio
 fun <T> LoadableContent(state: Loadable<T>, content: @Composable (data: T, error: String?) -> Unit) {
     val data = state.data
     when {
-        data != null -> content(data, state.error)
+        data != null -> content(data, state.error?.text())
         state.error != null -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                ErrorBanner(state.error)
+                ErrorBanner(state.error.text())
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.common_retrying), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

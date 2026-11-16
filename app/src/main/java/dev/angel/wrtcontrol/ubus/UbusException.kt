@@ -1,5 +1,8 @@
 package dev.angel.wrtcontrol.ubus
 
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.raw
+
 /** Códigos de estado de ubus (libubus: enum ubus_msg_status). */
 internal fun ubusStatusText(code: Int): String = when (code) {
     1 -> "comando inválido"
@@ -32,7 +35,10 @@ sealed class UbusException(message: String, cause: Throwable? = null) : Exceptio
     class Status(val code: Int, val target: String) : UbusException("$target: ${ubusStatusText(code)}")
 
     /** El router no pudo o no quiso hacer algo, y el mensaje ya explica qué hacer (se muestra tal cual). */
-    class Refused(message: String) : UbusException(message)
+    class Refused(val text: Txt) : UbusException(text.toString()) {
+        // TRANSITORIO (fase 2 de los textos).
+        constructor(message: String) : this(raw(message))
+    }
 
     /** Error JSON-RPC inesperado o respuesta con un formato que no esperamos. */
     class Protocol(message: String, cause: Throwable? = null) : UbusException(message, cause)

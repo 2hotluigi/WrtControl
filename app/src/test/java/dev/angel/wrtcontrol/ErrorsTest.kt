@@ -49,7 +49,7 @@ class ErrorsTest {
                 """(?<![\d.])\b[0-9]{3}\b(?![.\d])|Unable|failed|Expected|null|\$""",
         )
         for (e in everything) {
-            val text = describeError(e)
+            val text = describeError(e).es
             assertFalse("${e.javaClass.simpleName}: $text", technical.containsMatchIn(text))
             assertTrue("${e.javaClass.simpleName}: $text", text.endsWith(".") || text.endsWith("?"))
         }
@@ -57,24 +57,24 @@ class ErrorsTest {
 
     @Test
     fun `cada fallo de red dice que hacer`() {
-        assertTrue(describeError(everything[7]).contains("Revisa la dirección"))
-        assertTrue(describeError(everything[8]).contains("red de casa"))
-        assertTrue(describeError(everything[9]).contains("dirección IP"))
-        assertTrue(describeError(everything[10]).contains("Wi-Fi de casa"))
-        assertTrue(describeError(everything[11]).contains("http://"))
-        assertTrue(describeError(UbusException.Network("HTTP 404", 404)).contains("LuCI"))
+        assertTrue(describeError(everything[7]).es.contains("Revisa la dirección"))
+        assertTrue(describeError(everything[8]).es.contains("red de casa"))
+        assertTrue(describeError(everything[9]).es.contains("dirección IP"))
+        assertTrue(describeError(everything[10]).es.contains("Wi-Fi de casa"))
+        assertTrue(describeError(everything[11]).es.contains("http://"))
+        assertTrue(describeError(UbusException.Network("HTTP 404", 404)).es.contains("LuCI"))
     }
 
     @Test
     fun `los errores escritos para el usuario se muestran tal cual`() {
         val reverted = ChangeRevertedException("El cliente perdió internet, así que se deshizo.")
-        assertEquals(reverted.message, describeError(reverted))
-        assertEquals(PendingChangeException().message, describeError(PendingChangeException()))
-        assertEquals("Hola.", describeError(UbusException.Refused("Hola.")))
-        assertEquals("Escribe algo.", describeError(UserFacingException("Escribe algo.")))
+        assertEquals(reverted.message, describeError(reverted).es)
+        assertEquals(PendingChangeException().message, describeError(PendingChangeException()).es)
+        assertEquals("Hola.", describeError(UbusException.Refused("Hola.")).es)
+        assertEquals("Escribe algo.", describeError(UserFacingException("Escribe algo.")).es)
         // También envueltos en un fallo de red (p. ej. el acceso remoto que no conecta).
         val tunnel = dev.angel.wrtcontrol.data.TunnelUnavailableException("El acceso remoto no conecta.")
-        assertEquals("El acceso remoto no conecta.", describeError(network(tunnel)))
+        assertEquals("El acceso remoto no conecta.", describeError(network(tunnel)).es)
     }
 
     @Test
@@ -82,6 +82,6 @@ class ErrorsTest {
         userRequire(true) { "no" }
         val e = runCatching { userRequire(false) { "Falta el nombre." } }.exceptionOrNull()
         assertTrue(e is UserFacingException && e is IllegalArgumentException)
-        assertEquals("Falta el nombre.", describeError(e!!))
+        assertEquals("Falta el nombre.", describeError(e!!).es)
     }
 }

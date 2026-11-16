@@ -1,5 +1,8 @@
 package dev.angel.wrtcontrol.ui
 
+import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
@@ -16,7 +19,7 @@ import kotlin.time.Duration
  * Estado de unos datos que se recargan periódicamente. Si falla una recarga se conservan
  * los últimos datos buenos junto con el error.
  */
-data class Loadable<T>(val data: T? = null, val error: String? = null) {
+data class Loadable<T>(val data: T? = null, val error: Txt? = null) {
     val isLoading get() = data == null && error == null
 }
 
@@ -46,12 +49,7 @@ fun <T> pollingFlow(
     }
 }
 
-fun Throwable.userMessage(): String = when {
-    blockedByLocalNetwork() ->
-        "No se llega al router. Falta el permiso de red local de Android, y sin él la app no lo ve en casa: " +
-            "dáselo en los ajustes de la app (Permisos → Dispositivos cercanos)."
-    else -> describeError(this)
-}
+fun Throwable.userMessage(): Txt = if (blockedByLocalNetwork()) txt(R.string.error_local_network) else describeError(this)
 
 /**
  * Android 17 sin el permiso de red local: los envíos a IPs privadas dan EPERM, y TCP no conecta (se

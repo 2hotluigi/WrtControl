@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,7 +103,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 vm.busy?.let { item { BusyBanner(it) } }
-                if (editing == null && !askPassword) vm.error?.let { item { DismissibleError(it) { vm.error = null } } }
+                if (editing == null && !askPassword) vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.parental_stale_data, loadError)) }
 
                 data.backup?.let { backup ->
@@ -336,7 +337,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
             admins = data.snapshot.settings.admins.toSet(),
             phoneIps = phoneIps,
             busy = vm.busy,
-            error = vm.error,
+            error = vm.error?.text(),
             onDismiss = { if (vm.busy == null) { editing = null; vm.error = null } },
             onSave = { profile -> vm.save(profile) { editing = null } },
             onDelete = { vm.delete(draft) { editing = null } },
@@ -355,7 +356,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
     if (askPassword && !locked) {
         PasswordDialog(
             busy = vm.busy != null,
-            error = vm.error,
+            error = vm.error?.text(),
             onSubmit = { password -> vm.changePassword(password) { askPassword = false } },
             onDismiss = { askPassword = false; vm.error = null },
         )

@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.addons
 
+import dev.angel.wrtcontrol.Txt
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,7 +113,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
         private set
 
     /** Error de la última acción, hasta que el usuario lo cierre o haga otra. */
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<Txt?>(null)
 
     /** Aviso de una acción que salió bien pero con algo que saber (p. ej. del DNS dinámico). */
     var notice by mutableStateOf<String?>(null)
