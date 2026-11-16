@@ -77,4 +77,104 @@
     <string name="parental_schedule_from">From</string>
     <string name="parental_schedule_until">Until</string>
     <string name="parental_schedule_next_day">%1$s (next day)</string>
+    <!-- Formatos del control parental: días, horarios, filtros y estados -->
+    <string name="parental_day_monday">Monday</string>
+    <string name="parental_day_tuesday">Tuesday</string>
+    <string name="parental_day_wednesday">Wednesday</string>
+    <string name="parental_day_thursday">Thursday</string>
+    <string name="parental_day_friday">Friday</string>
+    <string name="parental_day_saturday">Saturday</string>
+    <string name="parental_day_sunday">Sunday</string>
+    <string name="parental_day_short_monday">Mon</string>
+    <string name="parental_day_short_tuesday">Tue</string>
+    <string name="parental_day_short_wednesday">Wed</string>
+    <string name="parental_day_short_thursday">Thu</string>
+    <string name="parental_day_short_friday">Fri</string>
+    <string name="parental_day_short_saturday">Sat</string>
+    <string name="parental_day_short_sunday">Sun</string>
+    <!-- Al principio de una lista de días (Lun, mié, sáb) -->
+    <string name="parental_day_short_first_monday">Mon</string>
+    <string name="parental_day_short_first_tuesday">Tue</string>
+    <string name="parental_day_short_first_wednesday">Wed</string>
+    <string name="parental_day_short_first_thursday">Thu</string>
+    <string name="parental_day_short_first_friday">Fri</string>
+    <string name="parental_day_short_first_saturday">Sat</string>
+    <string name="parental_day_short_first_sunday">Sun</string>
+    <!-- Inicial del día en el selector (la del miércoles es X para no confundirla con la del martes) -->
+    <string name="parental_day_letter_monday">M</string>
+    <string name="parental_day_letter_tuesday">T</string>
+    <string name="parental_day_letter_wednesday">W</string>
+    <string name="parental_day_letter_thursday">T</string>
+    <string name="parental_day_letter_friday">F</string>
+    <string name="parental_day_letter_saturday">S</string>
+    <string name="parental_day_letter_sunday">S</string>
+    <string name="parental_days_every">Every day</string>
+    <string name="parental_days_weekdays">Monday to Friday</string>
+    <string name="parental_days_weekend">Weekends</string>
+    <string name="parental_days_school_nights">Sunday to Thursday</string>
+    <string name="parental_hours_all_day">all day</string>
+    <string name="parental_hours_overnight">%1$s → %2$s the next day</string>
+    <string name="parental_when_today">today at %1$s</string>
+    <string name="parental_when_tomorrow">tomorrow at %1$s</string>
+    <string name="parental_when_day">on %1$s at %2$s</string>
+    <!-- Tras «hasta»: Sin internet hasta las 19:30 -->
+    <string name="parental_until_today">%1$s</string>
+    <string name="parental_until_tomorrow">tomorrow at %1$s</string>
+    <string name="parental_until_day">%1$s at %2$s</string>
+    <string name="parental_filter_none">No filter</string>
+    <string name="parental_filter_adult">Adult content</string>
+    <string name="parental_filter_strict">Strict</string>
+    <string name="parental_filter_none_description">Only the services and sites you choose below are blocked.</string>
+    <string name="parental_filter_adult_description">Blocks adult and malware sites, and forces safe search on Google, Bing and DuckDuckGo. Uses Cloudflare\'s DNS for families.</string>
+    <string name="parental_filter_strict_description">Also forces YouTube\'s restricted mode and blocks VPNs and proxies. Uses CleanBrowsing.</string>
+    <!-- Resumen del filtro en la tarjeta del perfil: Filtro: contenido para adultos · TikTok · 2 sitios -->
+    <string name="parental_filter_summary">Filter: %1$s</string>
+    <string name="parental_filter_summary_adult">adult content</string>
+    <string name="parental_filter_summary_strict">strict</string>
+    <string name="parental_filter_summary_safe_search">safe search</string>
+    <string name="parental_filter_summary_youtube">restricted YouTube</string>
+    <plurals name="parental_filter_summary_sites">
+        <item quantity="one">%1$d site</item>
+        <item quantity="other">%1$d sites</item>
+    </plurals>
+    <string name="parental_access_no_devices">No devices</string>
+    <string name="parental_access_no_devices_detail">Assign devices to it so the rules take effect.</string>
+    <string name="parental_access_paused">Paused</string>
+    <string name="parental_access_offline_until">No internet until %1$s.</string>
+    <string name="parental_access_paused_indefinite">No internet until you resume it.</string>
+    <string name="parental_access_blocked">Scheduled block</string>
+    <string name="parental_access_extra">Extra time</string>
+    <string name="parental_access_extra_detail">Internet until %1$s; then the schedule applies again.</string>
+    <string name="parental_access_allowed">Online</string>
+    <string name="parental_access_next_block">Next block: %1$s.</string>
+    <string name="parental_youtube_off">Unrestricted</string>
+    <string name="parental_youtube_moderate">Moderate</string>
+    <string name="parental_youtube_strict">Strict</string>
+    <!-- Opciones del diálogo de tiempo extra -->
+    <plurals name="parental_extra_minutes">
+        <item quantity="one">%1$d more minute</item>
+        <item quantity="other">%1$d more minutes</item>
+    </plurals>
+    <plurals name="parental_extra_hours">
+        <item quantity="one">%1$d more hour</item>
+        <item quantity="other">%1$d more hours</item>
+    </plurals>
+    <string name="parental_extra_until_end">Until %1$s, when the schedule ends</string>
+    <!-- Lo que se está aplicando en el router -->
+    <string name="parental_busy_saving">Saving “%1$s”…</string>
+    <string name="parental_busy_deleting">Deleting “%1$s”…</string>
+    <string name="parental_busy_pausing">Pausing internet for “%1$s”…</string>
+    <string name="parental_busy_resuming">Resuming internet for “%1$s”…</string>
+    <string name="parental_busy_extra_removing">Removing extra time for “%1$s”…</string>
+    <string name="parental_busy_extra_giving">Giving extra time to “%1$s”…</string>
+    <string name="parental_busy_quarantine_on">Turning on quarantine for new devices…</string>
+    <string name="parental_busy_quarantine_off">Turning off quarantine…</string>
+    <string name="parental_busy_approving">Approving “%1$s”…</string>
+    <string name="parental_busy_adding_phone">Adding the phone…</string>
+    <string name="parental_busy_unapproving">Removing the approval…</string>
+    <string name="parental_busy_assigning">Moving “%1$s” to “%2$s”…</string>
+    <string name="parental_busy_restoring">Restoring the profiles…</string>
+    <string name="parental_busy_reapplying">Reapplying the rules…</string>
+    <string name="parental_busy_timezone">Changing the router\'s time zone…</string>
+    <string name="parental_busy_password">Changing the router\'s password…</string>
 </resources>

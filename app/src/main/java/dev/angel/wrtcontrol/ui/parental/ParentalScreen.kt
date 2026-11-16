@@ -1,6 +1,5 @@
 package dev.angel.wrtcontrol.ui.parental
 
-import dev.angel.wrtcontrol.text
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +53,7 @@ import dev.angel.wrtcontrol.parental.access
 import dev.angel.wrtcontrol.parental.formatUtcOffset
 import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.zoneCheck
+import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
@@ -102,7 +102,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                vm.busy?.let { item { BusyBanner(it) } }
+                vm.busy?.let { item { BusyBanner(it.text()) } }
                 if (editing == null && !askPassword) vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.parental_stale_data, loadError)) }
 
@@ -336,7 +336,7 @@ fun ParentalScreen(connection: Connection.SignedIn) {
             others = data.snapshot.profiles.filter { it.id != draft.id },
             admins = data.snapshot.settings.admins.toSet(),
             phoneIps = phoneIps,
-            busy = vm.busy,
+            busy = vm.busy?.text(),
             error = vm.error?.text(),
             onDismiss = { if (vm.busy == null) { editing = null; vm.error = null } },
             onSave = { profile -> vm.save(profile) { editing = null } },
@@ -391,7 +391,7 @@ private fun ProfileCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(profile.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                StatusPill(status.pill, status.blocked?.not())
+                StatusPill(status.pill.text(), status.blocked?.not())
             }
             Text(
                 if (names.isEmpty()) {
@@ -402,8 +402,8 @@ private fun ProfileCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            status.detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            formatFilter(profile.filter)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            status.detail?.let { Text(it.text(), style = MaterialTheme.typography.bodyMedium) }
+            formatFilter(profile.filter)?.let { Text(it.text(), style = MaterialTheme.typography.bodySmall) }
             if (data.snapshot.filterRunning(profile) == false) {
                 Text(
                     stringResource(R.string.parental_filter_not_running),
@@ -423,8 +423,9 @@ private fun ProfileCard(
                 )
             }
             profile.schedules.forEach { s ->
+                val schedule = formatSchedule(s).text()
                 Text(
-                    if (s.enabled) formatSchedule(s) else stringResource(R.string.parental_schedule_disabled, formatSchedule(s)),
+                    if (s.enabled) schedule else stringResource(R.string.parental_schedule_disabled, schedule),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (s.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 )

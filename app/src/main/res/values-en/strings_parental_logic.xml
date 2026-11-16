@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Errores del control parental al aplicar en el router -->
+    <string name="parental_error_unknown_zone">The router doesn\'t know the time zone %1$s. Pick it by hand in LuCI (System → System).</string>
+    <string name="parental_error_zone_not_applied">The router didn\'t take that zone\'s time (%1$s), so it was left as it was.</string>
+    <string name="parental_error_zone_rules_stale">The time zone changed, but the router didn\'t reload the schedule rules: they may be off. Save any profile again to reload them.</string>
+    <string name="parental_error_not_applied">The router didn\'t load the changes (firewall or DNS), so the previous settings were restored.</string>
+    <string name="parental_error_include_refused">The router won\'t let the app save the parental control rules. Is the full LuCI installed?</string>
+    <string name="parental_error_family_dns_down">The family DNS (%1$s) doesn\'t answer from the router, so the filter wasn\'t turned on. Try another level or check whether your internet provider blocks it.</string>
+    <string name="parental_error_family_dns_down_provider">The family DNS (%1$s) doesn\'t answer from the router, so the filter wasn\'t turned on. Check whether your internet provider blocks it.</string>
+    <string name="parental_error_dns_intercepted">The family DNS isn\'t filtering from your router: your internet provider seems to intercept DNS queries. The filter wasn\'t turned on.</string>
+    <string name="parental_error_pending_change">The router has another change waiting to be confirmed (maybe from LuCI or another phone). Wait a minute and try again.</string>
+    <string name="parental_error_newer_schema">Parental control on this router was set up by a newer version of WrtControl. Update the app to change it from this phone; until then, you can only view it.</string>
+    <string name="parental_error_uncertain">The change couldn\'t be verified and the router didn\'t confirm it was undone. Check how things were left before trying again.</string>
+    <string name="parental_error_no_lan_zone">The firewall\'s LAN zone wasn\'t found, so the content filter can\'t be applied. Check the firewall zones in LuCI.</string>
+    <string name="parental_error_no_home_zone">The home network zone wasn\'t found in the firewall, so quarantine can\'t be turned on. Check the firewall zones in LuCI.</string>
+    <string name="parental_error_approve_one">Approve at least one device before turning on quarantine.</string>
+    <string name="parental_error_profile_name">Give the profile a name (without quotes).</string>
+    <string name="parental_error_device_two_profiles">The device %1$s is in two profiles (%2$s and %3$s): remove it from one.</string>
+    <string name="parental_error_schedule_no_days">Each schedule needs at least one day.</string>
+    <string name="parental_error_too_many_filtered">There are too many profiles with a filter (at most %1$d).</string>
+</resources>

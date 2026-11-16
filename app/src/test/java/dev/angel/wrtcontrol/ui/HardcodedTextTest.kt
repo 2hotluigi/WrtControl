@@ -20,8 +20,6 @@ class HardcodedTextTest {
     private val pending = setOf(
         "Format.kt",
         "Loadable.kt",
-        "parental/ParentalFormat.kt",
-        "parental/ParentalViewModel.kt",
         "addons/AddonsViewModel.kt",
         "addons/OutsideCheckViewModel.kt",
     )

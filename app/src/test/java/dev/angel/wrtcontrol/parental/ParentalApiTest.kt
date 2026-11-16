@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.ubus.Credentials
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -96,7 +98,7 @@ class ParentalApiTest {
             api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(pause = Pause.Indefinite) }
         }
 
-        assertTrue(e.message!!.contains("firewall"))
+        assertTrue(describeError(e).es.contains("firewall"))
         assertTrue(fake.calls.contains("uci.rollback"))
         assertFalse(fake.calls.contains("uci.confirm"))
         assertEquals(before, fake.committed.keys.toList())
@@ -148,7 +150,7 @@ class ParentalApiTest {
             api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(FilterLevel.Adult)) }
         }
 
-        assertTrue(e.message!!.contains("DNS para familias"))
+        assertTrue(describeError(e).es.contains("DNS para familias"))
         assertFalse(fake.committed.containsKey("wrtc_dns_j1"))
         assertFalse(fake.committed.containsKey("wrtc_p_j1"))
         assertNull(fake.pendingApply)

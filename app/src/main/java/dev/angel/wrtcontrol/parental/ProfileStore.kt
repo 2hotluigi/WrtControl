@@ -1,8 +1,11 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.UciValue
 import dev.angel.wrtcontrol.openwrt.uciSection
+import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.userRequire
 import java.time.DayOfWeek
 import java.time.LocalDateTime
@@ -293,15 +296,15 @@ fun validateProfiles(profiles: List<Profile>) {
     val owner = mutableMapOf<String, String>()
     for (p in profiles) {
         require(ID_PATTERN.matches(p.id)) { "Identificador de perfil no válido: ${p.id}" }
-        userRequire(p.name.isNotBlank() && p.name == cleanProfileName(p.name)) { "Ponle un nombre al perfil (sin comillas)." }
+        userRequire(p.name.isNotBlank() && p.name == cleanProfileName(p.name)) { txt(R.string.parental_error_profile_name) }
         for (mac in p.macs) {
             require(normalizeMac(mac) == mac) { "MAC no válida: $mac" }
             val other = owner.put(mac, p.name)
-            userRequire(other == null) { "El dispositivo $mac está en dos perfiles ($other y ${p.name}): quítalo de uno." }
+            userRequire(other == null) { txt(R.string.parental_error_device_two_profiles, mac, other.orEmpty(), p.name) }
         }
         for (s in p.schedules) {
             require(ID_PATTERN.matches(s.id)) { "Identificador de horario no válido: ${s.id}" }
-            userRequire(s.days.isNotEmpty()) { "Cada horario necesita al menos un día." }
+            userRequire(s.days.isNotEmpty()) { txt(R.string.parental_error_schedule_no_days) }
             require(s.start.second == 0 && s.end.second == 0) { "Los horarios van en minutos exactos" }
         }
         require(p.cutEpoch == 0 || p.cutEpoch in CUT_EPOCHS) { "Época de corte no válida" }
@@ -339,7 +342,7 @@ fun assignDnsPorts(profiles: List<Profile>): List<Profile> {
     return first.map { p ->
         if (!p.needsDns || p.dnsPort != null) return@map p
         val free = DNS_PORTS.firstOrNull { it !in kept }
-            ?: throw IllegalArgumentException("Hay demasiados perfiles con filtro (máximo ${DNS_PORTS.count()})")
+            ?: throw UserFacingException(txt(R.string.parental_error_too_many_filtered, DNS_PORTS.count()))
         kept += free
         p.copy(dnsPort = free)
     }

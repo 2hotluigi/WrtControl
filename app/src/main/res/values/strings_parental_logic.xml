@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <!-- Errores del control parental al aplicar en el router -->
+    <string name="parental_error_unknown_zone">El router no conoce la zona horaria %1$s. Elígela a mano en LuCI (Sistema → Sistema).</string>
+    <string name="parental_error_zone_not_applied">El router no tomó la hora de esa zona (%1$s), así que se dejó como estaba.</string>
+    <string name="parental_error_zone_rules_stale">La zona horaria ya cambió, pero el router no volvió a cargar las reglas de los horarios: pueden ir desfasadas. Vuelve a guardar cualquier perfil para recargarlas.</string>
+    <string name="parental_error_not_applied">El router no cargó los cambios (firewall o DNS), así que se restauró la configuración anterior.</string>
+    <string name="parental_error_include_refused">El router no deja a la app guardar las reglas del control parental. ¿Tiene LuCI completo instalado?</string>
+    <string name="parental_error_family_dns_down">El DNS para familias (%1$s) no responde desde el router, así que no se activó el filtro. Prueba otro nivel o revisa si tu proveedor lo bloquea.</string>
+    <string name="parental_error_family_dns_down_provider">El DNS para familias (%1$s) no responde desde el router, así que no se activó el filtro. Revisa si tu proveedor lo bloquea.</string>
+    <string name="parental_error_dns_intercepted">El DNS para familias no está filtrando desde tu router: parece que tu proveedor de internet intercepta las consultas DNS. No se activó el filtro.</string>
+    <string name="parental_error_pending_change">El router tiene otro cambio pendiente de confirmar (quizá desde LuCI u otro teléfono). Espera un minuto y vuelve a intentarlo.</string>
+    <string name="parental_error_newer_schema">El control parental de este router lo configuró una versión más nueva de WrtControl. Actualiza la app para cambiarlo desde este teléfono; mientras, solo puedes verlo.</string>
+    <string name="parental_error_uncertain">No se pudo comprobar que el cambio funcionara y el router no confirmó que lo deshiciera. Revisa cómo quedó antes de volver a intentarlo.</string>
+    <string name="parental_error_no_lan_zone">No se encontró la zona LAN del firewall, así que no se puede aplicar el filtro de contenido. Revisa las zonas del firewall en LuCI.</string>
+    <string name="parental_error_no_home_zone">No se encontró la zona de la red de casa en el firewall, así que no se puede activar la cuarentena. Revisa las zonas del firewall en LuCI.</string>
+    <string name="parental_error_approve_one">Aprueba al menos un dispositivo antes de activar la cuarentena.</string>
+    <string name="parental_error_profile_name">Ponle un nombre al perfil (sin comillas).</string>
+    <string name="parental_error_device_two_profiles">El dispositivo %1$s está en dos perfiles (%2$s y %3$s): quítalo de uno.</string>
+    <string name="parental_error_schedule_no_days">Cada horario necesita al menos un día.</string>
+    <string name="parental_error_too_many_filtered">Hay demasiados perfiles con filtro (máximo %1$d).</string>
+</resources>

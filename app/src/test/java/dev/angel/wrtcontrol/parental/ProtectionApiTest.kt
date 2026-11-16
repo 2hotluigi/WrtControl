@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.status
@@ -478,14 +480,14 @@ class ProtectionApiTest {
         val nothing = expect<IllegalArgumentException> {
             api.update { config, _ -> config.copy(settings = config.settings.copy(quarantine = true)) }
         }
-        assertTrue(nothing.message, nothing.message!!.contains("Aprueba al menos un dispositivo"))
+        assertTrue(describeError(nothing).es, describeError(nothing).es.contains("Aprueba al menos un dispositivo"))
 
         // Sin reenvío de lan a wan no se sabe cuál es la red de casa.
         fake.section("cfg07", "forwarding", "src" to "lan", "dest" to "wan", "enabled" to "0")
         val noHome = expect<IllegalArgumentException> {
             api.update(appMacs = setOf(phone)) { config, _ -> config.copy(settings = config.settings.copy(quarantine = true)) }
         }
-        assertTrue(noHome.message, noHome.message!!.contains("zona de la red de casa"))
+        assertTrue(describeError(noHome).es, describeError(noHome).es.contains("zona de la red de casa"))
 
         for (name in listOf("uci.add", "uci.confirm", "file.write")) assertFalse(name, fake.calls.contains(name))
         assertNull(fake.committed[SETTINGS_SECTION])
@@ -770,7 +772,7 @@ class ProtectionApiTest {
             api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(safeSearch = true)) }
         }
 
-        assertTrue(e.message!!.contains("DNS"))
+        assertTrue(describeError(e).es.contains("DNS"))
         assertTrue(fake.calls.contains("uci.rollback"))
         assertFalse(fake.calls.contains("uci.confirm"))
         assertTrue(fake.committed.keys.none { it.startsWith(SECTION_PREFIX) })
@@ -843,7 +845,7 @@ class ProtectionApiTest {
                 api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(level)) }
             }
 
-            assertTrue("$level: ${e.message}", e.message!!.contains("intercepta"))
+            assertTrue("$level: ${describeError(e).es}", describeError(e).es.contains("intercepta"))
             assertTrue(fake.calls.contains("uci.rollback"))
             assertFalse(fake.calls.contains("uci.confirm"))
             assertTrue(fake.committed.keys.none { it.startsWith(SECTION_PREFIX) })
@@ -875,7 +877,7 @@ class ProtectionApiTest {
             api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(safeSearch = true)) }
         }
 
-        assertTrue(e.message, e.message!!.contains("intercepta"))
+        assertTrue(describeError(e).es, describeError(e).es.contains("intercepta"))
         assertTrue(fake.lookups().any { "www.bing.com" in it && "-port=5301" in it })
         assertTrue(fake.committed.keys.none { it.startsWith(SECTION_PREFIX) })
         assertNull(fake.pendingApply)
@@ -912,8 +914,8 @@ class ProtectionApiTest {
             api(fake).updateProfiles { profiles, _ -> profiles + juan.copy(filter = ContentFilter(safeSearch = true)) }
         }
 
-        assertFalse(e.message, e.message!!.contains("intercepta"))
-        assertTrue(e.message, e.message!!.contains("no responde"))
+        assertFalse(describeError(e).es, describeError(e).es.contains("intercepta"))
+        assertTrue(describeError(e).es, describeError(e).es.contains("no responde"))
     }
 
     @Test

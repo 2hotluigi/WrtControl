@@ -37,6 +37,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.normalizeMac
+import dev.angel.wrtcontrol.text
 
 /** Interruptor con título y explicación, como los de ajustes. */
 @Composable
@@ -432,7 +433,7 @@ internal fun ExtraTimeDialog(name: String, options: List<ExtraOption>, onPick: (
                 )
                 options.forEachIndexed { i, option ->
                     TextButton(onClick = { onPick(option) }, modifier = Modifier.fillMaxWidth().testTag("extra-$i")) {
-                        Text(option.label, modifier = Modifier.fillMaxWidth())
+                        Text(option.label.text(), modifier = Modifier.fillMaxWidth())
                     }
                 }
             }

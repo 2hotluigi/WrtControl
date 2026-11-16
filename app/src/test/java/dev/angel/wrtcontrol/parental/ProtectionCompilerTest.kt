@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.Lookup
 import dev.angel.wrtcontrol.openwrt.Resolution
 import dev.angel.wrtcontrol.openwrt.UciValue
@@ -235,7 +237,7 @@ class ProtectionCompilerTest {
         assertTrue(onlyAdmin.rules("cuarentena").all { "ether saddr != { aa:bb:cc:dd:ee:02 }" in it })
 
         val e = assertThrows(IllegalArgumentException::class.java) { plan(settings = ParentalSettings(quarantine = true)) }
-        assertTrue(e.message!!, e.message!!.contains("Aprueba al menos un dispositivo"))
+        assertTrue(describeError(e).es, describeError(e).es.contains("Aprueba al menos un dispositivo"))
     }
 
     @Test
@@ -243,7 +245,7 @@ class ProtectionCompilerTest {
         val e = assertThrows(IllegalArgumentException::class.java) {
             plan(juan, settings = ParentalSettings(quarantine = true, approved = listOf(mac3)), env = RouterEnv(homeZones = emptyList()))
         }
-        assertTrue(e.message!!, e.message!!.contains("zona de la red de casa"))
+        assertTrue(describeError(e).es, describeError(e).es.contains("zona de la red de casa"))
         // Sin cuarentena no hace falta.
         assertNotNull(plan(filtered, env = RouterEnv(homeZones = emptyList())).include)
     }
@@ -766,7 +768,7 @@ class ProtectionCompilerTest {
         val e = assertThrows(IllegalArgumentException::class.java) {
             plan(juan, settings = ParentalSettings(quarantine = true), env = disabled)
         }
-        assertTrue(e.message!!, e.message!!.contains("zona de la red de casa"))
+        assertTrue(describeError(e).es, describeError(e).es.contains("zona de la red de casa"))
         // El resto sigue funcionando sin ella.
         assertNotNull(plan(filtered, env = disabled).include)
     }

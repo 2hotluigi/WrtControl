@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.parental
 
+import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.es
 import dev.angel.wrtcontrol.openwrt.UciValue
 import dev.angel.wrtcontrol.openwrt.uciSection
 import dev.angel.wrtcontrol.ubus.Credentials
@@ -106,7 +108,7 @@ class SchemaTest {
                 action()
                 fail("Se esperaba NewerSchemaException")
             } catch (e: NewerSchemaException) {
-                assertTrue(e.message!!.contains("Actualiza la app"))
+                assertTrue(describeError(e).es.contains("Actualiza la app"))
             }
         }
         // Solo el sondeo de cambios pendientes (un apply sin nada preparado): nada se prepara ni se confirma.
