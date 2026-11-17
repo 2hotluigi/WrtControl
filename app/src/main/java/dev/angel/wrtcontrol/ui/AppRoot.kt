@@ -16,6 +16,7 @@ import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.ui.home.HomeScreen
 import dev.angel.wrtcontrol.ui.login.LoginScreen
+import dev.angel.wrtcontrol.ui.login.SetupScreen
 
 /** La lista de fabricantes por prefijo de MAC; null donde no hace falta (pruebas, vistas previas). */
 val LocalVendors = staticCompositionLocalOf<VendorTable?> { null }
@@ -31,7 +32,8 @@ fun AppRoot(repository: RouterRepository, settings: AppSettings, vendors: Vendor
                 CircularProgressIndicator()
             }
             is Connection.SignedOut -> LoginScreen(c)
-            is Connection.SignedIn -> HomeScreen(c)
+            // La primera vez en un router, antes de la app: qué es y qué va a cambiar en él.
+            is Connection.SignedIn -> if (c.needsSetup) SetupScreen(c) else HomeScreen(c)
         }
     }
 }

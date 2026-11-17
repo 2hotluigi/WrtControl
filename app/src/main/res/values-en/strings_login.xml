@@ -6,4 +6,27 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_connect">Connect</string>
+    <string name="login_address_detected">It is the router of the Wi-Fi you are connected to.</string>
+    <string name="setup_step">Step %1$d of %2$d</string>
+    <string name="setup_router_title">This is your router</string>
+    <string name="setup_router_body">WrtControl will manage it from this phone. Check that it is yours.</string>
+    <string name="setup_router_loading">Asking the router…</string>
+    <string name="setup_router_version">OpenWrt version</string>
+    <string name="setup_router_tested">The app is tested with this version.</string>
+    <string name="setup_password_title">Protect your router</string>
+    <string name="setup_password_missing">Your router has no password. Anyone connected to your network can get into it and change everything, including what you set up here.</string>
+    <string name="setup_password_set">Set a password</string>
+    <string name="setup_password_later">If you would rather do it later, it is under Security.</string>
+    <string name="setup_password_ok">Your router has a password. The app keeps it encrypted on this phone and it never leaves it.</string>
+    <string name="setup_features_title">What it can do</string>
+    <string name="setup_features_body">Anything marked “will be installed” needs a package that the app installs when you turn it on. You don\'t need to know which one.</string>
+    <string name="setup_changes_title">What will change on your router</string>
+    <string name="setup_changes_nothing">Nothing for now. Signing in with the app does not change your router.</string>
+    <string name="setup_changes_when">When you turn something on (a pause, a filter, access from outside home), the app writes only what is needed and marks it as its own, so in LuCI you can tell it from your own settings.</string>
+    <string name="setup_changes_safe">Every change is checked on the router before it is accepted. If anything fails, or you lose the connection halfway, the router rolls back on its own within a minute.</string>
+    <string name="setup_changes_luci">LuCI keeps working the same: you can use both.</string>
+    <string name="setup_back">Back</string>
+    <string name="setup_next">Next</string>
+    <string name="setup_finish">Get started</string>
+    <string name="setup_skip">Skip</string>
 </resources>

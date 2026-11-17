@@ -13,6 +13,7 @@ private val Context.routerDataStore by preferencesDataStore(name = "router")
 data class SavedRouter(val address: String, val username: String, val password: String?, val routerId: String? = null)
 
 /** Router configurado. La dirección y el usuario van en claro; la contraseña, cifrada. */
+@Suppress("TooManyFunctions") // Un almacén: leer y guardar cada cosa, sin más lógica.
 class RouterStore(private val context: Context, private val box: SecretBox) {
 
     suspend fun load(): SavedRouter? {
@@ -50,6 +51,13 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         context.routerDataStore.edit { prefs -> if (pending) prefs[pendingKey(key)] = true else prefs.remove(pendingKey(key)) }
     }
 
+    /** ¿Ya se hizo en este teléfono la puesta en marcha del router de [address]? */
+    suspend fun setupDone(address: String): Boolean = context.routerDataStore.data.first()[setupKey(address)] == true
+
+    suspend fun setSetupDone(address: String) {
+        context.routerDataStore.edit { it[setupKey(address)] = true }
+    }
+
     suspend fun saveRouterId(routerId: String) {
         context.routerDataStore.edit { it[ROUTER_ID] = routerId }
     }
@@ -78,6 +86,7 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         fun backupKey(key: String) = stringPreferencesKey("parental_backup:" + key.trim().lowercase())
         fun pendingKey(key: String) = booleanPreferencesKey("parental_backup_pending:" + key.trim().lowercase())
         fun tunnelKey(address: String, routerId: String) = stringPreferencesKey("tunnel:" + address.trim().lowercase() + "|" + routerId)
+        fun setupKey(address: String) = booleanPreferencesKey("setup_done:" + address.trim().lowercase())
         val ROUTER_ID = stringPreferencesKey("router_id")
         val ADDRESS = stringPreferencesKey("address")
         val USERNAME = stringPreferencesKey("username")

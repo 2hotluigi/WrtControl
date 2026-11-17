@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -43,12 +44,17 @@ import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LocalRepository
+import dev.angel.wrtcontrol.ui.parental.homeGateway
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-class LoginViewModel(private val repo: RouterRepository, initial: Connection.SignedOut) : ViewModel() {
-    var address by mutableStateOf(initial.lastAddress ?: BuildConfig.DEFAULT_ROUTER)
+/**
+ * [gateway]: la puerta de enlace del Wi-Fi en el que está el teléfono, que casi siempre es el
+ * router. Se propone la primera vez; después manda la última dirección que se usó.
+ */
+class LoginViewModel(private val repo: RouterRepository, initial: Connection.SignedOut, val gateway: String? = null) : ViewModel() {
+    var address by mutableStateOf(initial.lastAddress ?: gateway ?: BuildConfig.DEFAULT_ROUTER)
     var username by mutableStateOf(initial.lastUsername ?: "root")
     var password by mutableStateOf("")
     var busy by mutableStateOf(false)
@@ -78,7 +84,8 @@ class LoginViewModel(private val repo: RouterRepository, initial: Connection.Sig
 @Composable
 fun LoginScreen(state: Connection.SignedOut) {
     val repo = LocalRepository.current
-    val vm: LoginViewModel = viewModel { LoginViewModel(repo, state) }
+    val context = LocalContext.current
+    val vm: LoginViewModel = viewModel { LoginViewModel(repo, state, homeGateway(context)) }
 
     Surface(Modifier.fillMaxSize()) {
         Box(
@@ -111,6 +118,12 @@ fun LoginScreen(state: Connection.SignedOut) {
                     placeholder = { Text("192.168.1.1") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+                    // La dirección propuesta es la del router de este Wi-Fi: se dice de dónde sale.
+                    supportingText = if (vm.gateway != null && vm.address.trim() == vm.gateway) {
+                        { Text(stringResource(R.string.login_address_detected)) }
+                    } else {
+                        null
+                    },
                     modifier = Modifier.fillMaxWidth().testTag("address"),
                 )
                 OutlinedTextField(
