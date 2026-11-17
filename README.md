@@ -511,7 +511,15 @@ redes (invitados, modo cliente, malla) no se tocan.
   el 40, propuso el 11 y el 149. Un detalle del kernel: sin país, el 149 es "solo escuchar",
   pero deja de serlo en cuanto el router oye a otro punto de acceso emitiendo ahí.
 
-Límites: no hay potencia todavía (va en la siguiente parte del Wi-Fi). El
+- **Potencia.** El `txpower` de cada radio, en tres niveles: toda (quita la opción, y el router
+  usa el tope que permita el país), media (6 dB por debajo del tope: una cuarta parte de la
+  potencia) o baja (12 dB). El tope lo dice `iwinfo txpowerlist` (20 dBm en el GL-MT6000 sin
+  país). Bajarla sirve cuando el Wi-Fi llega de sobra o hay otros puntos de acceso propios cerca.
+- **Conectados ahora.** Bajo las bandas, quién hay en cada una (con el nombre que usa
+  Dispositivos) y cómo lo oye el router: señal muy buena (-55 dBm o más), buena (hasta -67),
+  justa (hasta -75) o débil. Sale del mismo `iwinfo assoclist`; los de peor señal, primero.
+
+Límites: el
 país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin poner, el
 GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 

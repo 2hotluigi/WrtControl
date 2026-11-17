@@ -19,6 +19,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   un minuto por si hay radares antes de emitir, y pide tener puesto el país.
 - Wi-Fi: el canal más libre. El router mira qué canales usan las redes de alrededor y la app
   propone el que menos vecinos tiene, si de verdad está más libre que el actual.
+- Wi-Fi: potencia (toda, media o baja) y "Conectados ahora": quién hay en cada banda y si su
+  señal es muy buena, buena, justa o débil.
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.

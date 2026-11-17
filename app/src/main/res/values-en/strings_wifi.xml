@@ -88,4 +88,19 @@
     <string name="wifi_channel_busy">Changing channel…</string>
     <string name="wifi_channel_not_applied">Wi-Fi didn\'t come back on that channel, so it was left as it was.</string>
     <string name="wifi_channel_preview_title">Change channel</string>
+    <string name="wifi_power_title">Power</string>
+    <string name="wifi_power_help">With less power, Wi-Fi bothers neighbours and your other access points less, but reaches less far. More power doesn\'t fix a far-away device: the router has to hear it too.</string>
+    <string name="wifi_power_full">Full (recommended)</string>
+    <string name="wifi_power_medium">Medium: a flat or a small house</string>
+    <string name="wifi_power_low">Low: one or two rooms</string>
+    <string name="wifi_power_busy">Changing power…</string>
+    <string name="wifi_power_not_applied">Wi-Fi didn\'t come back with that power, so it was left as it was.</string>
+    <string name="wifi_power_preview_title">Change power</string>
+    <string name="wifi_clients_title">Connected now</string>
+    <string name="wifi_clients_help">A device with a weak signal is slow and slows the others down: move it closer or add another access point.</string>
+    <string name="wifi_client_signal">%1$s (%2$d dBm)</string>
+    <string name="wifi_signal_excellent">Very good signal</string>
+    <string name="wifi_signal_good">Good signal</string>
+    <string name="wifi_signal_fair">Fair signal</string>
+    <string name="wifi_signal_weak">Weak signal</string>
 </resources>

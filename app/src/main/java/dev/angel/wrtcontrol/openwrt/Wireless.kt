@@ -49,6 +49,9 @@ data class WifiRadio(
     val channel: String? = null,
     val htmode: String? = null,
     val htmodes: List<String> = emptyList(),
+    /** El `txpower` puesto (dBm; null: toda la que se pueda) y el tope que admite la radio (null: no se sabe). */
+    val txpower: Int? = null,
+    val maxPower: Int? = null,
 ) {
     /** El ancho del canal en MHz, o null si no se sabe. */
     val width: Int? get() = htmodeWidth(htmode)
@@ -82,6 +85,8 @@ data class WifiNetwork(
     val networks: List<String>,
     val ifname: String? = null,
     val clients: List<String> = emptyList(),
+    /** Con qué fuerza oye el router a cada conectado (MAC → dBm), de los que lo diga. */
+    val signals: Map<String, Int> = emptyMap(),
 ) {
     val security: WifiSecurity? get() = wifiSecurity(encryption)
 
@@ -104,12 +109,16 @@ data class WifiState(val radios: List<WifiRadio>, val networks: List<WifiNetwork
     val country: String? get() = radios.map { it.country }.distinct().singleOrNull()
 }
 
+/** Lo demás que dice `iwinfo`: la señal de cada conectado (interfaz → MAC → dBm) y el tope de potencia de cada radio. */
+internal data class WifiExtras(val signals: Map<String, Map<String, Int>> = emptyMap(), val maxPower: Map<String, Int> = emptyMap())
+
 /** Lee el estado: las secciones de `wireless`, lo que dice `getWirelessDevices` y los conectados por interfaz. */
 internal fun parseWifi(
     sections: List<UciSection>,
     devices: Map<String, JsonObject>,
     clients: Map<String, List<String>> = emptyMap(),
     htmodes: Map<String, List<String>> = emptyMap(),
+    extras: WifiExtras = WifiExtras(),
 ): WifiState {
     val running = devices.mapValues { (_, d) -> runningInterfaces(d) }
     val radios = sections.filter { it.type == "wifi-device" }.map { s ->
@@ -124,6 +133,8 @@ internal fun parseWifi(
             channel = s.text("channel"),
             htmode = s.text("htmode"),
             htmodes = htmodes[s.name].orEmpty(),
+            txpower = s.text("txpower")?.toIntOrNull(),
+            maxPower = extras.maxPower[s.name],
         )
     }
     val networks = sections.filter { it.type == "wifi-iface" && (it.text("mode") ?: "ap") == "ap" }.mapNotNull { s ->
@@ -139,6 +150,7 @@ internal fun parseWifi(
             networks = s.items("network"),
             ifname = ifname,
             clients = ifname?.let { clients[it] }.orEmpty(),
+            signals = ifname?.let { extras.signals[it] }.orEmpty(),
         )
     }
     return WifiState(radios.sortedBy { it.name }, networks)

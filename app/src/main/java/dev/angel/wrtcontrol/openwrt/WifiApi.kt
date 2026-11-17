@@ -38,13 +38,7 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
         val before = tx.uciSections("wireless")
         val changes = wifiPlan(before, edit)
         if (changes.isEmpty()) return@withLock
-        for (change in changes) {
-            when (change) {
-                is WifiChange.Set -> tx.uciSet("wireless", change.section, change.values)
-                is WifiChange.DropOption -> tx.uciDeleteOption("wireless", change.section, change.option)
-                is WifiChange.Add -> tx.uciAdd("wireless", change.section)
-            }
-        }
+        changes.forEach { tx.stage(it) }
         tx.applySafely(
             failure = txt(R.string.wifi_error_not_applied),
             isReverted = { fresh -> fresh.uciSections("wireless") == before },
@@ -121,19 +115,38 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
     }
 
     /**
+     * Pone la potencia de [radio] en [power] (ver WirelessPower.kt). Si emitía, se reinicia; si no
+     * vuelve, el router lo deshace.
+     */
+    suspend fun setPower(radio: String, power: WifiPower, phoneOnIt: Boolean) = writeLock.withLock {
+        val tx = ubus.openSession()
+        tx.ensureNoPendingApply()
+        val before = tx.uciSections("wireless")
+        val up = parseWifi(before, tx.wirelessDevices()).radios.filter { it.up }
+        val slow = phoneOnIt || up.any { it.name == radio && it.mayWaitForRadar }
+        tx.applyToRadios(before, powerPlan(before, radio, power, tx.maxPower(radio)), up, slow, R.string.wifi_power_not_applied)
+    }
+
+    private suspend fun UbusSession.stage(change: WifiChange) = when (change) {
+        is WifiChange.Set -> uciSet("wireless", change.section, change.values)
+        is WifiChange.DropOption -> uciDeleteOption("wireless", change.section, change.option)
+        is WifiChange.Add -> uciAdd("wireless", change.section)
+    }
+
+    /**
      * Aplica [changes] a las radios, con reversión: las de [up] (las que estaban levantadas) tienen
      * que volver a estarlo varias comprobaciones seguidas, porque justo después de aplicar siguen
      * "levantadas" un instante antes de reiniciarse. [slow]: se les da 3 minutos en vez de 1.
      */
     private suspend fun UbusSession.applyToRadios(
         before: List<UciSection>,
-        changes: List<WifiChange.Set>,
+        changes: List<WifiChange>,
         up: List<WifiRadio>,
         slow: Boolean,
         @StringRes failure: Int,
     ) {
         if (changes.isEmpty()) return
-        changes.forEach { uciSet("wireless", it.section, it.values) }
+        changes.forEach { stage(it) }
         val wasUp = up.map { it.name }.toSet()
         val patient = slow && up.isNotEmpty()
         var steady = 0
