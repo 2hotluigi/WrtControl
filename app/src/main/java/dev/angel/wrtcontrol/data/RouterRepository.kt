@@ -25,8 +25,16 @@ sealed interface Connection {
         val lastUsername: String? = null,
     ) : Connection
 
-    /** [emptyPassword]: el router acepta entrar sin contraseña, así que cualquiera en la red puede cambiarlo. */
-    data class SignedIn(val address: String, val username: String, val emptyPassword: Boolean = false) : Connection
+    /**
+     * [emptyPassword]: el router acepta entrar sin contraseña, así que cualquiera en la red puede cambiarlo.
+     * [needsSetup]: es la primera vez que este teléfono entra en este router: toca la puesta en marcha.
+     */
+    data class SignedIn(
+        val address: String,
+        val username: String,
+        val emptyPassword: Boolean = false,
+        val needsSetup: Boolean = false,
+    ) : Connection
 }
 
 /** Punto único de acceso al router: conexión, credenciales guardadas, API y lo que se lee de él. */
@@ -87,6 +95,8 @@ class RouterRepository(
         routerId = saved.routerId
         useTunnel(tunnelFor(saved.address, saved.routerId))
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
+        // Quien ya venía usando la app con este router no necesita que se lo presenten.
+        store.setSetupDone(saved.address)
         _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
     }
 
@@ -109,7 +119,15 @@ class RouterRepository(
         routerId = id ?: known
         if (id != null && id != known) useTunnel(tunnelFor(address.trim(), id))
         open(newClient)
-        _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty())
+        val needsSetup = !store.setupDone(address.trim())
+        _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty(), needsSetup)
+    }
+
+    /** La puesta en marcha de este router ya está hecha (o el usuario la saltó): no se vuelve a ofrecer. */
+    suspend fun finishSetup() {
+        val signed = _state.value as? Connection.SignedIn ?: return
+        store.setSetupDone(signed.address)
+        _state.value = signed.copy(needsSetup = false)
     }
 
     suspend fun signOut(notice: Txt? = null) {

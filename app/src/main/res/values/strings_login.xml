@@ -6,4 +6,27 @@
     <string name="login_username">Usuario</string>
     <string name="login_password">Contraseña</string>
     <string name="login_connect">Conectar</string>
+    <string name="login_address_detected">Es el router del Wi-Fi al que estás conectado.</string>
+    <string name="setup_step">Paso %1$d de %2$d</string>
+    <string name="setup_router_title">Este es tu router</string>
+    <string name="setup_router_body">WrtControl lo va a administrar desde este teléfono. Comprueba que es el tuyo.</string>
+    <string name="setup_router_loading">Preguntando al router…</string>
+    <string name="setup_router_version">Versión de OpenWrt</string>
+    <string name="setup_router_tested">Es una versión con la que la app está probada.</string>
+    <string name="setup_password_title">Protege tu router</string>
+    <string name="setup_password_missing">Tu router no tiene contraseña. Cualquiera conectado a tu red puede entrar en él y cambiarlo todo, también lo que configures aquí.</string>
+    <string name="setup_password_set">Poner contraseña</string>
+    <string name="setup_password_later">Si prefieres hacerlo después, está en Seguridad.</string>
+    <string name="setup_password_ok">Tu router tiene contraseña. La app la guarda cifrada en este teléfono y no sale de él.</string>
+    <string name="setup_features_title">Qué puede hacer</string>
+    <string name="setup_features_body">Lo que marca «se instalará» necesita un paquete que la app instala cuando lo actives. No tienes que saber cuál.</string>
+    <string name="setup_changes_title">Qué va a cambiar en tu router</string>
+    <string name="setup_changes_nothing">Por ahora, nada. Entrar con la app no cambia tu router.</string>
+    <string name="setup_changes_when">Cuando actives algo (una pausa, un filtro, entrar desde fuera de casa), la app escribe solo lo necesario y lo deja marcado como suyo, para que en LuCI se distinga de lo tuyo.</string>
+    <string name="setup_changes_safe">Cada cambio se comprueba en el router antes de darlo por bueno. Si algo falla, o te quedas sin conexión a mitad, el router vuelve atrás solo en un minuto.</string>
+    <string name="setup_changes_luci">LuCI sigue funcionando igual: puedes usar las dos cosas.</string>
+    <string name="setup_back">Atrás</string>
+    <string name="setup_next">Siguiente</string>
+    <string name="setup_finish">Empezar</string>
+    <string name="setup_skip">Saltar</string>
 </resources>

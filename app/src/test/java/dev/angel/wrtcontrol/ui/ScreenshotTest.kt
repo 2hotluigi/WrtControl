@@ -43,6 +43,8 @@ import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import dev.angel.wrtcontrol.ui.login.SetupContent
+import dev.angel.wrtcontrol.ui.login.SetupStep
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -165,6 +167,16 @@ class ScreenshotTest {
             ),
             onOpen = {},
         )
+    }
+
+    /** Los cuatro pasos de la puesta en marcha, con un router sin contraseña (el caso que más enseña). */
+    @Test
+    fun `puesta en marcha`() {
+        SetupStep.entries.forEach { step ->
+            both("puesta-en-marcha-${step.ordinal + 1}") {
+                SetupContent(step, emptyPassword = true, board = status.board, capabilities = capabilities)
+            }
+        }
     }
 
     @Test

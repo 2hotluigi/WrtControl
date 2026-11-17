@@ -87,6 +87,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.
+  Primera parte hecha: la pantalla de conexión propone la puerta de enlace del Wi-Fi y, la primera
+  vez que un teléfono entra en un router, cuatro pasos antes de la app: qué router es y si su
+  versión está probada, poner contraseña si no tiene, qué puede hacer y qué va a cambiar. Probado
+  en el emulador contra el GL-MT6000.
+  Falta: emparejar otros teléfonos por QR. El usuario de la app va con el agente (Hito 3).
 - **Dispositivos con identidad**, primera parte hecha: fabricante por el prefijo de la MAC con una
   lista que va dentro de la app (290 KB, de los registros públicos del IEEE vía la lista `manuf` de
   Wireshark; `tools/update-oui.py` la regenera), aviso de MAC privada, icono por clase de aparato y

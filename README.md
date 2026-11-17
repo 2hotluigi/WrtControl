@@ -426,6 +426,24 @@ miniupnpd están en marcha (lo muestra como desconocido; el DNS sí se comprueba
   - **Privacidad:** con nivel de adultos o estricto, las consultas DNS de ese perfil pasan por
     Cloudflare o CleanBrowsing.
 
+## Puesta en marcha
+
+La pantalla de conexión propone la puerta de enlace de la red en la que está el teléfono (por Wi-Fi
+o por cable; no con datos móviles ni con una VPN), que casi siempre es el router, y lo dice.
+
+La primera vez que un teléfono entra en un router, antes de la app, cuatro pasos que se pueden
+saltar (`SetupScreen`):
+
+1. **Este es tu router:** nombre, modelo y versión de OpenWrt, y si la app está probada con ella.
+2. **Protege tu router:** si no tiene contraseña, por qué importa y un botón para ponerla.
+3. **Qué puede hacer:** cada función como disponible, "se instalará" o no compatible, con su motivo.
+4. **Qué va a cambiar en tu router:** nada todavía; lo que se escriba irá marcado como de la app y
+   cada cambio se deshace solo si falla.
+
+Nada de esto toca el router, salvo poner la contraseña si el usuario quiere. Que ya se hizo se
+apunta en el teléfono, por dirección del router: no se repite al volver a entrar, y quien ya usaba
+la app con ese router no la ve.
+
 ## Dispositivos: qué hace en el router
 
 Tocando un aparato se le pone nombre, se le fija la dirección y se dice de quién es.
