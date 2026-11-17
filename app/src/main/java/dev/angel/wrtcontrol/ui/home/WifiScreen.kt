@@ -40,6 +40,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.RouterAccess
 import dev.angel.wrtcontrol.data.RouterMonitor
+import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.WifiCountry
 import dev.angel.wrtcontrol.openwrt.WifiEdit
 import dev.angel.wrtcontrol.openwrt.WifiRadio
@@ -68,6 +69,16 @@ import kotlin.time.Duration.Companion.seconds
 
 /** Quién está conectado cambia a menudo; el resto, solo desde aquí o desde LuCI. */
 private val WIFI_REFRESH = 15.seconds
+
+/** Cómo va la búsqueda del canal más libre de una radio. */
+sealed interface ChannelSearch {
+    data object Searching : ChannelSearch
+
+    data class Found(val advice: ChannelAdvice) : ChannelSearch
+
+    /** El router no pudo escanear, o no hay nada que proponer. */
+    data object Failed : ChannelSearch
+}
 
 class WifiViewModel(private val router: RouterAccess, private val monitor: RouterMonitor) : ViewModel() {
     private val changes = ChangeRunner(viewModelScope)
@@ -118,6 +129,37 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
             router.use { it.wifi.setWidth(radio, width, phoneOnIt) }
         }
     }
+
+    /** Cómo va la búsqueda del canal más libre de cada radio. */
+    var channelSearches by mutableStateOf<Map<String, ChannelSearch>>(emptyMap())
+        private set
+
+    /** Pide al router que escanee con [radio] y proponga canal. */
+    fun findChannel(radio: String) {
+        channelSearches = channelSearches + (radio to ChannelSearch.Searching)
+        viewModelScope.launch {
+            val advice = try {
+                router.use { it.wifi.channelAdvice(radio) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            channelSearches = channelSearches + (radio to (advice?.let { ChannelSearch.Found(it) } ?: ChannelSearch.Failed))
+        }
+    }
+
+    /** Pasa [radio] al canal [channel]; antes enseña [preview] si esa radio está emitiendo. */
+    fun setChannel(radio: String, channel: Int, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        // Con el canal cambiado, lo que se encontró ya no describe lo que hay.
+        val done = {
+            channelSearches = channelSearches - radio
+            monitor.wifi.refresh()
+        }
+        changes.run(txt(R.string.wifi_channel_busy), onFinished = done) {
+            router.use { it.wifi.setChannel(radio, channel, phoneOnIt) }
+        }
+    }
 }
 
 @Composable
@@ -146,6 +188,12 @@ fun WifiScreen(address: String) {
             onWidth = { radio, width ->
                 vm.setWidth(radio.name, width, phoneOnRadio(wifi, radio.name, phoneMacs), widthPreview(wifi, radio, width, phoneMacs))
             },
+            channelSearches = vm.channelSearches,
+            onFindChannel = vm::findChannel,
+            onChannel = { radio, channel ->
+                val preview = channelPreview(wifi, radio, channel, phoneMacs)
+                vm.setChannel(radio.name, channel, phoneOnRadio(wifi, radio.name, phoneMacs), preview)
+            },
         )
     }
     ChangePreviewHost(vm.proposals)
@@ -164,6 +212,9 @@ fun WifiContent(
     suggestedCountry: String? = null,
     onCountry: (String) -> Unit = {},
     onWidth: (WifiRadio, Int) -> Unit = { _, _ -> },
+    channelSearches: Map<String, ChannelSearch> = emptyMap(),
+    onFindChannel: (String) -> Unit = {},
+    onChannel: (WifiRadio, Int) -> Unit = { _, _ -> },
 ) {
     val current = currentWifi(state)
     // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
@@ -200,6 +251,7 @@ fun WifiContent(
         HorizontalDivider()
         CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
         WidthSection(state, enabled = !busy, onPick = onWidth)
+        ChannelSection(state, channelSearches, enabled = !busy, onFind = onFindChannel, onUse = onChannel)
         if (problem != null && edit != current) {
             Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }

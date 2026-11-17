@@ -76,4 +76,18 @@
     <string name="wifi_width_not_applied">El Wi-Fi no volvió a emitir con ese ajuste, así que se dejó como estaba.</string>
     <string name="wifi_width_preview_title">Cambiar la velocidad y el alcance</string>
     <string name="wifi_width_preview_radar">El router escuchará un minuto por si hay radares antes de volver a emitir en 5 GHz.</string>
+    <string name="wifi_channel_title">Canal</string>
+    <string name="wifi_channel_help">El router mira qué canales usan las redes de alrededor y propone el más libre. Tarda unos segundos y, si el Wi-Fi está encendido, puede ir a tirones mientras busca.</string>
+    <string name="wifi_channel_now">%1$s: canal %2$s</string>
+    <string name="wifi_channel_auto">automático</string>
+    <string name="wifi_channel_find">Buscar el más libre</string>
+    <string name="wifi_channel_searching">Buscando…</string>
+    <string name="wifi_channel_failed">El router no pudo mirar las redes de alrededor.</string>
+    <string name="wifi_channel_best_already">El canal actual es de los más libres (redes cerca: %1$d): no merece la pena cambiar.</string>
+    <string name="wifi_channel_better">El canal %1$d está más libre (redes cerca: %2$d; en el actual: %3$d).</string>
+    <string name="wifi_channel_better_auto">Ahora el más libre es el canal %1$d (redes cerca: %2$d). En automático, el router elige uno cada vez que arranca.</string>
+    <string name="wifi_channel_use">Usar el canal %1$d</string>
+    <string name="wifi_channel_busy">Cambiando de canal…</string>
+    <string name="wifi_channel_not_applied">El Wi-Fi no volvió a emitir en ese canal, así que se dejó como estaba.</string>
+    <string name="wifi_channel_preview_title">Cambiar de canal</string>
 </resources>

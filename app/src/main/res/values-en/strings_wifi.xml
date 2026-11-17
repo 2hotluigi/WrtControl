@@ -74,4 +74,18 @@
     <string name="wifi_width_not_applied">Wi-Fi didn\'t come back with that setting, so it was left as it was.</string>
     <string name="wifi_width_preview_title">Change speed and range</string>
     <string name="wifi_width_preview_radar">The router will listen for radars for a minute before transmitting on 5 GHz again.</string>
+    <string name="wifi_channel_title">Channel</string>
+    <string name="wifi_channel_help">The router checks which channels nearby networks use and suggests the clearest one. It takes a few seconds and, if Wi-Fi is on, it may stutter while it looks.</string>
+    <string name="wifi_channel_now">%1$s: channel %2$s</string>
+    <string name="wifi_channel_auto">automatic</string>
+    <string name="wifi_channel_find">Find the clearest</string>
+    <string name="wifi_channel_searching">Looking…</string>
+    <string name="wifi_channel_failed">The router couldn\'t check the networks around.</string>
+    <string name="wifi_channel_best_already">The current channel is among the clearest (networks nearby: %1$d): not worth changing.</string>
+    <string name="wifi_channel_better">Channel %1$d is clearer (networks nearby: %2$d; on the current one: %3$d).</string>
+    <string name="wifi_channel_better_auto">Right now the clearest is channel %1$d (networks nearby: %2$d). On automatic, the router picks one each time it starts.</string>
+    <string name="wifi_channel_use">Use channel %1$d</string>
+    <string name="wifi_channel_busy">Changing channel…</string>
+    <string name="wifi_channel_not_applied">Wi-Fi didn\'t come back on that channel, so it was left as it was.</string>
+    <string name="wifi_channel_preview_title">Change channel</string>
 </resources>

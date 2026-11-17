@@ -107,4 +107,36 @@ class WifiVmTest {
         }
         assertEquals(original, ssh("uci -q get wireless.${radio.name}.htmode"))
     }
+
+    @Test
+    fun `el router escanea, se le propone canal y el cambio se deja como estaba`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val before = runCatching { api.state() }.getOrNull()
+        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+
+        val advice = before.radios.associate { radio ->
+            val t0 = System.currentTimeMillis()
+            val found = api.channelAdvice(radio.name)
+            log("${radio.name} (${radio.band}, canal ${radio.channel}): $found en ${System.currentTimeMillis() - t0} ms")
+            radio to found
+        }
+        assertTrue("el router escanea y hay consejo para cada banda", advice.values.all { it != null })
+
+        // Se cambia de verdad el canal de 2,4 GHz (sin radares) y se devuelve.
+        val radio = before.radios.firstOrNull { it.band == WifiBand.Band2 }
+        assumeTrue("No hay radio de 2,4 GHz", radio != null)
+        val original = ssh("uci -q get wireless.${radio!!.name}.channel")
+        val target = listOf(11, 6, 1).first { it.toString() != original }
+        try {
+            api.setChannel(radio.name, target, phoneOnIt = false)
+            assertEquals(target.toString(), ssh("uci -q get wireless.${radio.name}.channel"))
+            assertEquals("sigue levantada", radio.up, api.state().radios.single { it.name == radio.name }.up)
+        } finally {
+            ssh("uci set wireless.${radio.name}.channel=$original; uci commit wireless; wifi reload")
+        }
+        assertEquals(original, ssh("uci -q get wireless.${radio.name}.channel"))
+    }
 }

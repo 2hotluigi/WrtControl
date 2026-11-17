@@ -500,7 +500,18 @@ redes (invitados, modo cliente, malla) no se tocan.
   opción sale apagada) y, si el canal no está en un bloque donde quepan (36 a 64 o 100 a 128), se
   pasa al 36. Se aplica con la misma reversión que el país.
 
-Límites: no hay elección de canal ni potencia todavía (van en las siguientes partes del Wi-Fi). El
+- **Canal.** "Buscar el más libre" pide al router que escanee (`iwinfo scan`, 2 a 4 s; funciona
+  aunque no emita nada, y con el Wi-Fi encendido puede ir a tirones mientras) y cuenta cuánto
+  estorban las redes de alrededor en los canales que tiene sentido usar: en 2,4 GHz el 1, el 6 y
+  el 11 (un vecino estorba a los que tiene a menos de 5 canales, más cuanto más cerca y más
+  fuerte); en 5 GHz el 36 y el 149, los bloques sin radares (el 36 y el 100 si la radio va a 160
+  MHz), contando las redes de todo el bloque. Solo propone canales que el país permite (`iwinfo
+  freqlist`) y solo si el otro está al menos un 20 % más libre. Las redes propias (repetidores,
+  otros puntos de acceso) cuentan como vecinas. En la casa de pruebas, con los Deco en el 5 y en
+  el 40, propuso el 11 y el 149. Un detalle del kernel: sin país, el 149 es "solo escuchar",
+  pero deja de serlo en cuanto el router oye a otro punto de acceso emitiendo ahí.
+
+Límites: no hay potencia todavía (va en la siguiente parte del Wi-Fi). El
 país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin poner, el
 GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 

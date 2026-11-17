@@ -21,6 +21,7 @@ import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
+import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.LeaseState
@@ -41,6 +42,8 @@ import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.ChannelSearch
+import dev.angel.wrtcontrol.ui.home.ChannelSection
 import dev.angel.wrtcontrol.ui.home.CountrySection
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
@@ -155,6 +158,22 @@ class ScreenshotTest {
         )
         // Sin país, como viene de fábrica: el aviso propone el del teléfono.
         WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))), suggestedCountry = "MX")
+    }
+
+    /** El canal: una banda con un canal más libre que proponer y otra que ya está bien. */
+    @Test
+    fun wifiCanal() = both("wifi-canal") {
+        val radios = listOf(
+            WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true, channel = "1"),
+            WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true, channel = "36"),
+        )
+        val searches = mapOf(
+            "radio0" to ChannelSearch.Found(ChannelAdvice(best = 11, bestNeighbors = 0, currentNeighbors = 11, better = true)),
+            "radio1" to ChannelSearch.Found(ChannelAdvice(best = 36, bestNeighbors = 8, currentNeighbors = 8, better = false)),
+        )
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChannelSection(WifiState(radios, emptyList()), searches, enabled = true, onFind = {}, onUse = { _, _ -> })
+        }
     }
 
     /** Lo que queda bajo el pliegue en Wi-Fi: el país ya puesto y "Velocidad y alcance" de cada banda. */

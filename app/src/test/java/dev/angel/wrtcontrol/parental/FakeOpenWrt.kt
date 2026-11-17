@@ -77,6 +77,12 @@ class FakeOpenWrt(
     /** Anchos con los que las radios no arrancan (p. ej. "HE160" sin país). */
     var wifiBadHtmodes = setOf<String>()
 
+    /** Canales en los que las radios no arrancan (el país no los permite). */
+    var wifiBadChannels = setOf<String>()
+
+    /** Lo que oye cada radio al escanear: canal y señal de cada red vecina (null: no puede escanear). */
+    var wifiScan: Map<String, List<Pair<Int, Int>>>? = emptyMap()
+
     /** Aparatos conectados a cada interfaz Wi-Fi ("phy0-ap0" → MAC). */
     var wifiClients = mapOf<String, List<String>>()
 
@@ -90,7 +96,8 @@ class FakeOpenWrt(
         radios.keys.forEachIndexed { index, radio ->
             val up = !wifiBroken && text(radios.getValue(radio), "disabled") != "1" &&
                 text(radios.getValue(radio), "country") !in wifiBadCountries &&
-                text(radios.getValue(radio), "htmode") !in wifiBadHtmodes
+                text(radios.getValue(radio), "htmode") !in wifiBadHtmodes &&
+                text(radios.getValue(radio), "channel") !in wifiBadChannels
             putJsonObject(radio) {
                 put("up", up)
                 put("pending", false)
@@ -230,6 +237,22 @@ class FakeOpenWrt(
                 val wide = committed[arg("device")]?.get("band")?.jsonPrimitive?.content == "5g"
                 val modes = listOf("HT20", "HT40", "HE20", "HE40") + if (wide) listOf("VHT80", "VHT160", "HE80", "HE160") else emptyList()
                 putJsonArray("htmodes") { modes.forEach { add(JsonPrimitive(it)) } }
+            }.toString())
+            "iwinfo.scan" -> wifiScan?.let { heard ->
+                ok(buildJsonObject {
+                    putJsonArray("results") {
+                        heard[arg("device")].orEmpty().forEach { (channel, signal) -> addJsonObject { put("channel", channel); put("signal", signal) } }
+                    }
+                }.toString())
+            } ?: status(4)
+            "iwinfo.freqlist" -> ok(buildJsonObject {
+                // Como el GL-MT6000 sin país: del 12 en adelante en 2,4 GHz y del 149 en 5 GHz, solo escuchar.
+                val wide = committed[arg("device")]?.get("band")?.jsonPrimitive?.content == "5g"
+                val open = committed[arg("device")]?.get("country") != null
+                val channels = if (wide) listOf(36, 40, 44, 48, 52, 100, 149, 153) else (1..13).toList()
+                putJsonArray("results") {
+                    channels.forEach { c -> addJsonObject { put("channel", c); put("restricted", !open && (c >= 149 || c in 12..13)) } }
+                }
             }.toString())
             "iwinfo.countrylist" -> ok(buildJsonObject {
                 putJsonArray("results") {
