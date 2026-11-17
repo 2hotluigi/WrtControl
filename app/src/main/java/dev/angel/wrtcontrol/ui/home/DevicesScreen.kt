@@ -59,6 +59,7 @@ import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.withoutExpired
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ApplyingBanner
+import dev.angel.wrtcontrol.ui.ChangePreviewHost
 import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
@@ -100,19 +101,26 @@ fun DevicesScreen(address: String) {
         if (device != null) {
             // Sin remember: si el teléfono cambia de IP, se nota al abrir el diálogo.
             val phoneMacs = phoneAddresses(context).let { ips -> devices.filter { d -> d.ipv4.any { it in ips } }.map { it.mac }.toSet() }
+            val identity = identify(device, vendors)
             DeviceDialog(
                 device = device,
-                identity = identify(device, vendors),
+                identity = identity,
                 profiles = profiles,
                 canAssign = canAssign,
                 progress = vm.progress,
                 error = vm.error?.text(),
-                onSave = { change -> vm.save(device, change, phoneMacs) { editing = null } },
+                onSave = { change ->
+                    vm.save(device, change, phoneMacs, devicePreview(identity.title, device, change, profiles)) { editing = null }
+                },
                 // Con el control parental a la vista y sin ser este teléfono: a sí mismo no se corta.
                 internet = pauses?.takeIf { canAssign && device.mac !in phoneMacs }?.let { p ->
                     InternetControl(
                         status = p.pauses[device.mac]?.let { pauseText(it, p.now) },
-                        onPause = { minutes -> vm.pause(device, minutes, phoneMacs) { editing = null } },
+                        // Un rato sin internet se pasa solo; bloquearlo dura hasta que alguien lo quite: se avisa antes.
+                        onPause = { minutes ->
+                            val preview = if (minutes == null) blockPreview(identity.title) else null
+                            vm.pause(device, minutes, phoneMacs, preview) { editing = null }
+                        },
                         onResume = { vm.resume(device, phoneMacs) { editing = null } },
                     )
                 },
@@ -124,6 +132,7 @@ fun DevicesScreen(address: String) {
             )
         }
     }
+    ChangePreviewHost(vm.proposals)
 }
 
 /** Los aparatos sueltos sin internet y la hora del router, para decir hasta cuándo. */

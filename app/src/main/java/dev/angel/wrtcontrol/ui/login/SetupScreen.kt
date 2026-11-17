@@ -43,6 +43,7 @@ import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.openWrtSupportNotice
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.ui.ChangePreviewHost
 import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ChangeRunner
 import dev.angel.wrtcontrol.ui.InfoCard
@@ -50,8 +51,10 @@ import dev.angel.wrtcontrol.ui.InfoRow
 import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
+import dev.angel.wrtcontrol.ui.Proposals
 import dev.angel.wrtcontrol.ui.home.CapabilitiesCard
 import dev.angel.wrtcontrol.ui.parental.PasswordDialog
+import dev.angel.wrtcontrol.ui.passwordPreview
 import dev.angel.wrtcontrol.ui.watchAsState
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
@@ -78,13 +81,16 @@ class SetupViewModel(private val repo: RouterRepository) : ViewModel() {
 
     val progress: ChangeProgress? get() = changes.current
 
+    val proposals: Proposals get() = changes
+
     var error: Txt?
         get() = changes.error
         set(value) {
             changes.error = value
         }
 
-    fun setPassword(password: String, onDone: () -> Unit) {
+    /** Antes se enseña qué supone cambiarla (ver [passwordPreview]). */
+    fun setPassword(password: String, onDone: () -> Unit) = changes.propose(passwordPreview()) {
         changes.run(txt(R.string.parental_busy_password), onSuccess = onDone) { repo.changePassword(password) }
     }
 
@@ -126,6 +132,7 @@ fun SetupScreen(connection: Connection.SignedIn) {
             },
         )
     }
+    ChangePreviewHost(vm.proposals)
 }
 
 /**

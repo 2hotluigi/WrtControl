@@ -115,6 +115,17 @@
     <string name="devices_internet_this_phone">This is this phone: you can\'t cut its internet from here.</string>
     <string name="devices_busy_pausing">Cutting internet for “%1$s”…</string>
     <string name="devices_busy_resuming">Giving internet back to “%1$s”…</string>
+    <string name="devices_preview_title">Save “%1$s”</string>
+    <string name="devices_preview_name_default">The one the device reports</string>
+    <string name="devices_preview_fixed_none">Not fixed</string>
+    <string name="devices_preview_person">Whose it is</string>
+    <string name="devices_preview_fixed_on">The router will always give it %1$s and will not give it to any other device.</string>
+    <string name="devices_preview_fixed_off">Its address may change. Anything that reaches it by address (a printer, an open port) will stop finding it.</string>
+    <string name="devices_preview_person_on">From now on, the pauses, schedules and filters of %1$s apply to it. If it has no internet at this hour, it is cut off now.</string>
+    <string name="devices_preview_person_off">The pauses, schedules and filters of %1$s stop applying to it.</string>
+    <string name="devices_preview_block_title">Block “%1$s”</string>
+    <string name="devices_preview_internet_on">With internet</string>
+    <string name="devices_preview_block_note">It loses internet right now and whatever it is doing is cut off. It stays that way until you give it back from here.</string>
     <string name="devices_error_mac">That device has no valid MAC.</string>
     <string name="devices_error_ip_invalid">That is not a valid IPv4 address.</string>
     <string name="devices_error_ip_outside">That address is not on the home network, or it is the router\'s own.</string>

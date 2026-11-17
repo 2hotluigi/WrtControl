@@ -121,6 +121,17 @@
     <string name="devices_internet_this_phone">Es este teléfono: desde aquí no se le corta internet.</string>
     <string name="devices_busy_pausing">Cortando internet a «%1$s»…</string>
     <string name="devices_busy_resuming">Devolviendo internet a «%1$s»…</string>
+    <string name="devices_preview_title">Guardar «%1$s»</string>
+    <string name="devices_preview_name_default">El que dice el aparato</string>
+    <string name="devices_preview_fixed_none">Sin fijar</string>
+    <string name="devices_preview_person">De quién es</string>
+    <string name="devices_preview_fixed_on">El router le dará siempre %1$s y no se la dará a ningún otro aparato.</string>
+    <string name="devices_preview_fixed_off">Su dirección podrá cambiar. Si algo lo busca por ella (una impresora, un puerto abierto), dejará de encontrarlo.</string>
+    <string name="devices_preview_person_on">Desde ahora le aplican las pausas, los horarios y los filtros de %1$s. Si a esta hora no le toca internet, se le corta ahora.</string>
+    <string name="devices_preview_person_off">Dejan de aplicarle las pausas, los horarios y los filtros de %1$s.</string>
+    <string name="devices_preview_block_title">Bloquear «%1$s»</string>
+    <string name="devices_preview_internet_on">Con internet</string>
+    <string name="devices_preview_block_note">Se queda sin internet ahora mismo y lo que esté haciendo se corta. Sigue así hasta que se lo devuelvas desde aquí.</string>
     <string name="devices_error_mac">Ese aparato no tiene una MAC válida.</string>
     <string name="devices_error_ip_invalid">Esa dirección no es una IPv4 válida.</string>
     <string name="devices_error_ip_outside">Esa dirección no es de la red de casa, o es la del propio router.</string>

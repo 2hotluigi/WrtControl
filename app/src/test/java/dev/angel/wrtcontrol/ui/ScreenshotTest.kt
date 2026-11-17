@@ -38,12 +38,15 @@ import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import dev.angel.wrtcontrol.ui.home.blockPreview
+import dev.angel.wrtcontrol.ui.home.devicePreview
 import dev.angel.wrtcontrol.ui.login.SetupContent
 import dev.angel.wrtcontrol.ui.login.SetupStep
 import org.junit.Assert.assertEquals
@@ -116,6 +119,20 @@ class ScreenshotTest {
                 ApplyingBanner(ChangeProgress(raw("Activando la cuarentena…"), ApplyPhase.Confirming))
                 ApplyingBanner(ChangeProgress(raw("Activando UPnP…"), ApplyPhase.Reverting))
             }
+        }
+    }
+
+    /** Lo que se enseña antes de un cambio que tiene algo que avisar: guardar un aparato, bloquearlo y la contraseña. */
+    @Test
+    fun `vista previa`() = both("vista-previa") {
+        val ip = "192.168.1.42"
+        val tablet = Device("9C:29:76:00:00:01", "tablet", listOf(ip), emptyList(), LeaseState.Expires(3600), label = "Tableta")
+        val change = DeviceChange(label = "Tableta de Ana", fixedIp = ip, owner = "a1")
+        val saving = devicePreview(raw("Tableta"), tablet, change, listOf(Profile("a1", "Ana", emptyList())))
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChangePreviewBody(saving)
+            ChangePreviewBody(blockPreview(raw("Tele de la sala")))
+            ChangePreviewBody(passwordPreview())
         }
     }
 

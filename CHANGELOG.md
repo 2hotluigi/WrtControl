@@ -13,6 +13,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Al conectar, la app propone la dirección del router del Wi-Fi en el que estás.
 - Añadir otro teléfono (en Más): un código QR que el otro teléfono escanea con su cámara para
   encontrar el router. La contraseña no va en el código: se escribe en el teléfono nuevo.
+- "Esto es lo que va a cambiar": antes de un cambio con consecuencias (bloquear un aparato, fijar
+  su dirección, cambiar de quién es, la zona horaria o la contraseña del router), la app enseña
+  qué cambia y qué supone, y espera a que lo aceptes.
 - Dispositivos: tocando un aparato se le pone nombre ("Tele de la sala"), se le fija la dirección
   y se dice de quién es. Se guarda en el router, así que lo ven todos los teléfonos con la app.
 - Dispositivos: cortar internet a un aparato suelto, un rato (30 minutos, 1 o 2 horas) o hasta

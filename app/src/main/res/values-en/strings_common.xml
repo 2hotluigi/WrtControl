@@ -10,4 +10,18 @@
     <string name="apply_phase_verifying">Checking that it works. If anything fails, the router rolls back on its own.</string>
     <string name="apply_phase_confirming">It works. Confirming so it stays.</string>
     <string name="apply_phase_reverting">It didn\'t work. The router is undoing it on its own; this can take a minute.</string>
+    <string name="preview_title">This is what will change</string>
+    <string name="preview_change">%1$s → %2$s</string>
+    <string name="preview_reverts">If anything fails, the router rolls back on its own.</string>
+    <string name="preview_no_revert">This change is not undone automatically.</string>
+    <string name="preview_apply">Apply</string>
+    <string name="preview_cancel">Cancel</string>
+    <string name="preview_password_title">Change the router password</string>
+    <string name="preview_password_everywhere">It is the same password used for LuCI and SSH: it changes for everything.</string>
+    <string name="preview_password_phones">Other phones with the app will have to type the new one.</string>
+    <string name="preview_password_keep">Write it down: if it is lost, the router has to be factory reset.</string>
+    <string name="preview_zone_title">Change the router time zone</string>
+    <string name="preview_zone_line">Time zone</string>
+    <string name="preview_zone_unknown">Unknown</string>
+    <string name="preview_zone_schedules">Family schedules follow the router clock: with the new one, some may start or end right now.</string>
 </resources>

@@ -353,6 +353,13 @@ de la corrutina, así que lo siguen el control parental, los paquetes y los disp
 cada función tenga que pasarlo. `ChangeRunner` lleva el cambio en curso de cada pantalla: uno a la
 vez, con sus fases y el error en palabras.
 
+**Vista previa.** Antes de un cambio que tiene algo que avisar, la app enseña "Esto es lo que va a
+cambiar" (`ChangePreviewDialog`): qué cambia de valor (antes → después), lo que conviene saber y si
+el router lo deshace solo cuando falla. No sale en cada cambio, solo cuando la vista previa trae
+avisos (`ChangeRunner.propose`): fijar o soltar la dirección de un aparato, cambiar de quién es,
+bloquearlo, cambiar la zona horaria del router y cambiar su contraseña (que no se deshace sola).
+Ponerle nombre a un aparato o pausar a alguien un rato se hace sin preguntar.
+
 **Actualizaciones del router.** Una actualización de firmware que conserva la configuración no
 guarda `/etc/luci-uploads`. Si falta el fichero de reglas, fw4 lo ignora y la app avisa de que las
 reglas no están activas. "Volver a aplicar" (o cualquier cambio) lo repone. El fichero en uso no
