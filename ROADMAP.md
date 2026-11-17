@@ -105,7 +105,12 @@ marcha guiada. Cada uno se apoya en los anteriores.
   en Familia y Seguridad.
   Tercera parte hecha: pausar y bloquear un aparato suelto (pausas por aparato en los ajustes del
   control parental, esquema 2; probado en las VM y en el GL-MT6000).
-  Falta: probar mDNS para los que no dicen su nombre.
+  Cuarta parte hecha: mDNS para los que no dicen su nombre. El router le pregunta a cada uno
+  directamente (puerto 5353) con su `nslookup`, sin instalar nada; `umdns` se descartó porque su
+  objeto de ubus no entra en el ACL de LuCI. Medido en la casa: de los 4 sin nombre contestó uno
+  (una caja de tele con Google Cast). Queda para más adelante preguntar por multidifusión desde el
+  teléfono (`NsdManager`), que alcanzaría a los que no contestan a preguntas directas, y leer el
+  nombre puesto a un Chromecast (`fn=` del TXT), que BusyBox no enseña.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.

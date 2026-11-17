@@ -17,6 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
@@ -71,10 +72,42 @@ class RouterMonitor(
         }
     }
 
-    /** Los equipos de casa. */
+    /** Los nombres averiguados preguntando a los aparatos que no lo dicen por DHCP. */
+    private val names = LearnedNames(now)
+
+    /** La ronda de preguntas en marcha, si la hay. */
+    @Volatile
+    private var asking: Job? = null
+
+    /** Los equipos de casa, con los nombres que se hayan averiguado ya ([askNames]). */
     val devices: Feed<List<Device>> = feed {
         val known = interfaces.fresh(SHARED_MAX_AGE)
-        router.use { it.devices(known) }
+        val list = router.use { it.devices(known) }
+        askNames(list)
+        names.named(list)
+    }
+
+    /**
+     * Pregunta su nombre por mDNS a los aparatos de [list] que no tienen ninguno, aparte: tarda
+     * (un segundo por cada uno que no contesta) y la lista no espera. Si alguno contesta, la lista
+     * se vuelve a leer y ya lo trae.
+     */
+    private fun askNames(list: List<Device>) {
+        val pending = names.pending(list)
+        if (pending.isEmpty() || asking?.isActive == true) return
+        asking = scope.launch {
+            val found = pending.map { (mac, ip) -> async { names.learned(mac, ip, askName(ip)) } }.awaitAll()
+            if (found.any { it }) devices.refresh()
+        }
+    }
+
+    /** Es un extra: si no se puede preguntar (sin permiso, sin red), el aparato se queda sin nombre. */
+    private suspend fun askName(ip: String): String? = try {
+        router.use { it.mdnsName(ip) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (@Suppress("TooGenericExceptionCaught") _: Exception) {
+        null
     }
 
     /** Cómo está el cable de la salida a internet; `link` null si no hay tarjeta que mirar. */
@@ -113,7 +146,11 @@ class RouterMonitor(
     val packages: Feed<PackageListing> = feed { router.use { PackageListing(it.addons.packages()) } }
 
     /** Otra sesión (otro router, o se salió): nada de lo leído vale. */
-    fun reset() = feeds.forEach { it.reset() }
+    fun reset() {
+        asking?.cancel()
+        names.clear()
+        feeds.forEach { it.reset() }
+    }
 
     private fun <T : Any> feed(load: suspend () -> T): Feed<T> = Feed(scope, describe, now, load).also { feeds += it }
 

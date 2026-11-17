@@ -21,6 +21,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Dispositivos: cortar internet a un aparato suelto, un rato (30 minutos, 1 o 2 horas) o hasta
   que se lo devuelvas, esté o no en el perfil de una persona. Mientras haya algún aparato así,
   los teléfonos con una versión anterior de la app solo pueden mirar: hay que actualizarlos.
+- Dispositivos: a los aparatos que no dicen su nombre, el router se lo pregunta (mDNS). Algunas
+  teles, altavoces e impresoras pasan así de "Aparato de tal marca" a su nombre o su modelo.
 - Dispositivos: cada aparato dice si está en línea, sin actividad o desconectado. Los que tienen
   nombre o dirección guardados siguen en la lista aunque no estén.
 
