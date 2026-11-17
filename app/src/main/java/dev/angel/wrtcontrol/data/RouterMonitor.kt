@@ -79,11 +79,16 @@ class RouterMonitor(
     @Volatile
     private var asking: Job? = null
 
+    /** Cambia con cada [reset]: lo que se leyó en otra sesión no sirve para preguntar en esta. */
+    @Volatile
+    private var session = 0
+
     /** Los equipos de casa, con los nombres que se hayan averiguado ya ([askNames]). */
     val devices: Feed<List<Device>> = feed {
+        val mine = session
         val known = interfaces.fresh(SHARED_MAX_AGE)
         val list = router.use { it.devices(known) }
-        askNames(list)
+        if (mine == session) askNames(list)
         names.named(list)
     }
 
@@ -96,18 +101,22 @@ class RouterMonitor(
         val pending = names.pending(list)
         if (pending.isEmpty() || asking?.isActive == true) return
         asking = scope.launch {
-            val found = pending.map { (mac, ip) -> async { names.learned(mac, ip, askName(ip)) } }.awaitAll()
+            val found = pending.map { (mac, ip) -> async { askName(mac, ip) } }.awaitAll()
             if (found.any { it }) devices.refresh()
         }
     }
 
-    /** Es un extra: si no se puede preguntar (sin permiso, sin red), el aparato se queda sin nombre. */
-    private suspend fun askName(ip: String): String? = try {
-        router.use { it.mdnsName(ip) }
+    /**
+     * Pregunta a [mac] en [ip] y apunta lo que conteste; devuelve si es un nombre nuevo. Es un
+     * extra: si no se llega al router no se apunta nada (no es que el aparato callase) y se le
+     * vuelve a preguntar en la siguiente lectura.
+     */
+    private suspend fun askName(mac: String, ip: String): Boolean = try {
+        names.learned(mac, ip, router.use { it.mdnsName(ip) })
     } catch (e: CancellationException) {
         throw e
     } catch (@Suppress("TooGenericExceptionCaught") _: Exception) {
-        null
+        false
     }
 
     /** Cómo está el cable de la salida a internet; `link` null si no hay tarjeta que mirar. */
@@ -147,6 +156,7 @@ class RouterMonitor(
 
     /** Otra sesión (otro router, o se salió): nada de lo leído vale. */
     fun reset() {
+        session++
         asking?.cancel()
         names.clear()
         feeds.forEach { it.reset() }

@@ -57,6 +57,13 @@ class MdnsTest {
         assertEquals("pi", mdnsServiceName("pi [dc:a6:32:7f:15:4e]._workstation._tcp.local", "_workstation._tcp"))
         assertEquals("Tele de la sala", mdnsServiceName("Tele\\032de\\032la\\032sala._airplay._tcp.local", "_airplay._tcp"))
         assertNull(mdnsServiceName("_airplay._tcp.local", "_airplay._tcp"))
+        // Los escapes son bytes: una letra con tilde son dos.
+        assertEquals("Salón", mdnsServiceName("Sal\\195\\179n._AirPlay._tcp.local", "_airplay._tcp"))
+    }
+
+    @Test
+    fun `que el aparato diga refused en su nombre no es tener el puerto cerrado`() {
+        assertTrue(!parseMdnsAnswer("30.1.168.192.in-addr.arpa\tname = refused-box.local\n").refused)
     }
 
     @Test
@@ -111,6 +118,8 @@ class MdnsTest {
         assertEquals(1, asked.size)
         assertNull(client.mdnsName("192.168.8.1; reboot"))
         assertNull(client.mdnsName("fe80::1"))
+        assertNull(client.mdnsName("-0.1.168.192"))
+        assertNull(client.mdnsName("+192.168.8.178"))
         assertEquals(1, asked.size)
     }
 

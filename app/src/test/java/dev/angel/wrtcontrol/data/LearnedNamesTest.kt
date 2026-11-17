@@ -26,6 +26,10 @@ class LearnedNamesTest {
             device("AA:00:00:00:00:01", "192.168.8.10", name = "tele"),
             device("AA:00:00:00:00:02", "192.168.8.11", presence = Presence.Offline),
             device("AA:00:00:00:00:03", null),
+            // Dormido o recién ido: preguntarle lo haría parecer en línea.
+            device("AA:00:00:00:00:04", "192.168.8.12", presence = Presence.Idle),
+            // Sin tabla de vecinos y sin concesión: solo se recuerda, no se sabe si está.
+            device("AA:00:00:00:00:05", "192.168.8.13", presence = Presence.Unknown),
         )
         assertEquals(mapOf(box.mac to "192.168.8.235"), names.pending(devices))
     }

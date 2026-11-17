@@ -1,6 +1,7 @@
 package dev.angel.wrtcontrol.data
 
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.Presence
 import kotlin.time.Duration.Companion.minutes
 
@@ -18,12 +19,23 @@ class LearnedNames(private val now: () -> Long) {
 
     private val asked = HashMap<String, Asked>()
 
+    /**
+     * ¿Se le puede preguntar a [device]? Solo si está contestando: preguntar a uno dormido o que se
+     * acaba de ir haría que el router lo buscase, y saldría "en línea" por la propia pregunta. Si el
+     * router no deja ver quién está, vale con que tenga concesión (no a los que solo se recuerdan).
+     */
+    private fun reachable(device: Device): Boolean = when (device.presence) {
+        Presence.Online -> true
+        Presence.Unknown -> device.lease != LeaseState.None
+        else -> false
+    }
+
     /** Los aparatos de [devices] a los que toca preguntar: MAC → dirección. Como mucho [MAX_PER_ROUND]. */
     @Synchronized
     fun pending(devices: List<Device>): Map<String, String> {
         val time = now()
         return devices.asSequence()
-            .filter { it.name == null && it.presence != Presence.Offline }
+            .filter { it.name == null && reachable(it) }
             .mapNotNull { d -> d.ipv4.firstOrNull()?.let { d.mac to it } }
             .filter { (mac, ip) -> asked[mac].let { it == null || it.ip != ip || (it.name == null && time - it.at >= RETRY_MS) } }
             .take(MAX_PER_ROUND)

@@ -488,7 +488,8 @@ Tocando un aparato se le pone nombre, se le fija la dirección y se dice de qui�
   servicio que anuncie y suela llevar uno (Google Cast, AirPlay, una impresora). No hay que
   instalar nada en el router ni estar en el Wi-Fi de casa. Se pregunta aparte, sin frenar la
   lista, a 8 aparatos como mucho por vuelta, y a quien no contesta se le vuelve a preguntar a los
-  10 minutos. Lo que contesta el aparato solo se enseña (limpio y recortado): no se guarda en el
+  10 minutos. Solo a los que están en línea: preguntar a uno dormido o que se acaba de ir haría
+  que el router lo buscase y saliera "en línea" por la propia pregunta. Lo que contesta el aparato solo se enseña (limpio y recortado): no se guarda en el
   router ni vuelve a él como argumento.
 
 Límites: "sin actividad" no distingue un aparato dormido de uno que se acaba de ir (el router

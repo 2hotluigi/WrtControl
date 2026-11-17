@@ -49,8 +49,13 @@ private val WORKSTATION_MAC = Regex("\\s*\\[[0-9a-fA-F:]+]$")
 /** Un nombre de equipo que es solo un identificador (el de un Chromecast): no dice nada. */
 private val OPAQUE_HOST = Regex("^[0-9a-fA-F-]{16,}$")
 
-/** "\032" y parecidos: como se escriben en DNS los caracteres que no caben en un nombre. */
+/** "\032" y parecidos: como se escriben en DNS los bytes que no caben en un nombre. */
 private val DECIMAL_ESCAPE = Regex("\\\\(\\d{3})")
+
+/** Una IPv4 escrita solo con dígitos y puntos: lo único que va al router como dirección. */
+private val PLAIN_IPV4 = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
+
+private const val MAX_BYTE = 255
 
 /** Lo que contestó el aparato a una pregunta. [refused]: no tiene mDNS (puerto cerrado). */
 internal data class MdnsAnswer(val names: List<String>, val refused: Boolean = false)
@@ -58,7 +63,8 @@ internal data class MdnsAnswer(val names: List<String>, val refused: Boolean = f
 /** Los nombres de las líneas "pregunta<tab>name = respuesta" del nslookup de BusyBox. */
 internal fun parseMdnsAnswer(output: String): MdnsAnswer = MdnsAnswer(
     names = output.lineSequence().mapNotNull { line -> line.substringAfter("name = ", "").trim().takeIf { it.isNotEmpty() } }.toList(),
-    refused = "refused" in output.lowercase(),
+    // Solo en lo que dice nslookup, no en lo que contesta el aparato.
+    refused = output.lineSequence().any { "name = " !in it && it.contains("refused", ignoreCase = true) },
 )
 
 /** "twohotraspberry.local" → "twohotraspberry"; null si no dice nada (un identificador). */
@@ -76,7 +82,7 @@ internal fun namedService(types: List<String>): String? {
 /** El nombre legible de [instance] ("Sala._airplay._tcp.local") dentro del servicio [type]. */
 internal fun mdnsServiceName(instance: String, type: String): String? {
     val full = instance.trim().trimEnd('.')
-    val at = full.lowercase().lastIndexOf(".$type")
+    val at = full.lastIndexOf(".$type", ignoreCase = true)
     val label = unescape(if (at > 0) full.substring(0, at) else "")
     val name = when (type) {
         "_googlecast._tcp" -> label.replace(CAST_ID, "").replace('-', ' ')
@@ -87,8 +93,21 @@ internal fun mdnsServiceName(instance: String, type: String): String? {
     return cleanLabel(name).takeIf { it.isNotEmpty() }
 }
 
-private fun unescape(name: String): String =
-    DECIMAL_ESCAPE.replace(name) { it.groupValues[1].toInt().toChar().toString() }.replace("\\", "")
+/**
+ * Deshace los escapes de un nombre de DNS. Cada "\DDD" es un byte, no un carácter: "Sal\195\179n"
+ * es "Salón" en UTF-8, así que se juntan los bytes antes de leerlos como texto.
+ */
+private fun unescape(name: String): String {
+    val bytes = java.io.ByteArrayOutputStream()
+    var last = 0
+    for (escape in DECIMAL_ESCAPE.findAll(name)) {
+        bytes.write(name.substring(last, escape.range.first).replace("\\", "").toByteArray())
+        bytes.write(escape.groupValues[1].toInt().coerceAtMost(MAX_BYTE))
+        last = escape.range.last + 1
+    }
+    bytes.write(name.substring(last).replace("\\", "").toByteArray())
+    return bytes.toString(Charsets.UTF_8.name())
+}
 
 /** La pregunta inversa de [ip]: "192.168.1.20" → "20.1.168.192.in-addr.arpa". */
 private fun reverseName(ip: String): String = ip.split('.').reversed().joinToString(".") + ".in-addr.arpa"
@@ -107,10 +126,12 @@ private suspend fun UbusCaller.mdnsPtr(name: String, ip: String): MdnsAnswer? {
 
 /**
  * Cómo dice llamarse por mDNS el aparato que tiene [ip], o null si no contesta, no tiene mDNS o el
- * router no deja preguntar. Tarda como mucho unos segundos (un segundo por pregunta sin respuesta).
+ * router no deja preguntar. Tarda como mucho unos segundos: un segundo por pregunta sin respuesta,
+ * y a quien calla se le hacen dos (muchos no contestan a la de su dirección y sí a la de servicios;
+ * así contestó el único de la casa). Si no se llega al router, falla como cualquier otra llamada.
  */
 suspend fun UbusCaller.mdnsName(ip: String): String? {
-    val address = ip.trim().takeIf { parseIpv4(it) != null }
+    val address = ip.trim().takeIf { PLAIN_IPV4.matches(it) && parseIpv4(it) != null }
     val host = address?.let { mdnsPtr(reverseName(it), it) }
     val named = host?.names?.firstNotNullOfOrNull(::mdnsHostName)
     return when {

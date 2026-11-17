@@ -34,6 +34,9 @@ class RouterMonitorTest {
     /** Lo que contesta el nslookup del router (null: el router no deja ejecutar nada). */
     private var nslookup: String? = null
 
+    /** La tabla de vecinos (null: el router no deja verla). */
+    private var neighbors: String? = null
+
     private val router = FakeRouter { call ->
         when (call.name) {
             "session.login" -> ok("""{"ubus_rpc_session":"s1","timeout":300,"expires":300}""")
@@ -49,7 +52,8 @@ class RouterMonitorTest {
             "network.device.status" -> if (deviceStatusFails) Reply.NetworkError else ok("""{"macaddr":"$lanMac"}""")
             "luci-rpc.getHostHints" -> ok(hints)
             "file.exec" -> {
-                val out = nslookup.takeIf { "nslookup" in call.args["command"].toString() }
+                val command = call.args["command"].toString()
+                val out = if ("nslookup" in command) nslookup else neighbors.takeIf { "/sbin/ip" in command }
                 if (out == null) status(4) else ok(buildJsonObject { put("code", 0); put("stdout", out) }.toString())
             }
             "luci-rpc.getDHCPLeases" -> ok("{}")
@@ -90,6 +94,7 @@ class RouterMonitorTest {
     fun `a un aparato sin nombre se le pregunta aparte y la lista lo trae en cuanto contesta`() = runTest {
         hints = """{"11:22:33:44:55:77":{"ipaddrs":["192.168.1.30"]}}"""
         nslookup = "30.1.168.192.in-addr.arpa\tname = impresora.local\n"
+        neighbors = "192.168.1.30 dev br-lan lladdr 11:22:33:44:55:77 REACHABLE\n"
         val monitor = monitor()
         watching(monitor.devices, 10.seconds)
         runCurrent()
