@@ -44,6 +44,7 @@ import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.ChannelSearch
 import dev.angel.wrtcontrol.ui.home.ChannelSection
+import dev.angel.wrtcontrol.ui.home.ClientsSection
 import dev.angel.wrtcontrol.ui.home.CountrySection
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
@@ -51,6 +52,7 @@ import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
+import dev.angel.wrtcontrol.ui.home.PowerSection
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import dev.angel.wrtcontrol.ui.home.WidthSection
 import dev.angel.wrtcontrol.ui.home.WifiContent
@@ -158,6 +160,23 @@ class ScreenshotTest {
         )
         // Sin país, como viene de fábrica: el aviso propone el del teléfono.
         WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))), suggestedCountry = "MX")
+    }
+
+    /** Quién hay conectado, con su señal (el de peor señal, primero), y la potencia de una banda. */
+    @Test
+    fun wifiPotencia() = both("wifi-potencia") {
+        val radios = listOf(WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true, txpower = 14, maxPower = 20))
+        val network = WifiNetwork(
+            section = "default_radio1", radio = "radio1", ssid = "Casa", encryption = "sae-mixed", key = "clave-de-casa", enabled = true,
+            networks = listOf("lan"), ifname = "phy1-ap0", clients = listOf("AA:00:00:00:00:01", "AA:00:00:00:00:02", "AA:00:00:00:00:03"),
+            signals = mapOf("AA:00:00:00:00:01" to -48, "AA:00:00:00:00:02" to -81, "AA:00:00:00:00:03" to -66),
+        )
+        val names = mapOf("AA:00:00:00:00:01" to "Tele de la sala", "AA:00:00:00:00:02" to "Portátil de Ana", "AA:00:00:00:00:03" to "Aparato Samsung")
+        val state = WifiState(radios, listOf(network))
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ClientsSection(state, names)
+            PowerSection(state, enabled = true, onPick = { _, _ -> })
+        }
     }
 
     /** El canal: una banda con un canal más libre que proponer y otra que ya está bien. */

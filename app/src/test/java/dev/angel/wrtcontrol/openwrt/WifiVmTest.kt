@@ -139,4 +139,34 @@ class WifiVmTest {
         }
         assertEquals(original, ssh("uci -q get wireless.${radio.name}.channel"))
     }
+
+    @Test
+    fun `la potencia se lee, se baja y se deja como estaba en un router con Wi-Fi`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val before = runCatching { api.state() }.getOrNull()
+        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        log("potencia: ${before.radios.map { "${it.name} txpower=${it.txpower} tope=${it.maxPower}" }}")
+        assertTrue("el router dice el tope de cada radio", before.radios.all { it.maxPower != null })
+
+        val radio = before.radios.first()
+        val original = ssh("uci -q get wireless.${radio.name}.txpower")
+        val other = if (wifiPower(radio.txpower, radio.maxPower) == WifiPower.Medium) WifiPower.Low else WifiPower.Medium
+        try {
+            api.setPower(radio.name, other, phoneOnIt = false)
+            val after = api.state().radios.single { it.name == radio.name }
+            log("${radio.name} en $other: txpower=${after.txpower}")
+            assertEquals(radio.maxPower!! - other.below, after.txpower)
+            assertEquals(other, wifiPower(after.txpower, after.maxPower))
+            // "Toda" quita la opción.
+            api.setPower(radio.name, WifiPower.Full, phoneOnIt = false)
+            assertEquals("", ssh("uci -q get wireless.${radio.name}.txpower"))
+        } finally {
+            val restore = if (original.isEmpty()) "uci -q delete wireless.${radio.name}.txpower" else "uci set wireless.${radio.name}.txpower=$original"
+            ssh("$restore; uci commit wireless; wifi reload")
+        }
+        assertEquals(original, ssh("uci -q get wireless.${radio.name}.txpower"))
+    }
 }

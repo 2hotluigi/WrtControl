@@ -43,6 +43,7 @@ import dev.angel.wrtcontrol.data.RouterMonitor
 import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.WifiCountry
 import dev.angel.wrtcontrol.openwrt.WifiEdit
+import dev.angel.wrtcontrol.openwrt.WifiPower
 import dev.angel.wrtcontrol.openwrt.WifiRadio
 import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
@@ -61,7 +62,9 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.Proposals
+import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
+import dev.angel.wrtcontrol.ui.rememberVendors
 import dev.angel.wrtcontrol.ui.watchAsState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -130,6 +133,13 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
         }
     }
 
+    /** Pone la potencia de [radio] en [power]; antes enseña [preview] si esa radio está emitiendo. */
+    fun setPower(radio: String, power: WifiPower, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        changes.run(txt(R.string.wifi_power_busy), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.wifi.setPower(radio, power, phoneOnIt) }
+        }
+    }
+
     /** Cómo va la búsqueda del canal más libre de cada radio. */
     var channelSearches by mutableStateOf<Map<String, ChannelSearch>>(emptyMap())
         private set
@@ -171,6 +181,7 @@ fun WifiScreen(address: String) {
     val devices by repo.monitor.devices.watchAsState(WIFI_REFRESH)
     val context = LocalContext.current
     val locked = LocalAppLocked.current
+    val vendors = rememberVendors()
 
     LoadableContent(state) { wifi, loadError ->
         val ips = phoneAddresses(context)
@@ -187,6 +198,10 @@ fun WifiScreen(address: String) {
             onCountry = { code -> vm.setCountry(code, phoneOnWifi(wifi, phoneMacs), countryPreview(wifi, code, phoneMacs)) },
             onWidth = { radio, width ->
                 vm.setWidth(radio.name, width, phoneOnRadio(wifi, radio.name, phoneMacs), widthPreview(wifi, radio, width, phoneMacs))
+            },
+            names = devices.data.orEmpty().associate { it.mac to deviceTitle(it, vendors) },
+            onPower = { radio, power ->
+                vm.setPower(radio.name, power, phoneOnRadio(wifi, radio.name, phoneMacs), powerPreview(wifi, radio, power, phoneMacs))
             },
             channelSearches = vm.channelSearches,
             onFindChannel = vm::findChannel,
@@ -215,6 +230,8 @@ fun WifiContent(
     channelSearches: Map<String, ChannelSearch> = emptyMap(),
     onFindChannel: (String) -> Unit = {},
     onChannel: (WifiRadio, Int) -> Unit = { _, _ -> },
+    names: Map<String, String> = emptyMap(),
+    onPower: (WifiRadio, WifiPower) -> Unit = { _, _ -> },
 ) {
     val current = currentWifi(state)
     // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
@@ -248,10 +265,12 @@ fun WifiContent(
         if (security != WifiSecurity.Open) PasswordField(key, enabled = !busy) { key = it }
         HorizontalDivider()
         Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
+        ClientsSection(state, names)
         HorizontalDivider()
         CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
         WidthSection(state, enabled = !busy, onPick = onWidth)
         ChannelSection(state, channelSearches, enabled = !busy, onFind = onFindChannel, onUse = onChannel)
+        PowerSection(state, enabled = !busy, onPick = onPower)
         if (problem != null && edit != current) {
             Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }

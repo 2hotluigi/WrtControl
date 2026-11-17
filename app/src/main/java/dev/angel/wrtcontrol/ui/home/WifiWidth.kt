@@ -89,7 +89,7 @@ private fun RadioWidth(radio: WifiRadio, needsCountry: Boolean, enabled: Boolean
     Column {
         Text(radio.band?.let { stringResource(it.label) } ?: radio.name, style = MaterialTheme.typography.bodyLarge)
         choices.forEach { width ->
-            WidthOption(
+            WifiOption(
                 label = widthLabel(radio.band, width)?.let { stringResource(it) } ?: stringResource(R.string.wifi_width_mhz, width),
                 selected = radio.width == width,
                 enabled = enabled && !(needsCountry && width == WIDTH_160),
@@ -102,8 +102,9 @@ private fun RadioWidth(radio: WifiRadio, needsCountry: Boolean, enabled: Boolean
     }
 }
 
+/** Una opción de las que se elige una (ancho, potencia). */
 @Composable
-private fun WidthOption(label: String, selected: Boolean, enabled: Boolean, tag: String, onSelect: () -> Unit) {
+internal fun WifiOption(label: String, selected: Boolean, enabled: Boolean, tag: String, onSelect: () -> Unit) {
     val select = Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)
     Row(Modifier.fillMaxWidth().then(select).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected = selected, onClick = null, enabled = enabled)

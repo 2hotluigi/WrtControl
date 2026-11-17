@@ -179,7 +179,10 @@ marcha guiada. Cada uno se apoya en los anteriores.
     Primera parte hecha: "Velocidad y alcance" en Más → Wi-Fi, con lo recomendado o lo más rápido
     en cada banda (solo lo que la radio admite), y "Buscar el más libre": el router escanea y la
     app propone el canal con menos vecinos (1, 6 u 11; 36 o 149). Hecho.
-  - *Potencia* y lista de equipos conectados por banda con su señal (ya está en `iwinfo`).
+  - ~~*Potencia* y lista de equipos conectados por banda con su señal (ya está en `iwinfo`).~~
+    Hecho: potencia en tres niveles (toda, media, baja) y "Conectados ahora" con la señal en
+    palabras. La lista con señal no se ha visto con aparatos de verdad (el Wi-Fi del router de
+    pruebas está apagado).
   - *Wi-Fi apagado a propósito:* si lo dan otros puntos de acceso (en la casa de pruebas, dos Deco
     en modo AP), decirlo en vez de avisar de "Wi-Fi apagado".
   - *Roaming* (802.11r/k/v) queda en el Hito 3, con varios puntos de acceso.

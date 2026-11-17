@@ -80,6 +80,9 @@ class FakeOpenWrt(
     /** Canales en los que las radios no arrancan (el país no los permite). */
     var wifiBadChannels = setOf<String>()
 
+    /** Con qué fuerza oye el router a cada conectado (MAC → dBm). Sin dato, iwinfo da 0. */
+    var wifiSignals = mapOf<String, Int>()
+
     /** Lo que oye cada radio al escanear: canal y señal de cada red vecina (null: no puede escanear). */
     var wifiScan: Map<String, List<Pair<Int, Int>>>? = emptyMap()
 
@@ -245,6 +248,9 @@ class FakeOpenWrt(
                     }
                 }.toString())
             } ?: status(4)
+            "iwinfo.txpowerlist" -> ok(buildJsonObject {
+                putJsonArray("results") { (0..20).forEach { dbm -> addJsonObject { put("dbm", dbm); put("mw", 1) } } }
+            }.toString())
             "iwinfo.freqlist" -> ok(buildJsonObject {
                 // Como el GL-MT6000 sin país: del 12 en adelante en 2,4 GHz y del 149 en 5 GHz, solo escuchar.
                 val wide = committed[arg("device")]?.get("band")?.jsonPrimitive?.content == "5g"
@@ -262,7 +268,9 @@ class FakeOpenWrt(
                 }
             }.toString())
             "iwinfo.assoclist" -> ok(buildJsonObject {
-                putJsonArray("results") { wifiClients[arg("device")].orEmpty().forEach { addJsonObject { put("mac", it) } } }
+                putJsonArray("results") {
+                    wifiClients[arg("device")].orEmpty().forEach { mac -> addJsonObject { put("mac", mac); put("signal", wifiSignals[mac] ?: 0) } }
+                }
             }.toString())
             else -> status(3)
         }

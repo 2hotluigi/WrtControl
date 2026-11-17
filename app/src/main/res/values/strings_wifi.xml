@@ -90,4 +90,19 @@
     <string name="wifi_channel_busy">Cambiando de canal…</string>
     <string name="wifi_channel_not_applied">El Wi-Fi no volvió a emitir en ese canal, así que se dejó como estaba.</string>
     <string name="wifi_channel_preview_title">Cambiar de canal</string>
+    <string name="wifi_power_title">Potencia</string>
+    <string name="wifi_power_help">Con menos potencia el Wi-Fi molesta menos a los vecinos y a tus otros puntos de acceso, pero llega menos lejos. Más potencia no arregla un aparato lejano: el router también tiene que oírlo a él.</string>
+    <string name="wifi_power_full">Toda (recomendado)</string>
+    <string name="wifi_power_medium">Media: un piso o una casa pequeña</string>
+    <string name="wifi_power_low">Baja: una o dos habitaciones</string>
+    <string name="wifi_power_busy">Cambiando la potencia…</string>
+    <string name="wifi_power_not_applied">El Wi-Fi no volvió a emitir con esa potencia, así que se dejó como estaba.</string>
+    <string name="wifi_power_preview_title">Cambiar la potencia</string>
+    <string name="wifi_clients_title">Conectados ahora</string>
+    <string name="wifi_clients_help">Un aparato con señal débil va lento y frena a los demás: acércalo o pon otro punto de acceso.</string>
+    <string name="wifi_client_signal">%1$s (%2$d dBm)</string>
+    <string name="wifi_signal_excellent">Señal muy buena</string>
+    <string name="wifi_signal_good">Señal buena</string>
+    <string name="wifi_signal_fair">Señal justa</string>
+    <string name="wifi_signal_weak">Señal débil</string>
 </resources>
