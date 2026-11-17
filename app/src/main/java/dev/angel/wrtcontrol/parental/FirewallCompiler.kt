@@ -163,10 +163,11 @@ fun compileRouter(config: ParentalConfig, now: LocalDateTime, env: RouterEnv = R
         if (p.needsDns && p.cutEpoch !in CUT_EPOCHS) p.copy(cutEpoch = CUT_EPOCHS.first) else p
     }
     userRequire(current.none { it.needsDns } || env.lanZones.isNotEmpty()) { txt(R.string.parental_error_no_lan_zone) }
-    val settings = config.settings
+    val settings = config.settings.withoutExpired(now)
     userRequire(!settings.quarantine || env.homeZones.isNotEmpty()) { txt(R.string.parental_error_no_home_zone) }
-    val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) } + quarantineRules(settings, env)
-    val include = if (current.isEmpty() && !settings.quarantine) null else buildInclude(current, settings, env, appMacs)
+    val rules = current.flatMap { profileRules(it) + dnsFirewall(it, env) } + deviceRules(settings) + quarantineRules(settings, env)
+    val nothing = current.isEmpty() && !settings.quarantine && settings.devicePauses.isEmpty()
+    val include = if (nothing) null else buildInclude(current, settings, env, appMacs)
     val data = configSections(config.copy(profiles = current, settings = settings))
     return RouterPlan(
         firewall = data + rules + listOfNotNull(include?.let(::includeSection)),
@@ -180,6 +181,15 @@ fun compileRouter(config: ParentalConfig, now: LocalDateTime, env: RouterEnv = R
 }
 
 internal fun dnsInstance(p: Profile) = "wrtc_dns_${p.id}"
+
+/**
+ * Una regla MARK por aparato en pausa, como las de las pausas de los perfiles: con `stop_date` si
+ * tiene fin (el router le devuelve internet solo, a su hora) y sin él si está bloqueado.
+ */
+private fun deviceRules(settings: ParentalSettings): List<UciSection> = settings.devicePauses.toSortedMap().map { (mac, pause) ->
+    val id = mac.filter { it != ':' }.lowercase()
+    markRule("wrtc_r_dev_$id", "${RULE_LABEL_PREFIX}aparato $mac · pausa", listOf(mac), stopDate = (pause as? Pause.Until)?.end)
+}
 
 /**
  * Con la cuarentena, una regla MARK por zona de casa marca lo que entra por ella con

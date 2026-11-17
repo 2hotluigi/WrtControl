@@ -106,6 +106,15 @@
     <string name="devices_edit_cancel">Cancel</string>
     <string name="devices_edit_hint">Tap a device to name it, fix its address or say whose it is.</string>
     <string name="devices_busy_saving">Saving “%1$s”… If anything fails, the router rolls back on its own.</string>
+    <string name="devices_paused_until">No internet until %1$s</string>
+    <string name="devices_blocked">Blocked: no internet</string>
+    <string name="devices_internet_title">Internet</string>
+    <string name="devices_internet_help">Cut its internet for a while or until you say so. This adds to its person\'s rules.</string>
+    <string name="devices_internet_block">Block</string>
+    <string name="devices_internet_resume">Give internet back</string>
+    <string name="devices_internet_this_phone">This is this phone: you can\'t cut its internet from here.</string>
+    <string name="devices_busy_pausing">Cutting internet for “%1$s”… If anything fails, the router rolls back on its own.</string>
+    <string name="devices_busy_resuming">Giving internet back to “%1$s”…</string>
     <string name="devices_error_mac">That device has no valid MAC.</string>
     <string name="devices_error_ip_invalid">That is not a valid IPv4 address.</string>
     <string name="devices_error_ip_outside">That address is not on the home network, or it is the router\'s own.</string>

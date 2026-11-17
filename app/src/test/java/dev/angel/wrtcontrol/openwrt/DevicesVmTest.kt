@@ -1,6 +1,8 @@
 package dev.angel.wrtcontrol.openwrt
 
 import dev.angel.wrtcontrol.data.RouterAddress
+import dev.angel.wrtcontrol.parental.ParentalApi
+import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusClient
 import kotlinx.coroutines.runBlocking
@@ -51,6 +53,48 @@ class DevicesVmTest {
     private fun dnsmasqHost(): String = ssh("grep -ih '$mac' /var/etc/dnsmasq.conf.* 2>/dev/null || true")
 
     private fun resolves(): Boolean = ssh("nslookup localhost 127.0.0.1 >/dev/null 2>&1 && echo si || echo no").endsWith("si")
+
+    /** Las reglas que fw4 tiene cargadas para la MAC de pruebas. */
+    private fun loadedRules(): String = ssh("nft list chain inet fw4 mangle_forward 2>/dev/null | grep -i '$mac' || true")
+
+    /**
+     * La pausa de un aparato suelto llega a fw4 como una regla que marca su tráfico (lo que hace con
+     * lo marcado lo prueba VmIntegrationTest con tráfico de verdad) y desaparece al devolvérselo. Lo
+     * demás que tenga el router (perfiles, cuarentena) queda como estaba.
+     */
+    @Test
+    fun `pausar y devolver internet a un aparato en un router de verdad`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        // ParentalApi suelto: el de OpenWrtApi escribe en el registro de Android, que aquí no existe.
+        val parental = ParentalApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val before = parental.load()
+        assumeTrue("El router lo configuró una versión más nueva de la app", !before.newerSchema)
+
+        try {
+            parental.update { config, now ->
+                config.copy(settings = config.settings.copy(devicePauses = config.settings.devicePauses + (mac to Pause.Until(now.plusMinutes(30).withNano(0)))))
+            }
+            val rule = loadedRules()
+            assertTrue("fw4 cargó la regla de la pausa: $rule", rule.contains("meta mark set") || rule.contains("mark set"))
+            assertTrue("con fin: $rule", rule.contains("meta time"))
+            val paused = parental.load()
+            assertEquals(setOf(mac), paused.settings.devicePauses.keys - before.settings.devicePauses.keys)
+            assertEquals(true, paused.rulesLoaded)
+
+            // Bloqueado: la misma regla, sin fin.
+            parental.update { config, _ ->
+                config.copy(settings = config.settings.copy(devicePauses = config.settings.devicePauses + (mac to Pause.Indefinite)))
+            }
+            assertFalse("sin fin: ${loadedRules()}", loadedRules().contains("meta time"))
+        } finally {
+            parental.update { config, _ -> config.copy(settings = config.settings.copy(devicePauses = config.settings.devicePauses - mac)) }
+        }
+        assertEquals("", loadedRules())
+        val after = parental.load()
+        assertEquals(before.settings.devicePauses, after.settings.devicePauses)
+        assertEquals(before.profiles, after.profiles)
+    }
 
     @Test
     fun `nombre y direccion fija de un aparato en un router de verdad`(): Unit = runBlocking {

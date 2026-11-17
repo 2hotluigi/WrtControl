@@ -49,6 +49,8 @@ import kotlin.random.Random
  *       list approved 'AA:BB:CC:DD:EE:01'          # aprobados fuera de los perfiles
  *       list admin 'AA:BB:CC:DD:EE:02'             # teléfonos desde los que se usó la app
  *       option time_offset '-21600'                # desfase con el que se escribieron las horas
+ *       list paused 'AA:BB:CC:DD:EE:03'            # aparato suelto sin internet (esquema 2)
+ *       list paused 'AA:BB:CC:DD:EE:04=2026-11-05T19:30:00'   # o hasta una hora
  *
  * Cualquier sección cuyo nombre empiece por "wrtc_" es de la app y se regenera al guardar.
  *
@@ -59,13 +61,21 @@ import kotlin.random.Random
  * - Lo que una versión anterior no puede ignorar (cambiar el significado de una opción, o reglas
  *   generadas que no sabría rehacer) sube [SCHEMA_VERSION]. Una versión con un esquema menor que
  *   el del router no escribe: solo lee, y pide actualizar la app.
+ * - Se escribe el esquema más bajo que basta para lo guardado ([schemaFor]): mientras nadie use
+ *   lo nuevo, las versiones anteriores siguen pudiendo escribir.
+ *
+ * Esquema 2: pausas por aparato (`list paused`). Una versión anterior conservaría la lista, pero
+ * al guardar borraría sus reglas y el aparato volvería a tener internet.
  */
 
 /**
  * Versión del formato de las secciones de la app en el router. Ver arriba cuándo subirla. Sin
  * `schema` (lo que escribían las versiones de antes de esta opción) es la 1.
  */
-const val SCHEMA_VERSION = 1
+const val SCHEMA_VERSION = 2
+
+/** El esquema más bajo con el que se puede leer [config] sin perder nada. */
+internal fun schemaFor(config: ParentalConfig): Int = if (config.settings.devicePauses.isEmpty()) 1 else 2
 
 const val SECTION_PREFIX = "wrtc_"
 internal const val PROFILE_TYPE = "wrtcontrol_profile"
@@ -85,7 +95,7 @@ private val PROFILE_KEYS = setOf(
     "youtube", "extra_until", "protect_router", "cut_epoch", "cut_window", "cut_until",
 )
 private val SCHEDULE_KEYS = setOf("profile", "days", "start", "stop", "enabled")
-private val SETTINGS_KEYS = setOf("schema", "quarantine", "approved", "admin", "time_offset")
+private val SETTINGS_KEYS = setOf("schema", "quarantine", "approved", "admin", "time_offset", "paused")
 private val KNOWN_TYPES = setOf(PROFILE_TYPE, SCHEDULE_TYPE, SETTINGS_TYPE)
 private const val DATA_TYPE_PREFIX = "wrtcontrol_"
 
@@ -149,8 +159,20 @@ fun readSettings(sections: List<UciSection>): ParentalSettings {
         approved = s.items("approved").mapNotNull(::normalizeMac).distinct().sorted(),
         admins = s.items("admin").mapNotNull(::normalizeMac).distinct().sorted(),
         timeOffset = s.text("time_offset")?.toIntOrNull(),
+        devicePauses = s.items("paused").mapNotNull(::parseDevicePause).sortedBy { it.first }.toMap(),
         extra = s.extra(SETTINGS_KEYS),
     )
+}
+
+/** "MAC" (sin fin) o "MAC=2026-11-05T19:30:00". Una hora que no se entiende cuenta como sin fin: mejor de más. */
+private fun parseDevicePause(text: String): Pair<String, Pause>? {
+    val mac = normalizeMac(text.substringBefore('=')) ?: return null
+    val until = text.substringAfter('=', "").takeIf { it.isNotEmpty() }?.let(::parseStamp)
+    return mac to (until?.let { Pause.Until(it) } ?: Pause.Indefinite)
+}
+
+private fun devicePauseItems(pauses: Map<String, Pause>): List<String> = pauses.toSortedMap().map { (mac, pause) ->
+    if (pause is Pause.Until) "$mac=${pause.end.format(STAMP)}" else mac
 }
 
 /** Lee los perfiles de las secciones del firewall. Las secciones mal formadas se ignoran. */
@@ -227,7 +249,8 @@ private fun parseStamp(text: String): LocalDateTime? = try {
  */
 internal fun configSections(config: ParentalConfig): List<UciSection> {
     // El desfase solo hace falta si hay horas guardadas.
-    val times = config.profiles.any { it.pause is Pause.Until || it.extraUntil != null || it.cutWindow != null }
+    val times = config.profiles.any { it.pause is Pause.Until || it.extraUntil != null || it.cutWindow != null } ||
+        config.settings.devicePauses.values.any { it is Pause.Until }
     val s = if (times) config.settings else config.settings.copy(timeOffset = null)
     val empty = s == ParentalSettings() && config.profiles.isEmpty() && config.preserved.isEmpty()
     val settings = if (empty) {
@@ -236,11 +259,12 @@ internal fun configSections(config: ParentalConfig): List<UciSection> {
         listOf(
             uciSection(
                 SETTINGS_SECTION, SETTINGS_TYPE,
-                "schema" to SCHEMA_VERSION.toString(),
+                "schema" to schemaFor(config).toString(),
                 "quarantine" to if (s.quarantine) "1" else null,
                 "approved" to s.approved.ifEmpty { null },
                 "admin" to s.admins.ifEmpty { null },
                 "time_offset" to s.timeOffset?.toString(),
+                "paused" to devicePauseItems(s.devicePauses).ifEmpty { null },
                 *s.extra.toList().toTypedArray(),
             ),
         )
@@ -285,7 +309,11 @@ internal fun profileSections(profiles: List<Profile>): List<UciSection> = profil
 /** Como [validateProfiles], más los ajustes. */
 fun validateConfig(config: ParentalConfig) {
     validateProfiles(config.profiles)
-    for (mac in config.settings.approved + config.settings.admins) require(normalizeMac(mac) == mac) { "MAC no válida: $mac" }
+    val settings = config.settings
+    val macs = settings.approved + settings.admins + settings.devicePauses.keys
+    for (mac in macs) require(normalizeMac(mac) == mac) { "MAC no válida: $mac" }
+    val exact = settings.devicePauses.values.all { it !is Pause.Until || it.end.nano == 0 }
+    require(exact) { "Las pausas van en segundos exactos" }
 }
 
 /** Comprueba lo que la interfaz ya debería impedir; lanza [IllegalArgumentException] con el motivo. */

@@ -3,6 +3,8 @@ package dev.angel.wrtcontrol.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,12 +16,14 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -51,7 +55,9 @@ import dev.angel.wrtcontrol.openwrt.MAX_LABEL_LENGTH
 import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.openwrt.identify
+import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
+import dev.angel.wrtcontrol.parental.withoutExpired
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
@@ -59,9 +65,11 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.LocalStatusColors
 import dev.angel.wrtcontrol.ui.formatDuration
+import dev.angel.wrtcontrol.ui.parental.formatUntil
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
 import dev.angel.wrtcontrol.ui.rememberVendors
 import dev.angel.wrtcontrol.ui.watchAsState
+import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.seconds
 
 /** La lista de equipos cambia despacio. */
@@ -79,17 +87,18 @@ fun DevicesScreen(address: String) {
     val parental by repo.monitor.parental.watchAsState(PROFILES_REFRESH)
     val profiles = parental.data?.profiles.orEmpty()
     val canAssign = parental.data?.newerSchema == false
+    val pauses = parental.data?.let { DevicePauses(it.settings.withoutExpired(it.routerNow).devicePauses, it.routerNow) }
     val vendors = rememberVendors()
     val locked = LocalAppLocked.current
     val context = LocalContext.current
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
 
     LoadableContent(state) { devices, error ->
-        DevicesContent(devices, vendors, error, profiles, onOpen = { editing = it.mac })
+        DevicesContent(devices, vendors, error, profiles, pauses, onOpen = { editing = it.mac })
         val device = devices.firstOrNull { it.mac == editing }?.takeIf { !locked }
         if (device != null) {
             // Sin remember: si el teléfono cambia de IP, se nota al abrir el diálogo.
-            val phoneIps = phoneAddresses(context)
+            val phoneMacs = phoneAddresses(context).let { ips -> devices.filter { d -> d.ipv4.any { it in ips } }.map { it.mac }.toSet() }
             DeviceDialog(
                 device = device,
                 identity = identify(device, vendors),
@@ -97,10 +106,16 @@ fun DevicesScreen(address: String) {
                 canAssign = canAssign,
                 busy = vm.busy?.text(),
                 error = vm.error?.text(),
-                onSave = { change ->
-                    val phoneMacs = devices.filter { d -> d.ipv4.any { it in phoneIps } }.map { it.mac }.toSet()
-                    vm.save(device, change, phoneMacs) { editing = null }
+                onSave = { change -> vm.save(device, change, phoneMacs) { editing = null } },
+                // Con el control parental a la vista y sin ser este teléfono: a sí mismo no se corta.
+                internet = pauses?.takeIf { canAssign && device.mac !in phoneMacs }?.let { p ->
+                    InternetControl(
+                        status = p.pauses[device.mac]?.let { pauseText(it, p.now) },
+                        onPause = { minutes -> vm.pause(device, minutes, phoneMacs) { editing = null } },
+                        onResume = { vm.resume(device, phoneMacs) { editing = null } },
+                    )
                 },
+                thisPhone = device.mac in phoneMacs,
                 onDismiss = {
                     vm.error = null
                     editing = null
@@ -110,12 +125,31 @@ fun DevicesScreen(address: String) {
     }
 }
 
+/** Los aparatos sueltos sin internet y la hora del router, para decir hasta cuándo. */
+data class DevicePauses(val pauses: Map<String, Pause>, val now: LocalDateTime)
+
+/** Lo que se puede hacer con el internet de un aparato. [status]: cómo está si está cortado, o null. */
+class InternetControl(val status: String?, val onPause: (minutes: Long?) -> Unit, val onResume: () -> Unit)
+
+@Composable
+private fun pauseText(pause: Pause, now: LocalDateTime): String = when (pause) {
+    Pause.Indefinite -> stringResource(R.string.devices_blocked)
+    is Pause.Until -> stringResource(R.string.devices_paused_until, formatUntil(pause.end, now).text())
+}
+
+private val PAUSE_MINUTES = listOf(
+    30L to R.string.parental_pause_30_min,
+    60L to R.string.parental_pause_1_hour,
+    120L to R.string.parental_pause_2_hours,
+)
+
 @Composable
 fun DevicesContent(
     devices: List<Device>,
     vendors: VendorTable?,
     error: String? = null,
     profiles: List<Profile> = emptyList(),
+    pauses: DevicePauses? = null,
     onOpen: ((Device) -> Unit)? = null,
 ) {
     val owners = remember(profiles) { profiles.flatMap { p -> p.macs.map { it to p.name } }.toMap() }
@@ -142,12 +176,15 @@ fun DevicesContent(
         if (devices.isEmpty()) {
             item { Text(stringResource(R.string.devices_none), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        items(devices, key = { it.mac }) { DeviceRow(it, identify(it, vendors), owners[it.mac], onOpen) }
+        items(devices, key = { it.mac }) {
+            val paused = pauses?.pauses?.get(it.mac)?.let { pause -> pauseText(pause, pauses.now) }
+            DeviceRow(it, identify(it, vendors), owners[it.mac], paused, onOpen)
+        }
     }
 }
 
 @Composable
-private fun DeviceRow(device: Device, identity: DeviceIdentity, owner: String?, onOpen: ((Device) -> Unit)?) {
+private fun DeviceRow(device: Device, identity: DeviceIdentity, owner: String?, paused: String?, onOpen: ((Device) -> Unit)?) {
     var showHint by rememberSaveable(device.mac) { mutableStateOf(false) }
     val open = if (onOpen != null) Modifier.clickable { onOpen(device) } else Modifier
     Card(Modifier.fillMaxWidth().testTag("device-${device.mac}").then(open)) {
@@ -160,6 +197,7 @@ private fun DeviceRow(device: Device, identity: DeviceIdentity, owner: String?, 
                 val address = device.ipv4.firstOrNull() ?: device.ipv6.firstOrNull { !it.startsWith("fe80:") } ?: "—"
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     PresenceText(device.presence)
+                    if (paused != null) Text(paused, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     if (owner != null) Text(stringResource(R.string.devices_owner, owner), style = MaterialTheme.typography.bodySmall)
                     // Con nombre propio, el fabricante va debajo; sin él, ya está en el título.
                     if (identity.named && identity.vendor != null) Text(identity.vendor, style = MaterialTheme.typography.bodySmall)
@@ -211,6 +249,8 @@ fun DeviceDialog(
     busy: String?,
     error: String?,
     onSave: (DeviceChange) -> Unit,
+    internet: InternetControl? = null,
+    thisPhone: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     val currentOwner = profiles.firstOrNull { device.mac in it.macs }?.id.orEmpty()
@@ -274,6 +314,7 @@ fun DeviceDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                InternetSection(internet, thisPhone, enabled = !saving)
                 Text(device.mac, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
@@ -296,6 +337,46 @@ fun DeviceDialog(
             TextButton(onClick = onDismiss, enabled = !saving) { Text(stringResource(R.string.devices_edit_cancel)) }
         },
     )
+}
+
+/** Cortado: cómo está y el botón para devolverlo. Con internet: un rato sin él, o bloquearlo. */
+@Composable
+private fun InternetSection(internet: InternetControl?, thisPhone: Boolean, enabled: Boolean) {
+    if (internet == null && !thisPhone) return
+    HorizontalDivider()
+    Text(stringResource(R.string.devices_internet_title), style = MaterialTheme.typography.titleSmall)
+    when {
+        internet == null -> Text(
+            stringResource(R.string.devices_internet_this_phone),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        internet.status != null -> {
+            Text(internet.status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            FilledTonalButton(onClick = internet.onResume, enabled = enabled, modifier = Modifier.testTag("device-resume")) {
+                Text(stringResource(R.string.devices_internet_resume))
+            }
+        }
+        else -> PauseButtons(internet, enabled)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PauseButtons(internet: InternetControl, enabled: Boolean) {
+    Text(
+        stringResource(R.string.devices_internet_help),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PAUSE_MINUTES.forEach { (minutes, label) ->
+            OutlinedButton(onClick = { internet.onPause(minutes) }, enabled = enabled) { Text(stringResource(label)) }
+        }
+        FilledTonalButton(onClick = { internet.onPause(null) }, enabled = enabled, modifier = Modifier.testTag("device-block")) {
+            Text(stringResource(R.string.devices_internet_block))
+        }
+    }
 }
 
 @Composable
