@@ -134,9 +134,10 @@ class RouterRepository(
         routerId = id ?: known
         if (id != null && id != known) useTunnel(tunnelFor(address.trim(), id))
         open(newClient)
-        _pairing.value = null
         val needsSetup = !store.setupDone(address.trim())
         _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty(), needsSetup)
+        // Después de entrar: si se quitara antes, la pantalla de conexión empezaría de nuevo un instante.
+        _pairing.value = null
     }
 
     /** La puesta en marcha de este router ya está hecha (o el usuario la saltó): no se vuelve a ofrecer. */

@@ -121,8 +121,15 @@ fun LoginScreen(state: Connection.SignedOut) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 state.notice?.let { ErrorBanner(it.text()) }
-                if (vm.pairing != null) {
+                // Solo mientras la dirección siga siendo la del código: si la cambia, ya es cosa suya.
+                val paired = vm.pairing?.takeIf { it.address == vm.address.trim() }
+                if (paired != null) {
                     NoticeCard(stringResource(R.string.login_paired_title), stringResource(R.string.login_paired_body))
+                    // Un código puede venir de cualquiera: si no lleva al router de este Wi-Fi, se dice.
+                    val gateway = vm.gateway
+                    if (gateway != null && gateway != paired.address) {
+                        ErrorBanner(stringResource(R.string.login_paired_mismatch, paired.address, gateway))
+                    }
                 }
 
                 OutlinedTextField(
@@ -133,7 +140,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     // La dirección propuesta es la del router de este Wi-Fi: se dice de dónde sale.
-                    supportingText = if (vm.pairing == null && vm.gateway != null && vm.address.trim() == vm.gateway) {
+                    supportingText = if (vm.gateway != null && vm.address.trim() == vm.gateway) {
                         { Text(stringResource(R.string.login_address_detected)) }
                     } else {
                         null

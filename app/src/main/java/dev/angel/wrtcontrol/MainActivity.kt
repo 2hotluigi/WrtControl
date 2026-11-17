@@ -17,8 +17,10 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val app = application as WrtApp
-        // Solo al abrirse con el enlace: al girar la pantalla no se vuelve a ofrecer.
-        if (savedInstanceState == null) offerPairing(intent)
+        // Solo al abrirse con el enlace: no al girar la pantalla ni al volver desde Recientes, que
+        // entrega otra vez el intent con el que se abrió.
+        val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        if (savedInstanceState == null && !fromHistory) offerPairing(intent)
         setContent {
             WrtTheme {
                 AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings, app.vendors) } }

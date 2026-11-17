@@ -154,7 +154,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         }
 
     /** MAC de este teléfono según el router (por su IP en la lista de dispositivos). */
-    private fun phoneMacs(): Set<String> = devices.filter { d -> d.ipv4.any { it in phoneIps } }.map { it.mac }.toSet()
+    private fun phoneMacs(): Set<String> = devices.filter { d -> !d.remembered && d.ipv4.any { it in phoneIps } }.map { it.mac }.toSet()
 
     /**
      * Guarda [profile] tal como quedó en el editor. Si alguno de sus dispositivos estaba en otro

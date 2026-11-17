@@ -8,6 +8,7 @@
     <string name="login_connect">Conectar</string>
     <string name="login_address_detected">Es el router del Wi-Fi al que estás conectado.</string>
     <string name="login_paired_title">Router recibido de otro teléfono</string>
+    <string name="login_paired_mismatch">La dirección del código (%1$s) no es la del router del Wi-Fi en el que estás (%2$s). Si el código no te lo enseñó alguien de tu casa, no escribas la contraseña.</string>
     <string name="login_paired_body">Comprueba que estás en el Wi-Fi de tu casa y escribe la contraseña del router. El código que escaneaste no la lleva.</string>
     <string name="more_pair_title">Añadir otro teléfono</string>
     <string name="more_pair_detail">Un código para que otro teléfono encuentre este router</string>

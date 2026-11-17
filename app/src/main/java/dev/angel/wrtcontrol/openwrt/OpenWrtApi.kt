@@ -121,7 +121,8 @@ class OpenWrtApi(
     private suspend fun neighbors(): Map<String, Presence>? = coroutineScope {
         val v4 = async { optional { ubus.exec("/sbin/ip", listOf("-4", "neigh", "show")) } }
         val v6 = async { optional { ubus.exec("/sbin/ip", listOf("-6", "neigh", "show")) } }
-        val outputs = listOfNotNull(v4.await(), v6.await())
+        // Si el comando falla, no se sabe quién está: no es que no haya nadie.
+        val outputs = listOfNotNull(v4.await(), v6.await()).filter { it.code == 0 }
         if (outputs.isEmpty()) null else parseNeighbors(outputs.joinToString("\n") { it.stdout })
     }
 }
