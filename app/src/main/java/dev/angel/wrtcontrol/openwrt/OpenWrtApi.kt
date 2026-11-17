@@ -111,6 +111,9 @@ class OpenWrtApi(
         buildDeviceList(hints.await(), leases.await(), ifaces.await(), records.await().orEmpty(), neighbors.await())
     }
 
+    /** Cómo dice llamarse por mDNS el aparato que tiene [ip] (ver Mdns.kt), o null si no lo dice. */
+    suspend fun mdnsName(ip: String): String? = ubus.mdnsName(ip)
+
     /**
      * Quién contesta ahora, según la tabla de vecinos (la que enseña la página de estado de LuCI:
      * su ACL deja ejecutar justo estos dos comandos). null si el router no deja verla.

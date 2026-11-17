@@ -14,6 +14,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,6 +29,13 @@ class RouterMonitorTest {
     private var lanMac = "AA:BB:CC:00:00:01"
     private var wanAddress = "203.0.113.7"
     private var deviceStatusFails = false
+    private var hints = """{"11:22:33:44:55:66":{"name":"tele","ipaddrs":["192.168.1.20"]}}"""
+
+    /** Lo que contesta el nslookup del router (null: el router no deja ejecutar nada). */
+    private var nslookup: String? = null
+
+    /** La tabla de vecinos (null: el router no deja verla). */
+    private var neighbors: String? = null
 
     private val router = FakeRouter { call ->
         when (call.name) {
@@ -41,7 +50,12 @@ class RouterMonitorTest {
                      "route":[{"target":"0.0.0.0","mask":0}]}]}""",
             )
             "network.device.status" -> if (deviceStatusFails) Reply.NetworkError else ok("""{"macaddr":"$lanMac"}""")
-            "luci-rpc.getHostHints" -> ok("""{"11:22:33:44:55:66":{"name":"tele","ipaddrs":["192.168.1.20"]}}""")
+            "luci-rpc.getHostHints" -> ok(hints)
+            "file.exec" -> {
+                val command = call.args["command"].toString()
+                val out = if ("nslookup" in command) nslookup else neighbors.takeIf { "/sbin/ip" in command }
+                if (out == null) status(4) else ok(buildJsonObject { put("code", 0); put("stdout", out) }.toString())
+            }
             "luci-rpc.getDHCPLeases" -> ok("{}")
             else -> status(4)
         }
@@ -74,6 +88,28 @@ class RouterMonitorTest {
         assertEquals("casa", monitor.status.state.value.data?.board?.hostname)
         assertEquals(listOf("lan", "wan"), monitor.status.state.value.data?.interfaces?.map { it.name })
         assertEquals("tele", monitor.devices.state.value.data?.single()?.name)
+    }
+
+    @Test
+    fun `a un aparato sin nombre se le pregunta aparte y la lista lo trae en cuanto contesta`() = runTest {
+        hints = """{"11:22:33:44:55:77":{"ipaddrs":["192.168.1.30"]}}"""
+        nslookup = "30.1.168.192.in-addr.arpa\tname = impresora.local\n"
+        neighbors = "192.168.1.30 dev br-lan lladdr 11:22:33:44:55:77 REACHABLE\n"
+        val monitor = monitor()
+        watching(monitor.devices, 10.seconds)
+        runCurrent()
+
+        assertEquals("impresora", monitor.devices.state.value.data?.single()?.name)
+        // La lista se leyó dos veces (sin nombre y, al contestar, con él) y se preguntó una sola.
+        assertEquals(2, count("luci-rpc.getHostHints"))
+        advanceTimeBy(30.seconds)
+        assertEquals(1, synchronized(router.calls) { router.calls.count { "nslookup" in it.args.toString() } })
+
+        // Otro router: lo aprendido del anterior no vale.
+        nslookup = null
+        monitor.reset()
+        runCurrent()
+        assertEquals(null, monitor.devices.state.value.data?.single()?.name)
     }
 
     @Test

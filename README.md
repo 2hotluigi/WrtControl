@@ -482,9 +482,21 @@ Tocando un aparato se le pone nombre, se le fija la dirección y se dice de qui�
   verla, no se dice nada. Los aparatos con nombre o dirección guardados salen en la lista aunque
   no estén, sin contar como conectados ni esperar aprobación.
 - **De quién es.** Lo mismo que marcarlo en el perfil de esa persona (Familia).
+- **Los que no dicen su nombre.** A un aparato sin nombre (ni puesto por ti ni dicho por DHCP) el
+  router se lo pregunta por mDNS, directamente a él en el puerto 5353, con el `nslookup` de
+  BusyBox que el ACL de LuCI deja ejecutar: primero su nombre de equipo y, si no, el del primer
+  servicio que anuncie y suela llevar uno (Google Cast, AirPlay, una impresora). No hay que
+  instalar nada en el router ni estar en el Wi-Fi de casa. Se pregunta aparte, sin frenar la
+  lista, a 8 aparatos como mucho por vuelta, y a quien no contesta se le vuelve a preguntar a los
+  10 minutos. Solo a los que están en línea: preguntar a uno dormido o que se acaba de ir haría
+  que el router lo buscase y saliera "en línea" por la propia pregunta. Lo que contesta el aparato solo se enseña (limpio y recortado): no se guarda en el
+  router ni vuelve a él como argumento.
 
 Límites: "sin actividad" no distingue un aparato dormido de uno que se acaba de ir (el router
 tarda en olvidarlo). Un aparato con MAC privada que la cambie pierde su nombre y su dirección.
+mDNS resuelve pocos: medido en una casa, de 4 aparatos sin nombre contestó uno (una caja de tele
+con Google Cast); una cámara no tiene mDNS y dos no contestan a preguntas directas. De un
+Chromecast sale su modelo, no el nombre que se le puso (va en un texto que BusyBox no enseña).
 
 ## Paquetes y acceso remoto: qué hace en el router
 
