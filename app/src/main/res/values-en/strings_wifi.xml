@@ -58,4 +58,20 @@
     <string name="wifi_country_preview_restart">Wi-Fi restarts: connected devices drop for a few seconds and rejoin on their own.</string>
     <string name="wifi_country_preview_radar">The 5 GHz band may take over a minute to come back: on some channels the router first listens for radars.</string>
     <string name="wifi_country_preview_phone">This phone will drop for a moment too. If it doesn\'t rejoin within 3 minutes, the router will leave things as they were.</string>
+    <string name="wifi_width_title">Speed and range</string>
+    <string name="wifi_width_2_20">More range and fewer dropouts (recommended)</string>
+    <string name="wifi_width_2_40">More speed</string>
+    <string name="wifi_width_2_help">More speed only helps when no neighbours\' Wi-Fi is nearby: if there is, the router keeps working as in the recommended one.</string>
+    <string name="wifi_width_5_80">Balanced (recommended)</string>
+    <string name="wifi_width_5_160">Top speed near the router</string>
+    <string name="wifi_width_5_help">At top speed the router uses channels it shares with radars: on start it listens for a minute before transmitting and may change channel on its own. Range is a bit shorter.</string>
+    <string name="wifi_width_needs_country">Top speed needs the country to be set first.</string>
+    <string name="wifi_width_now">Now: %1$d MHz, a setting the app doesn\'t offer.</string>
+    <string name="wifi_width_mhz">%1$d MHz</string>
+    <string name="wifi_width_unknown">Other</string>
+    <string name="wifi_channel_label">5 GHz channel</string>
+    <string name="wifi_width_busy">Changing Wi-Fi…</string>
+    <string name="wifi_width_not_applied">Wi-Fi didn\'t come back with that setting, so it was left as it was.</string>
+    <string name="wifi_width_preview_title">Change speed and range</string>
+    <string name="wifi_width_preview_radar">The router will listen for radars for a minute before transmitting on 5 GHz again.</string>
 </resources>

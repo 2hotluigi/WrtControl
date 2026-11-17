@@ -491,7 +491,16 @@ redes (invitados, modo cliente, malla) no se tocan.
   emitir. `WifiVmTest` lo prueba contra un router con radios de verdad (la VM de la CI no tiene y
   allí se salta): en el GL-MT6000, 246 países y el cambio confirmado en unos 3 s.
 
-Límites: no hay canal, ancho ni potencia todavía (van en las siguientes partes del Wi-Fi). El
+- **Velocidad y alcance (el ancho del canal).** Es el `htmode` de cada radio ("HE80": Wi-Fi 6 a
+  80 MHz). La app no enseña el número: en 2,4 GHz ofrece 20 MHz ("más alcance y menos cortes",
+  lo recomendado) o 40; en 5 GHz, 80 MHz ("equilibrado", lo recomendado) o 160 ("máxima velocidad
+  cerca del router"). Solo lo que la radio admite según `iwinfo info`, y conservando el estándar
+  que tenía (HE, VHT, HT). A 160 MHz el router siempre pisa canales que comparte con radares:
+  escucha un minuto antes de emitir, así que se le dan 3 minutos; hace falta el país (sin él la
+  opción sale apagada) y, si el canal no está en un bloque donde quepan (36 a 64 o 100 a 128), se
+  pasa al 36. Se aplica con la misma reversión que el país.
+
+Límites: no hay elección de canal ni potencia todavía (van en las siguientes partes del Wi-Fi). El
 país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin poner, el
 GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 

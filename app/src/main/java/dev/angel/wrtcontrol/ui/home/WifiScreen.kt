@@ -42,6 +42,7 @@ import dev.angel.wrtcontrol.data.RouterAccess
 import dev.angel.wrtcontrol.data.RouterMonitor
 import dev.angel.wrtcontrol.openwrt.WifiCountry
 import dev.angel.wrtcontrol.openwrt.WifiEdit
+import dev.angel.wrtcontrol.openwrt.WifiRadio
 import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.remembered
@@ -110,6 +111,13 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
             router.use { it.wifi.setCountry(code, phoneOnIt) }
         }
     }
+
+    /** Pone [radio] a [width] MHz; antes enseña [preview] si esa radio está emitiendo. */
+    fun setWidth(radio: String, width: Int, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        changes.run(txt(R.string.wifi_width_busy), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.wifi.setWidth(radio, width, phoneOnIt) }
+        }
+    }
 }
 
 @Composable
@@ -135,6 +143,9 @@ fun WifiScreen(address: String) {
             countries = vm.countries,
             suggestedCountry = vm.countries?.let { suggestedCountry(context, it) },
             onCountry = { code -> vm.setCountry(code, phoneOnWifi(wifi, phoneMacs), countryPreview(wifi, code, phoneMacs)) },
+            onWidth = { radio, width ->
+                vm.setWidth(radio.name, width, phoneOnRadio(wifi, radio.name, phoneMacs), widthPreview(wifi, radio, width, phoneMacs))
+            },
         )
     }
     ChangePreviewHost(vm.proposals)
@@ -152,6 +163,7 @@ fun WifiContent(
     countries: List<WifiCountry>? = emptyList(),
     suggestedCountry: String? = null,
     onCountry: (String) -> Unit = {},
+    onWidth: (WifiRadio, Int) -> Unit = { _, _ -> },
 ) {
     val current = currentWifi(state)
     // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
@@ -187,6 +199,7 @@ fun WifiContent(
         Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
         HorizontalDivider()
         CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
+        WidthSection(state, enabled = !busy, onPick = onWidth)
         if (problem != null && edit != current) {
             Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }

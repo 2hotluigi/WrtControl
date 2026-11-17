@@ -41,6 +41,7 @@ import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.CountrySection
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
@@ -48,6 +49,7 @@ import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import dev.angel.wrtcontrol.ui.home.WidthSection
 import dev.angel.wrtcontrol.ui.home.WifiContent
 import dev.angel.wrtcontrol.ui.home.blockPreview
 import dev.angel.wrtcontrol.ui.home.devicePreview
@@ -143,13 +145,30 @@ class ScreenshotTest {
     /** El Wi-Fi como lo deja la app: las dos bandas con el mismo nombre, y cuántos hay en cada una. */
     @Test
     fun wifi() = both("wifi") {
-        val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true), WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true))
+        val radios = listOf(
+            WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true, htmode = "HE20", htmodes = listOf("HE20", "HE40")),
+            WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true, htmode = "HE80", htmodes = listOf("HE80", "HE160")),
+        )
         fun network(radio: String, ifname: String, clients: Int) = WifiNetwork(
             section = "default_$radio", radio = radio, ssid = "Casa", encryption = "sae-mixed", key = "clave-de-casa",
             enabled = true, networks = listOf("lan"), ifname = ifname, clients = List(clients) { "AA:00:00:00:00:%02X".format(it) },
         )
         // Sin país, como viene de fábrica: el aviso propone el del teléfono.
         WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))), suggestedCountry = "MX")
+    }
+
+    /** Lo que queda bajo el pliegue en Wi-Fi: el país ya puesto y "Velocidad y alcance" de cada banda. */
+    @Test
+    fun wifiAjustes() = both("wifi-ajustes") {
+        val radios = listOf(
+            WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true, country = "MX", htmode = "HE20", htmodes = listOf("HE20", "HE40")),
+            WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true, country = "MX", htmode = "HE80", htmodes = listOf("HE80", "HE160")),
+        )
+        val state = WifiState(radios, emptyList())
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CountrySection(state, countries = emptyList(), suggested = null, enabled = true, onPick = {})
+            WidthSection(state, enabled = true, onPick = { _, _ -> })
+        }
     }
 
     @Test

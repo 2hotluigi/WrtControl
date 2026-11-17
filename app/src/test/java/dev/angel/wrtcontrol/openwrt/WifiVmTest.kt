@@ -77,4 +77,34 @@ class WifiVmTest {
         }
         original.forEach { (radio, country) -> assertEquals(country, ssh("uci -q get wireless.$radio.country")) }
     }
+
+    @Test
+    fun `el ancho se lee, se cambia y se deja como estaba en un router con Wi-Fi`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val before = runCatching { api.state() }.getOrNull()
+        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        log("anchos: ${before.radios.map { "${it.name} ${it.htmode} de ${it.htmodes}" }}")
+        assertTrue("el router dice qué anchos admite cada radio", before.radios.all { it.htmodes.isNotEmpty() && it.width != null })
+
+        // Una radio que dé a elegir entre lo que ofrece la app, a un ancho que no pise radares.
+        val radio = before.radios.firstOrNull { r -> widthChoices(r.band).filter { it != WIDTH_160 }.count { r.offers(it) } > 1 }
+        assumeTrue("Ninguna radio da a elegir el ancho", radio != null)
+        val other = widthChoices(radio!!.band).first { it != WIDTH_160 && it != radio.width && radio.offers(it) }
+        val original = ssh("uci -q get wireless.${radio.name}.htmode")
+        try {
+            val t0 = System.currentTimeMillis()
+            api.setWidth(radio.name, other, phoneOnIt = false)
+            log("${radio.name} a $other MHz en ${System.currentTimeMillis() - t0} ms: ${ssh("uci -q get wireless.${radio.name}.htmode")}")
+            val after = api.state().radios.single { it.name == radio.name }
+            assertEquals(other, after.width)
+            assertEquals("se conserva el estándar", radio.htmode!!.takeWhile { it.isLetter() }, after.htmode!!.takeWhile { it.isLetter() })
+            assertEquals("sigue levantada", radio.up, after.up)
+        } finally {
+            ssh("uci set wireless.${radio.name}.htmode=$original; uci commit wireless; wifi reload")
+        }
+        assertEquals(original, ssh("uci -q get wireless.${radio.name}.htmode"))
+    }
 }

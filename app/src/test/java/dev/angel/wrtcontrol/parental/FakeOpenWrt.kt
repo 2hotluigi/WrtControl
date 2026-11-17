@@ -74,6 +74,9 @@ class FakeOpenWrt(
     /** Países con los que las radios no arrancan (su canal no está permitido allí). */
     var wifiBadCountries = setOf<String>()
 
+    /** Anchos con los que las radios no arrancan (p. ej. "HE160" sin país). */
+    var wifiBadHtmodes = setOf<String>()
+
     /** Aparatos conectados a cada interfaz Wi-Fi ("phy0-ap0" → MAC). */
     var wifiClients = mapOf<String, List<String>>()
 
@@ -86,7 +89,8 @@ class FakeOpenWrt(
         val radios = committed.filter { text(it.value, ".type") == "wifi-device" }
         radios.keys.forEachIndexed { index, radio ->
             val up = !wifiBroken && text(radios.getValue(radio), "disabled") != "1" &&
-                text(radios.getValue(radio), "country") !in wifiBadCountries
+                text(radios.getValue(radio), "country") !in wifiBadCountries &&
+                text(radios.getValue(radio), "htmode") !in wifiBadHtmodes
             putJsonObject(radio) {
                 put("up", up)
                 put("pending", false)
@@ -221,6 +225,12 @@ class FakeOpenWrt(
             }.toString())
             "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })
             "luci-rpc.getWirelessDevices" -> ok(wirelessDevices().toString())
+            "iwinfo.info" -> ok(buildJsonObject {
+                // Como el GL-MT6000: Wi-Fi 6 en las dos bandas, hasta 40 MHz en 2,4 GHz y 160 en 5 GHz.
+                val wide = committed[arg("device")]?.get("band")?.jsonPrimitive?.content == "5g"
+                val modes = listOf("HT20", "HT40", "HE20", "HE40") + if (wide) listOf("VHT80", "VHT160", "HE80", "HE160") else emptyList()
+                putJsonArray("htmodes") { modes.forEach { add(JsonPrimitive(it)) } }
+            }.toString())
             "iwinfo.countrylist" -> ok(buildJsonObject {
                 putJsonArray("results") {
                     // Como el router: "el mundo", países de verdad y un código de pruebas que no es un país.

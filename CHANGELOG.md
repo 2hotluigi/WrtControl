@@ -14,6 +14,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Wi-Fi: el país. Si el router no lo tiene puesto (así viene de fábrica, y entonces usa los
   canales y la potencia más limitados), la app lo avisa y propone el del teléfono. Si el Wi-Fi no
   vuelve a emitir con el país nuevo, el router lo deja como estaba.
+- Wi-Fi: velocidad y alcance. En cada banda se elige entre lo recomendado (más alcance y menos
+  cortes) y lo más rápido, sin hablar de MHz. La máxima de 5 GHz avisa de que el router escucha
+  un minuto por si hay radares antes de emitir, y pide tener puesto el país.
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.

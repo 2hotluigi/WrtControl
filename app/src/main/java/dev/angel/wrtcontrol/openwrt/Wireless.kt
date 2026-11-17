@@ -37,7 +37,8 @@ fun wifiSecurity(encryption: String?): WifiSecurity? {
 
 /**
  * Una radio Wi-Fi: [up] si está emitiendo ahora. [country]: el país que tiene puesto (ISO), o null.
- * [channel]: el canal configurado ("36", "auto"), o null.
+ * [channel]: el canal configurado ("36", "auto"), o null. [htmode]: estándar y ancho ("HE80").
+ * [htmodes]: los que admite la radio (vacío si el router no lo dice).
  */
 data class WifiRadio(
     val name: String,
@@ -46,13 +47,23 @@ data class WifiRadio(
     val up: Boolean,
     val country: String? = null,
     val channel: String? = null,
+    val htmode: String? = null,
+    val htmodes: List<String> = emptyList(),
 ) {
+    /** El ancho del canal en MHz, o null si no se sabe. */
+    val width: Int? get() = htmodeWidth(htmode)
+
+    /** ¿Puede emitir a [width] MHz? */
+    fun offers(width: Int): Boolean = htmodeFor(htmode, width, htmodes) != null
+
     /**
      * ¿Puede tardar en volver a emitir? En los canales de 5 GHz que comparte con los radares (DFS),
-     * y en "auto", que puede elegir uno, el router escucha un minuto antes de emitir.
+     * en "auto", que puede elegir uno, y a 160 MHz, que siempre pisa alguno, el router escucha un
+     * minuto antes de emitir.
      */
     val mayWaitForRadar: Boolean
-        get() = band == WifiBand.Band5 && (channel == null || channel == "auto" || channel.toIntOrNull() in DFS_CHANNELS)
+        get() = band == WifiBand.Band5 &&
+            (channel == null || channel == "auto" || channel.toIntOrNull() in DFS_CHANNELS || width == WIDTH_160)
 }
 
 private val DFS_CHANNELS = 52..144
@@ -98,6 +109,7 @@ internal fun parseWifi(
     sections: List<UciSection>,
     devices: Map<String, JsonObject>,
     clients: Map<String, List<String>> = emptyMap(),
+    htmodes: Map<String, List<String>> = emptyMap(),
 ): WifiState {
     val running = devices.mapValues { (_, d) -> runningInterfaces(d) }
     val radios = sections.filter { it.type == "wifi-device" }.map { s ->
@@ -110,6 +122,8 @@ internal fun parseWifi(
             // "00" es "el mundo": lo mismo que no haberlo puesto.
             country = s.text("country")?.uppercase()?.takeIf { COUNTRY_CODE.matches(it) },
             channel = s.text("channel"),
+            htmode = s.text("htmode"),
+            htmodes = htmodes[s.name].orEmpty(),
         )
     }
     val networks = sections.filter { it.type == "wifi-iface" && (it.text("mode") ?: "ap") == "ap" }.mapNotNull { s ->

@@ -11,6 +11,7 @@ import dev.angel.wrtcontrol.ui.home.countryName
 import dev.angel.wrtcontrol.ui.home.countryPreview
 import dev.angel.wrtcontrol.ui.home.currentWifi
 import dev.angel.wrtcontrol.ui.home.phoneOnWifi
+import dev.angel.wrtcontrol.ui.home.widthPreview
 import dev.angel.wrtcontrol.ui.home.wifiPreview
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -35,9 +36,9 @@ class WirelessTest {
 
     /** Como sale de fábrica (y como está el GL-MT6000 de la casa): las dos redes "OpenWrt", abiertas y apagadas. */
     private val factory = listOf(
-        uciSection("radio0", "wifi-device", "band" to "2g", "channel" to "1"),
+        uciSection("radio0", "wifi-device", "band" to "2g", "channel" to "1", "htmode" to "HE20"),
         uciSection("default_radio0", "wifi-iface", "device" to "radio0", "network" to "lan", "mode" to "ap", "ssid" to "OpenWrt", "encryption" to "none", "disabled" to "1"),
-        uciSection("radio1", "wifi-device", "band" to "5g", "channel" to "36"),
+        uciSection("radio1", "wifi-device", "band" to "5g", "channel" to "36", "htmode" to "HE80"),
         uciSection("default_radio1", "wifi-iface", "device" to "radio1", "network" to "lan", "mode" to "ap", "ssid" to "OpenWrt", "encryption" to "none", "disabled" to "1"),
     )
 
@@ -206,6 +207,67 @@ class WirelessTest {
         assertTrue(radio(WifiBand.Band5, "auto").mayWaitForRadar)
         assertFalse(radio(WifiBand.Band5, "149").mayWaitForRadar)
         assertFalse(radio(WifiBand.Band2, "auto").mayWaitForRadar)
+    }
+
+    @Test
+    fun `el ancho - se lee del htmode y al cambiarlo se conserva el estandar`() {
+        assertEquals(80, htmodeWidth("HE80"))
+        assertEquals(40, htmodeWidth("HT40+"))
+        assertNull(htmodeWidth(null))
+        val five = listOf("HT20", "HT40", "VHT80", "VHT160", "HE80", "HE160")
+        assertEquals("HE160", htmodeFor("HE80", 160, five))
+        assertEquals("VHT160", htmodeFor("VHT80", 160, five))
+        assertEquals("sin ese ancho en su estándar, el más nuevo que lo tenga", "HE80", htmodeFor("HT40", 80, five))
+        assertNull("la radio no llega", htmodeFor("HE40", 80, listOf("HT20", "HT40", "HE20", "HE40")))
+        assertEquals("si el router no dice qué admite, se confía en el estándar", "HE40", htmodeFor("HE20", 40, emptyList()))
+        assertNull(htmodeFor(null, 40, emptyList()))
+    }
+
+    @Test
+    fun `a 160 MHz el canal tiene que estar en un bloque donde quepa`() {
+        val five = listOf("HE80", "HE160")
+        assertEquals(listOf(WifiChange.Set("radio1", mapOf("htmode" to "HE160"))), widthPlan(factory, "radio1", 160, five))
+        val high = factory.map { if (it.name == "radio1") uciSection("radio1", "wifi-device", "band" to "5g", "channel" to "149", "htmode" to "HE80") else it }
+        assertEquals(listOf(WifiChange.Set("radio1", mapOf("htmode" to "HE160", "channel" to "36"))), widthPlan(high, "radio1", 160, five))
+        assertNull("auto ya elige él", channelFor(160, "auto"))
+        assertNull(channelFor(160, "100"))
+        assertNull("a 80 MHz no se toca el canal", channelFor(80, "149"))
+        assertTrue("ya está así", widthPlan(factory, "radio1", 80, five).isEmpty())
+        assertTrue("la radio no llega", widthPlan(factory, "radio0", 80, listOf("HE20", "HE40")).isEmpty())
+    }
+
+    @Test
+    fun `cambiar el ancho lo escribe, y a 160 sin poder emitir se deshace`() = runTest {
+        val fake = FakeOpenWrt()
+        val api = api(fake)
+        val state = api.state()
+        val radio1 = state.radios.single { it.name == "radio1" }
+        assertEquals(80, radio1.width)
+        assertTrue(radio1.offers(160))
+        assertFalse("en 2,4 GHz no hay 80 MHz", state.radios.single { it.name == "radio0" }.offers(80))
+        assertTrue("con sus redes apagadas no molesta a nadie", widthPreview(state, radio1, 160, emptySet()).notes.isEmpty())
+
+        api.setWidth("radio0", 40, phoneOnIt = false)
+        assertEquals("HE40", fake.option("radio0", "htmode"))
+
+        // Como sin país: en los canales de radar no se puede emitir y la radio no arranca.
+        fake.wifiBadHtmodes = setOf("HE160")
+        val result = runCatching { api.setWidth("radio1", 160, phoneOnIt = false) }
+        advanceUntilIdle()
+        assertTrue(result.exceptionOrNull() is ChangeRevertedException)
+        assertEquals("HE80", fake.option("radio1", "htmode"))
+    }
+
+    @Test
+    fun `con la red emitiendo, pasar a 160 avisa del reinicio y de los radares`() = runTest {
+        val fake = FakeOpenWrt()
+        val api = api(fake)
+        api.save(WifiEdit("Casa", "clave-segura", WifiSecurity.Wpa2Wpa3, setOf("radio1")), phoneOnIt = false)
+        val state = api.state()
+        val preview = widthPreview(state, state.radios.single { it.name == "radio1" }, 160, emptySet())
+        assertEquals(listOf(txt(R.string.wifi_country_preview_restart), txt(R.string.wifi_width_preview_radar)), preview.notes)
+        assertEquals(txt(R.string.wifi_width_5_80), preview.lines.single().before)
+        assertEquals(txt(R.string.wifi_width_5_160), preview.lines.single().after)
     }
 
     @Test
