@@ -81,6 +81,9 @@
     </plurals>
     <string name="devices_none">No devices found.</string>
     <string name="devices_unnamed">Unnamed</string>
+    <string name="devices_unnamed_vendor">%1$s device</string>
+    <string name="devices_private_mac">Private MAC</string>
+    <string name="devices_private_mac_hint">It uses an address made up for this network instead of the factory one, so its brand can\'t be known. If it changes the address, the router will see it as a new device.</string>
     <string name="devices_ipv6_only">IPv6 only</string>
     <string name="devices_static_ip">Static IP</string>
     <string name="devices_static_lease">Static DHCP</string>

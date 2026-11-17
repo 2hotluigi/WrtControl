@@ -12,6 +12,7 @@ import dev.angel.wrtcontrol.data.RouterTransport
 import dev.angel.wrtcontrol.data.SecretBox
 import dev.angel.wrtcontrol.data.outsideNetwork
 import dev.angel.wrtcontrol.data.tunnelEngine
+import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,9 @@ class WrtApp : Application() {
 
     lateinit var settings: AppSettings
         private set
+
+    /** De qué fabricante es cada prefijo de MAC; va dentro de la app y se lee al usarla. */
+    val vendors = VendorTable { assets.open("oui.txt.gz") }
 
     override fun onCreate() {
         super.onCreate()

@@ -18,16 +18,20 @@ import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
+import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.IpAddress
+import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.LuciFeatures
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.StatusContent
@@ -36,6 +40,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
 
 /**
  * Capturas de los componentes y de una pantalla con datos de ejemplo, en claro y en oscuro. Se
@@ -106,6 +111,23 @@ class ScreenshotTest {
     @Test
     fun `inicio sin internet`() = both("inicio-sin-internet") {
         OverviewContent(Overview(online = false, onlineSeconds = null, devices = 16, profiles = 0, paused = 0, newDevices = 0, attention = emptyList()))
+    }
+
+    @Test
+    fun dispositivos() = both("dispositivos") {
+        val vendors = VendorTable { File(listOf("src/main/assets", "app/src/main/assets").first { File(it).isDirectory }, "oui.txt.gz").inputStream() }
+        fun device(mac: String, name: String?, ip: String, lease: LeaseState = LeaseState.Expires(40_000)) =
+            Device(mac, name, listOf(ip), emptyList(), lease)
+        DevicesContent(
+            listOf(
+                device("9C:29:76:00:00:01", "moto-g-de-Ana", "192.168.1.20"),
+                device("B8:27:EB:00:00:02", "raspberrypi", "192.168.1.21", LeaseState.Permanent),
+                device("24:6F:28:00:00:03", null, "192.168.1.22"),
+                device("A6:11:22:00:00:04", null, "192.168.1.23"),
+                device("00:99:99:00:00:05", null, "192.168.1.24", LeaseState.None),
+            ),
+            vendors,
+        )
     }
 
     @Test

@@ -13,14 +13,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.angel.wrtcontrol.data.AppSettings
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.RouterRepository
+import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.ui.home.HomeScreen
 import dev.angel.wrtcontrol.ui.login.LoginScreen
+
+/** La lista de fabricantes por prefijo de MAC; null donde no hace falta (pruebas, vistas previas). */
+val LocalVendors = staticCompositionLocalOf<VendorTable?> { null }
 
 val LocalRepository = staticCompositionLocalOf<RouterRepository> { error("RouterRepository no proporcionado") }
 
 @Composable
-fun AppRoot(repository: RouterRepository, settings: AppSettings) {
-    CompositionLocalProvider(LocalRepository provides repository, LocalAppSettings provides settings) {
+fun AppRoot(repository: RouterRepository, settings: AppSettings, vendors: VendorTable? = null) {
+    CompositionLocalProvider(LocalRepository provides repository, LocalAppSettings provides settings, LocalVendors provides vendors) {
         val connection by repository.state.collectAsStateWithLifecycle()
         when (val c = connection) {
             Connection.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

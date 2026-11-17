@@ -17,7 +17,7 @@ class MainActivity : FragmentActivity() {
         val app = application as WrtApp
         setContent {
             WrtTheme {
-                AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings) } }
+                AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings, app.vendors) } }
             }
         }
     }
