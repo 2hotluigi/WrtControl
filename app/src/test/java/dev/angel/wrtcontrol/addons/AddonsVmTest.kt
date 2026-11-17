@@ -102,6 +102,28 @@ class AddonsVmTest {
         val otherTunnels = ssh("uci show network | grep proto=.wireguard. | grep -v network.$VPN_INTERFACE.proto || true")
         assumeTrue("El router usa WireGuard ($otherTunnels): no se desinstala", otherTunnels.isBlank())
         val (_, api) = api()
+        try {
+            installFromScratch(api)
+        } finally {
+            // Pase lo que pase, las pruebas siguientes encuentran la red como estaba.
+            log(settleNetwork())
+        }
+    }
+
+    /**
+     * Reiniciar la red rehace el puente de la LAN y tarda en volver a tener salida a internet. El
+     * cliente de pruebas se engancha al puente a mano (netns-client.sh), así que puede quedarse
+     * fuera; y lo que arranque mientras tanto (miniupnpd, las pruebas con tráfico) falla sin tener
+     * nada que ver. Se espera a la ruta por defecto y se vuelve a enganchar.
+     */
+    private fun settleNetwork(): String = ssh(
+        "IPF=/usr/libexec/ip-full; [ -x \$IPF ] || IPF=ip; n=0; " +
+            "while [ \$n -lt 40 ] && ! ip route | grep -q '^default'; do sleep 1; n=\$((n+1)); done; " +
+            "\$IPF link show wrtc_v0 >/dev/null 2>&1 && \$IPF link set wrtc_v0 master br-lan up; sleep 2; " +
+            "echo \"red lista: ruta por defecto tras \$n s; cliente: \$(\$IPF link show wrtc_v0 2>/dev/null | grep -o 'master [a-z-]*' || echo no hay)\"",
+    )
+
+    private suspend fun installFromScratch(api: AddonsApi) {
         // Punto de partida: sin WireGuard y con netifd sin el protocolo.
         // apk desde 25.12; opkg hasta 24.10.
         val wg = "luci-proto-wireguard wireguard-tools kmod-wireguard"
