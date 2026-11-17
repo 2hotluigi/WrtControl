@@ -19,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +58,8 @@ import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.withoutExpired
 import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.ui.ApplyingBanner
+import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
@@ -104,7 +105,7 @@ fun DevicesScreen(address: String) {
                 identity = identify(device, vendors),
                 profiles = profiles,
                 canAssign = canAssign,
-                busy = vm.busy?.text(),
+                progress = vm.progress,
                 error = vm.error?.text(),
                 onSave = { change -> vm.save(device, change, phoneMacs) { editing = null } },
                 // Con el control parental a la vista y sin ser este teléfono: a sí mismo no se corta.
@@ -246,7 +247,7 @@ fun DeviceDialog(
     identity: DeviceIdentity,
     profiles: List<Profile>,
     canAssign: Boolean,
-    busy: String?,
+    progress: ChangeProgress?,
     error: String?,
     onSave: (DeviceChange) -> Unit,
     internet: InternetControl? = null,
@@ -259,7 +260,7 @@ fun DeviceDialog(
     var label by rememberSaveable(device.mac) { mutableStateOf(device.label.orEmpty()) }
     var fixed by rememberSaveable(device.mac) { mutableStateOf(device.fixedIp != null) }
     var owner by rememberSaveable(device.mac) { mutableStateOf(currentOwner) }
-    val saving = busy != null
+    val saving = progress != null
 
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -267,10 +268,7 @@ fun DeviceDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (error != null) ErrorBanner(error)
-                if (busy != null) {
-                    Text(busy, style = MaterialTheme.typography.bodyMedium)
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
+                if (progress != null) ApplyingBanner(progress)
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it.take(MAX_LABEL_LENGTH) },

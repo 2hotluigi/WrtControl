@@ -51,7 +51,6 @@
     <string name="parental_pause_internet">Pausar internet</string>
     <string name="parental_clear_extra_time">Quitar tiempo extra</string>
     <string name="parental_edit">Editar</string>
-    <string name="parental_busy_hint">Si el cambio no funciona, el router lo deshace solo.</string>
     <string name="parental_close">Cerrar</string>
     <string name="parental_cancel">Cancelar</string>
     <string name="parental_ok">Aceptar</string>

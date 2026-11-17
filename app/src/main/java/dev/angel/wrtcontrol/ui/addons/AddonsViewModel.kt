@@ -1,6 +1,5 @@
 package dev.angel.wrtcontrol.ui.addons
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,14 +22,14 @@ import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.PackageTool
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ui.userMessage
+import dev.angel.wrtcontrol.ui.ChangeProgress
+import dev.angel.wrtcontrol.ui.ChangeRunner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -44,8 +43,6 @@ data class AddonsData(val state: AddonsState, val packages: InstalledPackages?, 
     val phoneHasAccess: Boolean
         get() = tunnel?.enabled == true && state.remote?.peers?.any { it.id == tunnel.peerId } == true
 }
-
-private const val TAG = "WrtControl"
 
 /** Cada cuánto se vuelve a pedir el listado de paquetes aunque no se haya instalado nada. */
 private val PACKAGES_REFRESH = 5.minutes
@@ -74,12 +71,19 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
             .onStart { monitor.packages.refresh() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable())
 
-    /** Qué se está haciendo en el router ahora mismo (null si nada). */
-    var busy by mutableStateOf<Txt?>(null)
-        private set
+    private val changes = ChangeRunner(viewModelScope)
+
+    /** Qué se está haciendo en el router ahora mismo y por dónde va (null si nada). */
+    val progress: ChangeProgress? get() = changes.current
+
+    val busy: Txt? get() = changes.busy
 
     /** Error de la última acción, hasta que el usuario lo cierre o haga otra. */
-    var error by mutableStateOf<Txt?>(null)
+    var error: Txt?
+        get() = changes.error
+        set(value) {
+            changes.error = value
+        }
 
     /** Aviso de una acción que salió bien pero con algo que saber (p. ej. del DNS dinámico). */
     var notice by mutableStateOf<Txt?>(null)
@@ -166,28 +170,15 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
         onSuccess: () -> Unit = {},
         block: suspend (OpenWrtApi) -> Unit,
     ) {
-        if (busy != null) return
-        busy = label
-        error = null
-        notice = null
-        viewModelScope.launch {
-            try {
-                repo.use { block(it) }
-                onSuccess()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "Falló: $label", e)
-                error = e.userMessage()
-            } finally {
-                // Aunque falle, la instalación pudo quedar a medias: se vuelve a mirar qué hay.
-                if (packagesChanged) {
-                    monitor.packages.refresh()
-                    monitor.capabilities.refresh()
-                }
-                busy = null
-                monitor.addons.refresh()
+        val refresh = {
+            // Aunque falle, la instalación pudo quedar a medias: se vuelve a mirar qué hay.
+            if (packagesChanged) {
+                monitor.packages.refresh()
+                monitor.capabilities.refresh()
             }
+            monitor.addons.refresh()
         }
+        val started = changes.run(label, onSuccess, onFinished = refresh) { repo.use { block(it) } }
+        if (started) notice = null
     }
 }

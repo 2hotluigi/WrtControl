@@ -26,7 +26,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -72,6 +71,8 @@ import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.normalizeDomain
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.ui.ApplyingBanner
+import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.rememberVendors
@@ -91,7 +92,8 @@ fun ProfileEditor(
     /** Teléfonos con la app: nunca se les bloquea la configuración del router. */
     admins: Set<String>,
     phoneIps: Set<String>,
-    busy: String?,
+    /** El cambio que se está guardando, si hay alguno: mientras, no se toca nada. */
+    progress: ChangeProgress?,
     error: String?,
     onDismiss: () -> Unit,
     onSave: (Profile) -> Unit,
@@ -140,7 +142,7 @@ fun ProfileEditor(
         online + offline
     }
     val takenScheduleIds = (others.flatMap { p -> p.schedules.map { it.id } } + schedules.map { it.id }).toSet()
-    val locked = busy != null
+    val locked = progress != null
     // Los errores se guardan como texto en el estado y se asignan en onClick, fuera de la composición.
     val invalidMac = stringResource(R.string.profile_invalid_mac)
     val invalidSite = stringResource(R.string.profile_invalid_site)
@@ -205,12 +207,7 @@ fun ProfileEditor(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (busy != null) item {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(busy, style = MaterialTheme.typography.bodyMedium)
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                        }
-                    }
+                    if (progress != null) item { ApplyingBanner(progress) }
                     error?.let { item { ErrorBanner(it) } }
 
                     item {

@@ -20,7 +20,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -66,6 +65,7 @@ import dev.angel.wrtcontrol.data.Link
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.ui.ApplyingBanner
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.LoadableContent
@@ -107,7 +107,7 @@ fun AddonsScreen(address: String) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.addons_stale_data, loadError)) }
-                vm.busy?.let { item { BusyBanner(it.text()) } }
+                vm.progress?.let { item { ApplyingBanner(it) } }
                 if (installing == null && editingSqm == null && !newSqm && !editingDdns) {
                     vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                     vm.notice?.let { notice ->
@@ -245,16 +245,6 @@ fun AddonsScreen(address: String) {
 @Composable
 private fun SectionTitle(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
-}
-
-@Composable
-private fun BusyBanner(text: String) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text, style = MaterialTheme.typography.bodyMedium)
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-    }
 }
 
 @Composable

@@ -346,6 +346,13 @@ reportes) también son por persona.
    verdad se deshizo antes de decirlo. Si el DNS para familias no responde desde el router, lo
    explica.
 
+**Cómo se ve.** Igual en todas las pantallas (`ApplyingBanner`): qué se está haciendo y por cuál de
+los tres pasos va (aplicar, comprobar, confirmar); si no funcionó, que el router lo está
+deshaciendo. `applySafely` avisa de cada fase a quien haya puesto un `ApplyProgress` en el contexto
+de la corrutina, así que lo siguen el control parental, los paquetes y los dispositivos sin que
+cada función tenga que pasarlo. `ChangeRunner` lleva el cambio en curso de cada pantalla: uno a la
+vez, con sus fases y el error en palabras.
+
 **Actualizaciones del router.** Una actualización de firmware que conserva la configuración no
 guarda `/etc/luci-uploads`. Si falta el fichero de reglas, fw4 lo ignora y la app avisa de que las
 reglas no están activas. "Volver a aplicar" (o cualquier cambio) lo repone. El fichero en uso no

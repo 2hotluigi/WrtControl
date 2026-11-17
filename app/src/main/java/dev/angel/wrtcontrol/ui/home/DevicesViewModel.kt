@@ -1,9 +1,5 @@
 package dev.angel.wrtcontrol.ui.home
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.angel.wrtcontrol.R
@@ -15,9 +11,8 @@ import dev.angel.wrtcontrol.openwrt.DeviceEdit
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ui.userMessage
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
+import dev.angel.wrtcontrol.ui.ChangeProgress
+import dev.angel.wrtcontrol.ui.ChangeRunner
 
 /**
  * Lo que el usuario deja puesto en un aparato. [owner]: de qué persona es (el id de su perfil), ""
@@ -27,12 +22,17 @@ data class DeviceChange(val label: String?, val fixedIp: String?, val owner: Str
 
 class DevicesViewModel(private val router: RouterAccess, private val monitor: RouterMonitor) : ViewModel() {
 
-    /** Qué se está guardando ahora mismo en el router (null si nada). */
-    var busy by mutableStateOf<Txt?>(null)
-        private set
+    private val changes = ChangeRunner(viewModelScope)
+
+    /** El cambio que se está guardando ahora mismo en el router (null si nada). */
+    val progress: ChangeProgress? get() = changes.current
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
-    var error by mutableStateOf<Txt?>(null)
+    var error: Txt?
+        get() = changes.error
+        set(value) {
+            changes.error = value
+        }
 
     /**
      * Guarda [change] en el router: primero el nombre y la dirección fija, y después, si cambió, de
@@ -75,23 +75,10 @@ class DevicesViewModel(private val router: RouterAccess, private val monitor: Ro
         }
 
     private fun run(label: Txt, onDone: () -> Unit, block: suspend (OpenWrtApi) -> Unit) {
-        if (busy != null) return
-        busy = label
-        error = null
-        viewModelScope.launch {
-            try {
-                router.use { block(it) }
-                onDone()
-            } catch (e: CancellationException) {
-                throw e // el router revierte solo lo que no se llegó a confirmar
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                Log.w("WrtControl", "No se guardó el aparato", e)
-                error = e.userMessage()
-            } finally {
-                busy = null
-                monitor.devices.refresh()
-                monitor.parental.refresh()
-            }
+        val refresh = {
+            monitor.devices.refresh()
+            monitor.parental.refresh()
         }
+        changes.run(label, onSuccess = onDone, onFinished = refresh) { router.use { block(it) } }
     }
 }

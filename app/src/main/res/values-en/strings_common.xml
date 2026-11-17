@@ -2,4 +2,12 @@
 <resources>
     <string name="common_stale_data">Data not refreshed: %1$s</string>
     <string name="common_retrying">Retrying…</string>
+    <string name="apply_step">%1$d · %2$s</string>
+    <string name="apply_step_apply">Apply</string>
+    <string name="apply_step_verify">Check</string>
+    <string name="apply_step_confirm">Confirm</string>
+    <string name="apply_phase_applying">Sending the change to the router.</string>
+    <string name="apply_phase_verifying">Checking that it works. If anything fails, the router rolls back on its own.</string>
+    <string name="apply_phase_confirming">It works. Confirming so it stays.</string>
+    <string name="apply_phase_reverting">It didn\'t work. The router is undoing it on its own; this can take a minute.</string>
 </resources>

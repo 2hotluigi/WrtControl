@@ -1,9 +1,5 @@
 package dev.angel.wrtcontrol.ui.parental
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.angel.wrtcontrol.R
@@ -23,6 +19,8 @@ import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.parental.parseBackup
 import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.ui.ChangeProgress
+import dev.angel.wrtcontrol.ui.ChangeRunner
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -135,12 +133,19 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         return if (pending) stored else null
     }
 
-    /** Qué se está aplicando ahora mismo en el router (null si nada). */
-    var busy by mutableStateOf<Txt?>(null)
-        private set
+    private val changes = ChangeRunner(viewModelScope)
+
+    /** Qué se está aplicando ahora mismo en el router y por dónde va (null si nada). */
+    val progress: ChangeProgress? get() = changes.current
+
+    val busy: Txt? get() = changes.busy
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
-    var error by mutableStateOf<Txt?>(null)
+    var error: Txt?
+        get() = changes.error
+        set(value) {
+            changes.error = value
+        }
 
     /** MAC de este teléfono según el router (por su IP en la lista de dispositivos). */
     private fun phoneMacs(): Set<String> = devices.filter { d -> d.ipv4.any { it in phoneIps } }.map { it.mac }.toSet()
@@ -293,22 +298,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     fun changePassword(password: String, onDone: () -> Unit) {
-        if (busy != null) return
-        busy = txt(R.string.parental_busy_password)
-        error = null
-        viewModelScope.launch {
-            try {
-                repo.changePassword(password)
-                onDone()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "Falló el cambio de contraseña", e)
-                error = e.userMessage()
-            } finally {
-                busy = null
-            }
-        }
+        changes.run(txt(R.string.parental_busy_password), onSuccess = onDone) { repo.changePassword(password) }
     }
 
     private suspend fun keepBackup(config: ParentalConfig) {
@@ -322,39 +312,23 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
 
     /** [block] devuelve la configuración que quedó en el router (para la copia), o null. */
     private fun run(label: Txt, onSuccess: () -> Unit = {}, block: suspend (OpenWrtApi) -> ParentalConfig?) {
-        if (busy != null) return
-        busy = label
-        error = null
-        viewModelScope.launch {
-            try {
-                val result = repo.use { block(it) }
-                val key = routerKey
-                // Con una copia pendiente de restaurar, no se toca hasta que el usuario decida.
-                if (result != null && key != null && !repo.backupPending(key)) {
-                    // Si la app deja el router sin nada, tampoco hay copia que ofrecer.
-                    if (result.profiles.isEmpty() && result.settings.copy(admins = emptyList()) == ParentalSettings()) {
-                        repo.saveBackup(key, null)
-                        savedBackup = null
-                    } else {
-                        keepBackup(result)
-                    }
+        changes.run(label, onSuccess, onFinished = { monitor.parental.refresh() }) {
+            val result = repo.use { block(it) }
+            val key = routerKey
+            // Con una copia pendiente de restaurar, no se toca hasta que el usuario decida.
+            if (result != null && key != null && !repo.backupPending(key)) {
+                // Si la app deja el router sin nada, tampoco hay copia que ofrecer.
+                if (result.profiles.isEmpty() && result.settings.copy(admins = emptyList()) == ParentalSettings()) {
+                    repo.saveBackup(key, null)
+                    savedBackup = null
+                } else {
+                    keepBackup(result)
                 }
-                onSuccess()
-            } catch (e: CancellationException) {
-                throw e // el router revierte solo lo que no se llegó a confirmar
-            } catch (e: Exception) {
-                Log.w(TAG, "Falló: $label", e)
-                error = e.userMessage()
-            } finally {
-                busy = null
-                monitor.parental.refresh()
             }
         }
     }
 
     private companion object {
-        const val TAG = "WrtControl"
-
         val REFRESH = 15.seconds
     }
 }

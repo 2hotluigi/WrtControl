@@ -16,6 +16,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   nombre o dirección guardados siguen en la lista aunque no estén.
 
 ### Cambiado
+- Los cambios en el router se ven igual en toda la app: qué se está haciendo y por qué paso va
+  (aplicar, comprobar, confirmar). Si un cambio no funciona, la app dice que el router lo está
+  deshaciendo en vez de quedarse esperando sin explicar nada.
 - Familia y Seguridad llaman a cada aparato igual que Dispositivos: con el nombre que le pusiste,
   el suyo o su fabricante ("Aparato Samsung"), en vez de "Sin nombre" o la MAC.
 

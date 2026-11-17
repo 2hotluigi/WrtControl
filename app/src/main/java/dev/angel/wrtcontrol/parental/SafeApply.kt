@@ -10,8 +10,11 @@ import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusSession
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.TimeSource
 
 /*
@@ -29,7 +32,34 @@ import kotlin.time.TimeSource
  *    entonces se confirma. Si no, se deja de confirmar y el router lo deshace al vencer el plazo.
  *    El ACL de LuCI no incluye `uci rollback` (solo `apply` y `confirm`, ver luci-base.json): se
  *    intenta por si el ACL lo permite, pero lo normal es esperar, como hace LuCI.
+ *
+ * Quien quiera enseñar por dónde va el cambio pone un [ApplyProgress] en el contexto de la
+ * corrutina: así lo siguen todas las funciones de la app sin que cada una tenga que pasarlo.
  */
+
+/** Por dónde va un cambio que se aplica con reversión automática. */
+enum class ApplyPhase {
+    /** Mandando el cambio al router. */
+    Applying,
+
+    /** El router ya lo tiene: se comprueba que funciona. Si no se confirma a tiempo, lo deshace solo. */
+    Verifying,
+
+    /** Funciona: se confirma para que se quede. */
+    Confirming,
+
+    /** No funcionó: se espera a que el router lo deshaga. */
+    Reverting,
+}
+
+/** Recibe las fases de los cambios que se apliquen dentro de su contexto (ver [applySafely]). */
+class ApplyProgress(val report: (ApplyPhase) -> Unit) : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<ApplyProgress>
+}
+
+private suspend fun phase(phase: ApplyPhase) {
+    currentCoroutineContext()[ApplyProgress]?.report?.invoke(phase)
+}
 
 internal const val ROLLBACK_SECONDS = 60
 internal const val VERIFY_TIMEOUT_MS = 40_000L
@@ -107,6 +137,7 @@ internal suspend fun UbusSession.applySafely(
     afterRevert: suspend () -> Unit = {},
     isLive: suspend () -> Boolean,
 ) {
+    phase(ApplyPhase.Applying)
     try {
         uciApply(rollback = true, timeoutSeconds = ROLLBACK_SECONDS)
     } catch (e: UbusException.Status) {
@@ -115,6 +146,7 @@ internal suspend fun UbusSession.applySafely(
     }
     val applied = TimeSource.Monotonic.markNow()
     runCatchingNonCancel { afterApply() }
+    phase(ApplyPhase.Verifying)
 
     var reason = failure
     val live = withTimeoutOrNull(VERIFY_TIMEOUT_MS) {
@@ -136,6 +168,7 @@ internal suspend fun UbusSession.applySafely(
     } ?: false
 
     if (!live) {
+        phase(ApplyPhase.Reverting)
         runCatchingNonCancel { uciRollback() }
         // Sin permiso para `uci rollback`, el router lo deshace al vencer el plazo: se mira hasta entonces.
         val budget = ROLLBACK_SECONDS * 1000L + REVERT_GRACE_MS - applied.elapsedNow().inWholeMilliseconds
@@ -146,6 +179,7 @@ internal suspend fun UbusSession.applySafely(
         if (reverted) runCatchingNonCancel { afterRevert() }
         throw if (reverted) ChangeRevertedException(reason) else ChangeUncertainException()
     }
+    phase(ApplyPhase.Confirming)
     uciConfirm()
 }
 

@@ -19,9 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +52,7 @@ import dev.angel.wrtcontrol.parental.formatUtcOffset
 import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.zoneCheck
 import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.ui.ApplyingBanner
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
@@ -105,7 +104,7 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                vm.busy?.let { item { BusyBanner(it.text()) } }
+                vm.progress?.let { item { ApplyingBanner(it) } }
                 if (editing == null && !askPassword) vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.parental_stale_data, loadError)) }
 
@@ -332,7 +331,7 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
             others = data.snapshot.profiles.filter { it.id != draft.id },
             admins = data.snapshot.settings.admins.toSet(),
             phoneIps = phoneIps,
-            busy = vm.busy?.text(),
+            progress = vm.progress,
             error = vm.error?.text(),
             onDismiss = { if (vm.busy == null) { editing = null; vm.error = null } },
             onSave = { profile -> vm.save(profile) { editing = null } },
@@ -448,21 +447,6 @@ private fun ProfileCard(
                     TextButton(onClick = onEdit, enabled = !busy) { Text(stringResource(R.string.parental_edit)) }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BusyBanner(text: String) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text, style = MaterialTheme.typography.bodyMedium)
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(
-                stringResource(R.string.parental_busy_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
         }
     }
 }
