@@ -27,7 +27,9 @@ class PairingTest {
     @Test
     fun `solo vale una IPv4 de red privada escrita tal cual`() {
         // Un enlace puede venir de cualquiera: no debe servir para llevar la contraseña a internet.
-        for (address in listOf("8.8.8.8", "router.ejemplo.com", "http://192.168.1.1", "192.168.1.1:8080", "192.168.1.1/x", "fd00::1", "")) {
+        // Tampoco a CGNAT ni a enlace local (detrás puede haber un equipo de otro), ni con signos.
+        val outside = listOf("100.64.12.34", "169.254.1.1", "172.32.0.1", "11.0.0.1", "+192.168.1.1", "-10.0.0.1")
+        for (address in outside + listOf("8.8.8.8", "router.ejemplo.com", "http://192.168.1.1", "192.168.1.1:8080", "192.168.1.1/x", "fd00::1", "")) {
             assertNull(address, pairingLink(address, "root"))
             assertNull(address, parsePairingLink("wrtcontrol://connect?address=" + java.net.URLEncoder.encode(address, "UTF-8") + "&user=root"))
         }

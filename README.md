@@ -231,7 +231,9 @@ revierten juntos. Todo lo de la app empieza por `wrtc_`.
   cuando una versión anterior no puede ignorar lo nuevo.
 - Se escribe el esquema más bajo que basta para lo guardado. El 2 es el de las pausas por
   aparato (una versión anterior conservaría la lista, pero al guardar borraría sus reglas): solo
-  mientras haya alguna, los teléfonos con una versión anterior quedan en solo lectura.
+  mientras haya alguna, los teléfonos con una versión anterior quedan en solo lectura. Una pausa
+  que ya venció sigue apuntada (y el esquema en 2) hasta el siguiente cambio hecho con la versión
+  nueva: la app no escribe en el router por su cuenta para limpiarla.
 
 **Cómo bloquea.**
 1. Reglas MARK de fw4 por MAC (`src '*'`, `dest '*'`, `proto all`): marcan el tráfico reenviado

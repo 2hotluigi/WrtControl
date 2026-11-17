@@ -8,6 +8,7 @@
     <string name="login_connect">Connect</string>
     <string name="login_address_detected">It is the router of the Wi-Fi you are connected to.</string>
     <string name="login_paired_title">Router received from another phone</string>
+    <string name="login_paired_mismatch">The address in the code (%1$s) is not the router of the Wi-Fi you are on (%2$s). If the code was not shown to you by someone at home, do not type the password.</string>
     <string name="login_paired_body">Check that you are on your home Wi-Fi and type the router password. The code you scanned does not carry it.</string>
     <string name="more_pair_title">Add another phone</string>
     <string name="more_pair_detail">A code so another phone can find this router</string>

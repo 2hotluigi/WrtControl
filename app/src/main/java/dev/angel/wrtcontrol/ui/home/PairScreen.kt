@@ -32,8 +32,10 @@ import dev.angel.wrtcontrol.data.qrModules
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.InfoRow
 
-private val QR_SIZE = 240.dp
-private val QR_MARGIN = 16.dp
+private val QR_SIZE = 272.dp
+
+/** El borde claro que pide la norma alrededor del código, en módulos: sin él, hay cámaras que no lo encuentran. */
+private const val QUIET_ZONE = 4
 
 /**
  * Añadir otro teléfono: un código QR con la dirección del router y el usuario, para que el otro
@@ -84,17 +86,17 @@ fun QrCode(text: String, description: String, modifier: Modifier = Modifier) {
         modifier
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .padding(QR_MARGIN)
             .testTag("pair-qr")
             .semantics { contentDescription = description },
     ) {
         Canvas(Modifier.size(QR_SIZE)) {
             if (modules.isEmpty()) return@Canvas
-            val cell = size.width / modules.size
+            val cell = size.width / (modules.size + 2 * QUIET_ZONE)
+            val edge = QUIET_ZONE * cell
             modules.forEachIndexed { y, row ->
                 row.forEachIndexed { x, dark ->
                     // Un pelo más grande que la celda, para que no queden rayas claras entre módulos.
-                    if (dark) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+                    if (dark) drawRect(Color.Black, Offset(edge + x * cell, edge + y * cell), Size(cell + 0.5f, cell + 0.5f))
                 }
             }
         }

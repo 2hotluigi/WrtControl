@@ -54,6 +54,7 @@ import dev.angel.wrtcontrol.openwrt.MAX_LABEL_LENGTH
 import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.openwrt.identify
+import dev.angel.wrtcontrol.openwrt.remembered
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.withoutExpired
@@ -100,7 +101,10 @@ fun DevicesScreen(address: String) {
         val device = devices.firstOrNull { it.mac == editing }?.takeIf { !locked }
         if (device != null) {
             // Sin remember: si el teléfono cambia de IP, se nota al abrir el diálogo.
-            val phoneMacs = phoneAddresses(context).let { ips -> devices.filter { d -> d.ipv4.any { it in ips } }.map { it.mac }.toSet() }
+            // Los que solo se recuerdan no cuentan: su dirección guardada puede ser ahora la de este teléfono.
+            val phoneMacs = phoneAddresses(context).let { ips ->
+                devices.filter { d -> !d.remembered && d.ipv4.any { it in ips } }.map { it.mac }.toSet()
+            }
             val identity = identify(device, vendors)
             DeviceDialog(
                 device = device,
@@ -268,7 +272,9 @@ fun DeviceDialog(
     val address = device.fixedIp ?: device.ipv4.firstOrNull()
     var label by rememberSaveable(device.mac) { mutableStateOf(device.label.orEmpty()) }
     var fixed by rememberSaveable(device.mac) { mutableStateOf(device.fixedIp != null) }
-    var owner by rememberSaveable(device.mac) { mutableStateOf(currentOwner) }
+    // También por de quién es ahora: si las personas llegan con el diálogo ya abierto, se empieza por
+    // la suya. Si no, guardar solo el nombre se lo quitaría a su persona.
+    var owner by rememberSaveable(device.mac, currentOwner) { mutableStateOf(currentOwner) }
     val saving = progress != null
 
     AlertDialog(
