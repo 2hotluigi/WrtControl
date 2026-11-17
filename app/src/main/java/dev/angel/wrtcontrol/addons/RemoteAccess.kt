@@ -4,6 +4,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.UserFacing
 import dev.angel.wrtcontrol.UserFacingException
+import dev.angel.wrtcontrol.openwrt.GUEST_ZONE
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
@@ -228,7 +229,8 @@ private fun ipv4ToLong(a: String): Long = a.split('.').fold(0L) { acc, p -> (acc
 
 private fun longToIpv4(v: Long): String = (3 downTo 0).joinToString(".") { ((v shr (it * 8)) and 0xff).toString() }
 
-private fun ipv4Range(address: String, mask: Int): LongRange {
+/** Las direcciones (como números) de la red de [address]/[mask]. */
+internal fun ipv4Range(address: String, mask: Int): LongRange {
     val ip = ipv4ToLong(address)
     val size = 1L shl (32 - mask.coerceIn(0, 32))
     val start = ip and (size - 1).inv() and 0xffffffffL
@@ -266,12 +268,12 @@ internal fun webTarget(uhttpd: List<UciSection>?, routerIpv4: Set<String>): WebT
     return WebTarget(host, bound.filter { it.first == host }.map { it.second }.distinct().sorted())
 }
 
-/** Redes de casa: zonas sin NAT, salvo la del acceso remoto y las de internet. */
+/** Redes de casa: zonas sin NAT, salvo la del acceso remoto, la de invitados y las de internet. */
 internal fun homeZones(firewall: List<UciSection>, internet: List<String>): List<String> =
     firewall.filter { it.type == "zone" && it.text("enabled") != "0" }
         .filter { it.text("masq") !in setOf("1", "on", "true", "yes") }
         .mapNotNull { it.text("name") }
-        .filter { it != VPN_ZONE && it !in internet }
+        .filter { it != VPN_ZONE && it != GUEST_ZONE && it !in internet }
         .distinct()
 
 /**

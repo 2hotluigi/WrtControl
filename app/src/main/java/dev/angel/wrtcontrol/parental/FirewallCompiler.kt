@@ -2,6 +2,7 @@ package dev.angel.wrtcontrol.parental
 
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.addons.VPN_ZONE
+import dev.angel.wrtcontrol.openwrt.GUEST_ZONE
 import dev.angel.wrtcontrol.openwrt.UciSection
 import dev.angel.wrtcontrol.openwrt.uciSection
 import dev.angel.wrtcontrol.txt
@@ -91,7 +92,9 @@ fun routerEnv(
     // Como fw4: las zonas y los reenvíos desactivados no existen.
     val zones = firewall.filter { it.type == "zone" && !uciFalse(it.text("enabled")) }
     // La zona del acceso remoto no es una red de casa: allí no hay dispositivos de los perfiles.
-    val lanZones = zones.filter { uciBool(it.text("masq")) != true && it.text("name") != VPN_ZONE }
+    // Tampoco la de invitados: van y vienen, no se les aprueba uno a uno (la cuarentena los dejaría
+    // sin internet) y ya están aislados de la casa.
+    val lanZones = zones.filter { uciBool(it.text("masq")) != true && it.text("name") !in setOf(VPN_ZONE, GUEST_ZONE) }
     // La cuarentena va en las redes de casa: las que reenvían hacia otra zona (lan → wan). Una WAN
     // sin NAT no reenvía a ninguna (y aunque lo hiciera, las reglas solo miran las conexiones que
     // se abren desde dentro).

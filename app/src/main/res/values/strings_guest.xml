@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="more_guest_title">Wi-Fi de invitados</string>
+    <string name="more_guest_detail">Una red aparte para las visitas, con código QR</string>
+    <string name="guest_intro">Una red aparte para quien viene de visita: tiene internet, pero no ve tus aparatos ni puede entrar al router.</string>
+    <string name="guest_switch">Wi-Fi de invitados</string>
+    <string name="guest_off_keeps">Al apagarlo se conservan el nombre y la contraseña para la próxima visita.</string>
+    <string name="guest_default_name">Invitados</string>
+    <string name="guest_default_suffix">%1$s invitados</string>
+    <string name="guest_busy">Guardando el Wi-Fi de invitados…</string>
+    <string name="guest_error_no_radio">El Wi-Fi del router está apagado del todo (las radios, no solo tu red). Enciéndelo desde LuCI para poder dar Wi-Fi a los invitados.</string>
+    <string name="guest_error_not_started">El router no llegó a emitir el Wi-Fi de invitados, así que se dejó como estaba.</string>
+    <string name="guest_error_not_stopped">El router no dejó de emitir el Wi-Fi de invitados, así que se dejó como estaba.</string>
+    <string name="guest_qr_title">Para conectarse</string>
+    <string name="guest_qr_help">Que la visita apunte la cámara de su teléfono a este código, o que busque la red «%1$s» y escriba la contraseña.</string>
+    <string name="guest_qr_description">Código QR del Wi-Fi de invitados</string>
+    <plurals name="guest_clients">
+        <item quantity="one">%d invitado conectado ahora</item>
+        <item quantity="many">%d invitados conectados ahora</item>
+        <item quantity="other">%d invitados conectados ahora</item>
+    </plurals>
+    <string name="guest_preview_title">Cambiar el Wi-Fi de invitados</string>
+    <string name="guest_preview_restart">Tu Wi-Fi también se reinicia: los aparatos conectados se desconectan unos segundos y vuelven a entrar solos.</string>
+</resources>

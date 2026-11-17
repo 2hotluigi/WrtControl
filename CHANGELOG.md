@@ -19,6 +19,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   un minuto por si hay radares antes de emitir, y pide tener puesto el país.
 - Wi-Fi: el canal más libre. El router mira qué canales usan las redes de alrededor y la app
   propone el que menos vecinos tiene, si de verdad está más libre que el actual.
+- Wi-Fi de invitados (en Más): una red aparte para las visitas, con código QR para conectarse.
+  Tienen internet, pero no ven tus aparatos ni pueden entrar al router. Al apagarlo se conservan
+  el nombre y la contraseña para la próxima vez.
 - Wi-Fi: potencia (toda, media o baja) y "Conectados ahora": quién hay en cada banda y si su
   señal es muy buena, buena, justa o débil.
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
