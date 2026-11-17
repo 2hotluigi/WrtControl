@@ -9,7 +9,6 @@
         <item quantity="other">%1$d dispositivos esperando</item>
         <item quantity="many">%1$d dispositivos esperando</item>
     </plurals>
-    <string name="protection_unnamed">Sin nombre</string>
     <string name="protection_disconnected">Desconectado</string>
     <string name="protection_this_phone">Este teléfono</string>
     <string name="protection_approve">Aprobar</string>

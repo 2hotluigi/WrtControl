@@ -410,6 +410,33 @@ miniupnpd están en marcha (lo muestra como desconocido; el DNS sí se comprueba
   - **Privacidad:** con nivel de adultos o estricto, las consultas DNS de ese perfil pasan por
     Cloudflare o CleanBrowsing.
 
+## Dispositivos: qué hace en el router
+
+Tocando un aparato se le pone nombre, se le fija la dirección y se dice de quién es.
+
+- **Dónde se guarda.** En las secciones `host` de `/etc/config/dhcp`, las "concesiones estáticas"
+  de LuCI: lo ven todos los teléfonos con la app. Las que crea la app se llaman `host_<mac>` (no
+  `wrtc_…`: esas son del control parental, que borra las que no reconoce).
+- **El nombre** va en una opción propia, `wrtc_name`, que dnsmasq no mira: admite espacios y
+  acentos ("Tele de la sala"). En `name`, que es un nombre de DNS, un nombre así impediría
+  arrancar a dnsmasq. Si la reserva la hizo LuCI con su `name`, ese vale de nombre mientras no se
+  ponga otro, y la app no lo toca.
+- **La dirección fija** es la opción `ip` de siempre, con la dirección que el aparato tiene ahora:
+  no hay que escribirla. Se rechaza antes de tocar nada si no es de una red de casa, es la del
+  router o ya está reservada para otro.
+- **Cómo se aplica.** Con `uci apply` y reversión: dnsmasq se reinicia al tocar `dhcp`, y solo se
+  confirma si sigue en marcha y contesta (`nslookup localhost`). Al quitar el nombre y la
+  dirección, la sección de la app se borra; la de LuCI se queda.
+- **En línea o no.** Con la tabla de vecinos (`ip -4 neigh show` e `ip -6 neigh show`, los dos
+  comandos que el ACL de LuCI deja ejecutar para su página de estado): contesta (en línea), sigue
+  en la tabla sin tráfico reciente (sin actividad) o no está (desconectado). Si el router no deja
+  verla, no se dice nada. Los aparatos con nombre o dirección guardados salen en la lista aunque
+  no estén, sin contar como conectados ni esperar aprobación.
+- **De quién es.** Lo mismo que marcarlo en el perfil de esa persona (Familia).
+
+Límites: "sin actividad" no distingue un aparato dormido de uno que se acaba de ir (el router
+tarda en olvidarlo). Un aparato con MAC privada que la cambie pierde su nombre y su dirección.
+
 ## Paquetes y acceso remoto: qué hace en el router
 
 **Instalar.** Igual que la página "Software" de LuCI: llama con `cgi-exec` (cgi-io) a

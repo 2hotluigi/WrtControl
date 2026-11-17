@@ -32,6 +32,9 @@ class OpenWrtApi(
     /** Paquetes opcionales: WireGuard, DNS dinámico, SQM y UPnP. */
     val addons = AddonsApi(ubus, writeLock, ddnsHttp = ddnsHttp)
 
+    /** El nombre y la dirección fija de cada aparato (escribe en `dhcp` con reversión automática). */
+    val deviceSettings = DevicesApi(ubus, writeLock)
+
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 
     suspend fun setPassword(username: String, password: String) = ubus.setPassword(username, password)
@@ -103,7 +106,20 @@ class OpenWrtApi(
         val hints = async { ubus.callAs<Map<String, HostHint>>("luci-rpc", "getHostHints") }
         val leases = async { ubus.callAs<DhcpLeases>("luci-rpc", "getDHCPLeases") }
         val ifaces = async { knownInterfaces ?: interfaces() }
-        buildDeviceList(hints.await(), leases.await(), ifaces.await())
+        val records = async { optional { parseDeviceRecords(ubus.uciSections("dhcp", "host")) } }
+        val neighbors = async { neighbors() }
+        buildDeviceList(hints.await(), leases.await(), ifaces.await(), records.await().orEmpty(), neighbors.await())
+    }
+
+    /**
+     * Quién contesta ahora, según la tabla de vecinos (la que enseña la página de estado de LuCI:
+     * su ACL deja ejecutar justo estos dos comandos). null si el router no deja verla.
+     */
+    private suspend fun neighbors(): Map<String, Presence>? = coroutineScope {
+        val v4 = async { optional { ubus.exec("/sbin/ip", listOf("-4", "neigh", "show")) } }
+        val v6 = async { optional { ubus.exec("/sbin/ip", listOf("-6", "neigh", "show")) } }
+        val outputs = listOfNotNull(v4.await(), v6.await())
+        if (outputs.isEmpty()) null else parseNeighbors(outputs.joinToString("\n") { it.stdout })
     }
 }
 

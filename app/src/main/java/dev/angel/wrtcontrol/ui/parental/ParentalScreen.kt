@@ -63,6 +63,8 @@ import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.StatusPill
 import dev.angel.wrtcontrol.ui.authenticate
 import dev.angel.wrtcontrol.ui.canLockApp
+import dev.angel.wrtcontrol.ui.deviceTitle
+import dev.angel.wrtcontrol.ui.rememberVendors
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -378,7 +380,8 @@ private fun ProfileCard(
     val now = data.snapshot.routerNow
     val access = profile.access(now)
     val status = accessText(profile, now)
-    val names = profile.macs.map { mac -> data.devices.firstOrNull { it.mac == mac }?.name ?: mac }
+    val vendors = rememberVendors()
+    val names = profile.macs.map { mac -> data.devices.firstOrNull { it.mac == mac }?.let { deviceTitle(it, vendors) } ?: mac }
     val bypass = data.snapshot.dnsBypassBlocked(profile)
 
     Card(Modifier.fillMaxWidth().clickable(enabled = !busy, onClick = onEdit).testTag("profile-${profile.id}")) {

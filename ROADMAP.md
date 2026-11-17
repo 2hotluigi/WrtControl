@@ -93,9 +93,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
   "Aparato Samsung" en vez de "Sin nombre". Medido en la casa: de 16 equipos, 4 no decían su
   nombre y los 4 tienen fabricante conocido; ninguno usaba MAC privada. Los nombres por DHCPv6 y
   las pistas de host no resolvieron ninguno de esos 4.
-  Falta: nombre editable guardado en el router, en línea o no, y las acciones (pausar, bloquear,
-  asignar a una persona, fijar IP). También usar la misma identidad en Familia y Seguridad, que
-  aún enseñan el nombre o la MAC, y probar mDNS para los que no dicen su nombre.
+  Segunda parte hecha: nombre editable guardado en el router (`wrtc_name` en las secciones `host`
+  de `dhcp`), dirección fija, de quién es, en línea o no (tabla de vecinos) y la misma identidad
+  en Familia y Seguridad.
+  Falta: pausar y bloquear un aparato suelto (hoy las pausas son por persona: hace falta que el
+  control parental admita reglas por aparato) y probar mDNS para los que no dicen su nombre.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.

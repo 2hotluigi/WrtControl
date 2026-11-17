@@ -73,6 +73,8 @@ import dev.angel.wrtcontrol.parental.normalizeDomain
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
+import dev.angel.wrtcontrol.ui.deviceTitle
+import dev.angel.wrtcontrol.ui.rememberVendors
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -115,11 +117,15 @@ fun ProfileEditor(
     val noteAdmin = stringResource(R.string.profile_note_admin)
     // Plantilla con %1$s: se rellena dentro de remember, donde no se puede llamar a stringResource.
     val noteOtherProfile = stringResource(R.string.profile_note_other_profile)
-    val options = remember(devices, macs, others, phoneIps, admins, unnamed, disconnected, noteThisPhone, noteAdmin, noteOtherProfile) {
+    // El mismo nombre que en Dispositivos: el que le puso el usuario, el suyo o su fabricante.
+    val vendors = rememberVendors()
+    val titles = devices.associate { it.mac to deviceTitle(it, vendors) }
+    val notes = listOf(unnamed, disconnected, noteThisPhone, noteAdmin, noteOtherProfile)
+    val options = remember(devices, titles, macs, others, phoneIps, admins, notes) {
         val online = devices.map { d ->
             DeviceOption(
                 mac = d.mac,
-                title = d.name ?: unnamed,
+                title = titles[d.mac] ?: unnamed,
                 detail = listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
                 note = when {
                     d.ipv4.any { it in phoneIps } -> noteThisPhone

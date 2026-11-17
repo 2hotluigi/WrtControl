@@ -138,7 +138,11 @@ class FakeOpenWrt(
                     ".config" to JsonPrimitive(arg("config")!!),
                 ).apply { putAll(a["values"]!!.jsonObject) }
             }.let { ok("""{"section":"${arg("name")}"}""") }
-            "uci.delete" -> stage(call.sid) { cfg -> cfg.remove(arg("section")!!) }.let { ok() }
+            // Con "option" solo quita esa opción; sin ella, la sección entera.
+            "uci.delete" -> stage(call.sid) { cfg ->
+                val option = arg("option")
+                if (option == null) cfg.remove(arg("section")!!) else cfg[arg("section")!!]?.remove(option)
+            }.let { ok() }
             "uci.changes" -> ok(buildJsonObject {
                 putJsonObject("changes") {
                     if (staged[call.sid].orEmpty().isNotEmpty()) putJsonArray("pendiente") { }

@@ -6,6 +6,16 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Añadido
+- Dispositivos: tocando un aparato se le pone nombre ("Tele de la sala"), se le fija la dirección
+  y se dice de quién es. Se guarda en el router, así que lo ven todos los teléfonos con la app.
+- Dispositivos: cada aparato dice si está en línea, sin actividad o desconectado. Los que tienen
+  nombre o dirección guardados siguen en la lista aunque no estén.
+
+### Cambiado
+- Familia y Seguridad llaman a cada aparato igual que Dispositivos: con el nombre que le pusiste,
+  el suyo o su fabricante ("Aparato Samsung"), en vez de "Sin nombre" o la MAC.
+
 ## [0.3.0]
 
 La app cambia de cara y de orden: empieza por cómo está la red, no por los datos técnicos.

@@ -38,6 +38,8 @@ import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.ui.deviceTitle
+import dev.angel.wrtcontrol.ui.rememberVendors
 
 /** Interruptor con título y explicación, como los de ajustes. */
 @Composable
@@ -73,6 +75,7 @@ internal fun QuarantineCard(
     onShowApproved: () -> Unit,
 ) {
     val settings = data.snapshot.settings
+    val vendors = rememberVendors()
     Card(Modifier.fillMaxWidth().testTag("quarantine-card")) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SwitchRow(
@@ -99,7 +102,7 @@ internal fun QuarantineCard(
                     )
                     pending.forEach { d ->
                         Column(Modifier.fillMaxWidth().testTag("pending-${d.mac}")) {
-                            Text(d.name ?: stringResource(R.string.protection_unnamed), style = MaterialTheme.typography.bodyLarge)
+                            Text(deviceTitle(d, vendors), style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall,
@@ -163,7 +166,7 @@ internal fun QuarantineConfirmDialog(known: Int?, onConfirm: () -> Unit, onDismi
 internal fun AssignDialog(device: Device, profiles: List<Profile>, onPick: (Profile) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.protection_assign_title, device.name ?: device.mac)) },
+        title = { Text(stringResource(R.string.protection_assign_title, deviceTitle(device, rememberVendors()))) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 profiles.forEach { p ->
@@ -195,6 +198,7 @@ internal fun ApprovedDialog(
 ) {
     var manual by remember { mutableStateOf("") }
     val manualMac = normalizeMac(manual)
+    val vendors = rememberVendors()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.protection_approved_title)) },
@@ -206,7 +210,7 @@ internal fun ApprovedDialog(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                d?.name ?: stringResource(if (d == null) R.string.protection_disconnected else R.string.protection_unnamed),
+                                d?.let { deviceTitle(it, vendors) } ?: stringResource(R.string.protection_disconnected),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(mac, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
@@ -276,6 +280,7 @@ internal fun AdminsDialog(
 ) {
     var manual by remember { mutableStateOf("") }
     val manualMac = normalizeMac(manual)
+    val vendors = rememberVendors()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.protection_admins_title)) },
@@ -292,7 +297,7 @@ internal fun AdminsDialog(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                d?.name ?: stringResource(if (d == null) R.string.protection_disconnected else R.string.protection_unnamed),
+                                d?.let { deviceTitle(it, vendors) } ?: stringResource(R.string.protection_disconnected),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(mac, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)

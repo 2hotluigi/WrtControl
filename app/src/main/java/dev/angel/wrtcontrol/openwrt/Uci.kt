@@ -107,6 +107,15 @@ suspend fun UbusCaller.uciDelete(config: String, section: String) {
     })
 }
 
+/** Quita una opción de una sección (la sección se queda). */
+suspend fun UbusCaller.uciDeleteOption(config: String, section: String, option: String) {
+    call("uci", "delete", buildJsonObject {
+        put("config", config)
+        put("section", section)
+        put("option", option)
+    })
+}
+
 suspend fun UbusCaller.uciSet(config: String, section: String, values: Map<String, String>) {
     call("uci", "set", buildJsonObject {
         put("config", config)

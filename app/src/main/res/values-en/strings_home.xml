@@ -88,4 +88,27 @@
     <string name="devices_static_ip">Static IP</string>
     <string name="devices_static_lease">Static DHCP</string>
     <string name="devices_lease">DHCP · %1$s</string>
+    <string name="devices_presence_online">Online</string>
+    <string name="devices_presence_idle">Idle</string>
+    <string name="devices_presence_offline">Offline</string>
+    <string name="devices_owner">%1$s\'s</string>
+    <string name="devices_fixed_address">Fixed address</string>
+    <string name="devices_edit_name_label">Name</string>
+    <string name="devices_edit_name_help">Every phone with the app will see it. Leave it empty to use the name the device reports.</string>
+    <string name="devices_edit_fixed_title">Fixed address</string>
+    <string name="devices_edit_fixed_help">The router will always give it %1$s. Handy for printers, cameras and consoles.</string>
+    <string name="devices_edit_fixed_unavailable">It has no home address to reserve right now. Connect it and try again.</string>
+    <string name="devices_edit_person_title">Whose is it?</string>
+    <string name="devices_edit_person_help">That person\'s pauses, schedules and filters apply to this device.</string>
+    <string name="devices_edit_person_none">Nobody\'s</string>
+    <string name="devices_edit_no_profiles">Add people in Family to assign their devices to them.</string>
+    <string name="devices_edit_save">Save</string>
+    <string name="devices_edit_cancel">Cancel</string>
+    <string name="devices_edit_hint">Tap a device to name it, fix its address or say whose it is.</string>
+    <string name="devices_busy_saving">Saving “%1$s”… If anything fails, the router rolls back on its own.</string>
+    <string name="devices_error_mac">That device has no valid MAC.</string>
+    <string name="devices_error_ip_invalid">That is not a valid IPv4 address.</string>
+    <string name="devices_error_ip_outside">That address is not on the home network, or it is the router\'s own.</string>
+    <string name="devices_error_ip_taken">That address is already reserved for “%1$s”.</string>
+    <string name="devices_error_not_applied">The router stopped resolving names with the change, so it was left as it was.</string>
 </resources>
