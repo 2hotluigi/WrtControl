@@ -6,31 +6,33 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+## [0.3.0]
+
+La app cambia de cara y de orden: empieza por cómo está la red, no por los datos técnicos.
+
 ### Cambiado
+- Cara nueva: colores y tipografía propios (azul cobalto y Manrope), iguales en todos los
+  teléfonos, en claro y en oscuro. El verde, el ámbar y el rojo quedan para decir cómo está algo.
+- Navegación nueva: Inicio · Dispositivos · Familia · Seguridad · Más. Los paquetes pasan a
+  "Más → Funciones del router" y los datos técnicos a "Más → Router". Desconectar también está en Más.
 - La app, en inglés si el teléfono está en inglés: pantallas, mensajes de error, consejos del
   acceso remoto, horarios, filtros y descripciones de los paquetes.
 - Al cambiar de pestaña se ve al momento lo último que se sabía del router, en vez de esperar a
   que vuelva a cargar. La app le hace menos llamadas: cada dato se pide una sola vez aunque lo
   usen varias pantallas.
 
-- Cara nueva: colores y tipografía propios (azul cobalto y Manrope), iguales en todos los
-  teléfonos, en claro y en oscuro. El verde, el ámbar y el rojo quedan para decir cómo está algo.
-
-- Navegación nueva: Inicio · Dispositivos · Familia · Seguridad · Más. Los paquetes pasan a
-  "Más → Funciones del router" y los datos técnicos a "Más → Router". Desconectar también está en Más.
-
 ### Añadido
+- Inicio: si el router tiene internet y desde cuándo, cuántos dispositivos hay, los perfiles en
+  pausa y lo que pide atención (router sin contraseña, reglas sin aplicar, dispositivos nuevos).
+- Salud del cable de internet: Inicio avisa si el cable entre el módem y el router se desconecta
+  a ratos o va más lento de lo que admiten los dos aparatos, y dice qué hacer. "Conectado a
+  internet" se comprueba desde el router (un ping y, si no sale, una consulta de DNS), y si falla
+  distingue el cable suelto de un problema del módem o del proveedor.
 - Dispositivos: cada aparato con su icono y su fabricante. Los que no dicen su nombre salen como
   "Aparato Samsung" en vez de "Sin nombre", y se avisa de los que usan una MAC privada. El
   fabricante se saca de una lista que va dentro de la app: las MAC no salen del teléfono.
-- Salud del cable de internet: Inicio avisa si el cable entre el módem y el router se desconecta
-  a ratos o va más lento de lo que admiten los dos aparatos, y dice qué hacer. "Conectado a
-  internet" ahora se comprueba con un ping desde el router, y si falla distingue el cable suelto
-  de un problema del módem o del proveedor.
-- Inicio: si el router tiene internet y desde cuándo, cuántos dispositivos hay, los perfiles en
-  pausa y lo que pide atención (router sin contraseña, reglas sin aplicar, dispositivos nuevos).
-- "Qué puede hacer este router", en Estado: cada función de la app aparece como disponible, se
-  instalará o no compatible, con el motivo y qué hacer. También dice qué Wi-Fi tiene el router.
+- "Qué puede hacer este router", en Más → Router: cada función de la app aparece como disponible,
+  se instalará o no compatible, con el motivo y qué hacer. También dice qué Wi-Fi tiene el router.
 
 ## [0.2.0]
 
