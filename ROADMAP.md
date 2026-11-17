@@ -134,6 +134,47 @@ marcha guiada. Cada uno se apoya en los anteriores.
 ## Hito 2 · Lo que se espera de un router (P1)
 
 - **Wi-Fi:** nombre y clave, red de invitados aislada con QR para compartirla, horario del Wi-Fi.
+  Hoy la app no toca `/etc/config/wireless`. Por partes:
+  - *Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
+    defecto; avisar de una red abierta, como la `OpenWrt` sin clave que trae el router de fábrica).
+    Un cambio de Wi-Fi puede dejar fuera al teléfono que lo hace: `SafeApply` tiene que esperar a
+    que el teléfono vuelva a entrar antes de confirmar.
+  - *País:* sin `country`, el router emite con los canales y la potencia más restrictivos. Pedirlo
+    en la puesta en marcha (proponer el del teléfono).
+  - *Canal y ancho por resultado*, no por número: "más alcance" o "más velocidad" (20/40 MHz en
+    2,4 GHz; 80 o 160 MHz en 5 GHz, explicando DFS: el router puede tardar un minuto en emitir y
+    cambiar de canal si detecta un radar). Buscar el canal menos ocupado (`iwinfo scan` por ubus).
+  - *Potencia* y lista de equipos conectados por banda con su señal (ya está en `iwinfo`).
+  - *Wi-Fi apagado a propósito:* si lo dan otros puntos de acceso (en la casa de pruebas, dos Deco
+    en modo AP), decirlo en vez de avisar de "Wi-Fi apagado".
+  - *Roaming* (802.11r/k/v) queda en el Hito 3, con varios puntos de acceso.
+- **Rendimiento ("Que el router dé todo lo que puede"):** una pantalla que mira qué hay y propone,
+  en vez de una lista de interruptores. Contrastado el 2026-11-16 con las recomendaciones de la
+  página del GL-MT6000 en openwrt.org y con el router de la casa.
+  - *Reparto entre núcleos* (`network.globals.packet_steering`): la app no lo enseña ni lo cambia.
+    La página recomienda "todos los núcleos" (`2`) en routers de 4 núcleos, sobre todo con SQM;
+    `1` reparte menos. Se aplica con `/etc/init.d/packet_steering reload`, sin reiniciar la red
+    (hecho a mano en la casa, que estaba en `1`). Con la descarga por hardware no importa.
+  - *irqbalance* (`luci-app-irqbalance`): según la página no da más velocidad, solo ayuda a otras
+    tareas. No ofrecerlo salvo que el router haga algo más que enrutar (Docker, Samba).
+  - *Descarga de flujos* (`flow_offloading` y `flow_offloading_hw` en el firewall): la app solo
+    avisa de que rompe los cortes del control parental. Falta poder activarla y quitarla, y
+    elegir por el usuario: es incompatible con SQM (lo que se descarga no pasa por `cake`) y con
+    cortar conexiones abiertas. Recomendarla solo sin SQM ni control parental y con una línea más
+    rápida de lo que la CPU mueve sola; por hardware solo donde el chip la tenga (Filogic, MT7621).
+  - *WED* (la descarga del Wi-Fi en MediaTek, `wed_enable` de `mt7915e`): solo sirve con el Wi-Fi
+    del router en uso. Se salta AQL, así que da más velocidad pero puede dar más latencia en el
+    Wi-Fi. Necesita escribir en `/etc/modules.conf` y reiniciar: con el agente (Hito 3).
+  - *AQL* (límites de cola del Wi-Fi, `aql_txq_limit` en debugfs): bajarlos a 1500–2500 da menos
+    latencia y algo menos de velocidad punta; no vale con WED. Se pierde al reiniciar (va en
+    `/etc/rc.local`): con el agente, como "Wi-Fi para juegos y videollamadas".
+  - *Beamforming y BSS coloring:* vienen activados; la página pide no tocarlos. No enseñarlos.
+  - *SQM bien medido:* ya está (cake 285/285 en la casa: 263/262 Mbit/s y la misma latencia con
+    carga). Falta avisar cuando la línea supera lo que la CPU puede moldear, y ofrecer entonces
+    quitar SQM y activar la descarga.
+  - *Temperatura y carga* en "Router → Detalles técnicos" (`thermal_zone`; 41 °C en la casa).
+  - *Luz del router:* apagarla o atenuarla ("modo noche"), con las secciones `led` de
+    `/etc/config/system`, que el ACL de LuCI ya deja escribir.
 - **Centro de seguridad:** contraseña del router, servicios abiertos hacia la WAN, puertos abiertos
   por UPnP, firmware antiguo, reglas activas. Una puntuación y acciones de un toque.
 - **Funciones por resultado** en lugar de paquetes: "Entrar desde fuera de casa" (WireGuard),
