@@ -87,6 +87,15 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.
+- **Dispositivos con identidad**, primera parte hecha: fabricante por el prefijo de la MAC con una
+  lista que va dentro de la app (290 KB, de los registros públicos del IEEE vía la lista `manuf` de
+  Wireshark; `tools/update-oui.py` la regenera), aviso de MAC privada, icono por clase de aparato y
+  "Aparato Samsung" en vez de "Sin nombre". Medido en la casa: de 16 equipos, 4 no decían su
+  nombre y los 4 tienen fabricante conocido; ninguno usaba MAC privada. Los nombres por DHCPv6 y
+  las pistas de host no resolvieron ninguno de esos 4.
+  Falta: nombre editable guardado en el router, en línea o no, y las acciones (pausar, bloquear,
+  asignar a una persona, fijar IP). También usar la misma identidad en Familia y Seguridad, que
+  aún enseñan el nombre o la MAC, y probar mDNS para los que no dicen su nombre.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.

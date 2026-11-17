@@ -565,6 +565,10 @@ Ver [ROADMAP.md](ROADMAP.md): lo hecho, los hitos siguientes y sus prioridades.
 
 ## Licencia
 
+La lista de fabricantes por prefijo de MAC (`app/src/main/assets/oui.txt.gz`) se genera con
+`tools/update-oui.py` a partir de la lista `manuf` de Wireshark, que recoge los registros públicos
+del IEEE.
+
 La tipografía Manrope (`app/src/main/res/font/manrope.ttf`) es de The Manrope Project Authors y se
 distribuye bajo la [SIL Open Font License 1.1](licenses/Manrope-OFL.txt).
 

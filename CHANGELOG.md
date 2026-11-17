@@ -20,6 +20,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   "Más → Funciones del router" y los datos técnicos a "Más → Router". Desconectar también está en Más.
 
 ### Añadido
+- Dispositivos: cada aparato con su icono y su fabricante. Los que no dicen su nombre salen como
+  "Aparato Samsung" en vez de "Sin nombre", y se avisa de los que usan una MAC privada. El
+  fabricante se saca de una lista que va dentro de la app: las MAC no salen del teléfono.
 - Salud del cable de internet: Inicio avisa si el cable entre el módem y el router se desconecta
   a ratos o va más lento de lo que admiten los dos aparatos, y dice qué hacer. "Conectado a
   internet" ahora se comprueba con un ping desde el router, y si falla distingue el cable suelto
