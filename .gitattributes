@@ -6,3 +6,5 @@
 *.png           binary
 *.ttf           binary
 *.gz            binary
+# Los assets van tal cual al APK: sin tocar los saltos de línea.
+app/src/main/assets/** -text

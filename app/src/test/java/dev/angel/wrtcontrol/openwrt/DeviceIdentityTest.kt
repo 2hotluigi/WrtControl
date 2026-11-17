@@ -7,16 +7,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.zip.GZIPOutputStream
 
 class DeviceIdentityTest {
 
-    private fun table(text: String): VendorTable {
-        val bytes = ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(text.toByteArray()) } }.toByteArray()
-        return VendorTable { ByteArrayInputStream(bytes) }
-    }
+    private fun table(text: String) = VendorTable { ByteArrayInputStream(text.toByteArray()) }
 
     private val vendors = table("Acme\tA4BBCC 001122\nEspressif\t246F28\nMotorola Mobility LLC, a Lenovo\t9C2976\n")
 
@@ -83,9 +78,21 @@ class DeviceIdentityTest {
         assertEquals(DeviceKind.Other, deviceKind(null, null))
     }
 
+    @Test
+    fun `con saltos de linea de Windows no se pierde el ultimo prefijo de cada fabricante`() {
+        assertEquals("Acme", table("Acme\tA4BBCC 001122\r\nOtro\t246F28\r\n").vendor("00:11:22:00:00:01"))
+    }
+
+    @Test
+    fun `si la lista no se puede leer no hay fabricantes, pero tampoco se rompe nada`() {
+        val broken = VendorTable { throw java.io.FileNotFoundException("oui.txt") }
+        assertNull(broken.load().vendor("A4:BB:CC:00:00:01"))
+        assertEquals("Sin nombre", identify(device("A4:BB:CC:00:00:02"), broken).title.es)
+    }
+
     // ---------- la lista que va dentro de la app ----------
 
-    private val asset = listOf("src/main/assets/oui.txt.gz", "app/src/main/assets/oui.txt.gz").map(::File).first { it.isFile }
+    private val asset = listOf("src/main/assets/oui.txt", "app/src/main/assets/oui.txt").map(::File).first { it.isFile }
 
     @Test
     fun `la lista de la app conoce a los fabricantes de siempre y pesa poco`() {
@@ -94,12 +101,12 @@ class DeviceIdentityTest {
         assertEquals("Cisco Systems", real.vendor("00:00:0C:12:34:56"))
         assertEquals("Raspberry Pi Foundation", real.vendor("B8:27:EB:00:00:01"))
         assertEquals("Espressif", real.vendor("24:6F:28:00:00:01"))
-        assertTrue("${asset.length()} bytes", asset.length() < 400_000)
+        assertTrue("${asset.length()} bytes", asset.length() < 800_000)
     }
 
     @Test
     fun `la lista de la app no lleva coletillas legales ni lineas rotas`() {
-        val lines = java.util.zip.GZIPInputStream(asset.inputStream()).bufferedReader().readLines()
+        val lines = asset.readLines()
         assertTrue(lines.size > 15_000)
         lines.forEach { line ->
             val (name, prefixes) = line.split('\t').let { it[0] to it[1] }
