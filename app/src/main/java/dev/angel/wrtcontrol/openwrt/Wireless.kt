@@ -35,8 +35,27 @@ fun wifiSecurity(encryption: String?): WifiSecurity? {
     return WifiSecurity.entries.firstOrNull { it.uci == base }
 }
 
-/** Una radio Wi-Fi: [up] si está emitiendo ahora. */
-data class WifiRadio(val name: String, val band: WifiBand?, val enabled: Boolean, val up: Boolean)
+/**
+ * Una radio Wi-Fi: [up] si está emitiendo ahora. [country]: el país que tiene puesto (ISO), o null.
+ * [channel]: el canal configurado ("36", "auto"), o null.
+ */
+data class WifiRadio(
+    val name: String,
+    val band: WifiBand?,
+    val enabled: Boolean,
+    val up: Boolean,
+    val country: String? = null,
+    val channel: String? = null,
+) {
+    /**
+     * ¿Puede tardar en volver a emitir? En los canales de 5 GHz que comparte con los radares (DFS),
+     * y en "auto", que puede elegir uno, el router escucha un minuto antes de emitir.
+     */
+    val mayWaitForRadar: Boolean
+        get() = band == WifiBand.Band5 && (channel == null || channel == "auto" || channel.toIntOrNull() in DFS_CHANNELS)
+}
+
+private val DFS_CHANNELS = 52..144
 
 /**
  * Una red que emite el router. [ifname]: su interfaz si está emitiendo ahora ("phy0-ap0"), null si
@@ -69,6 +88,9 @@ data class WifiState(val radios: List<WifiRadio>, val networks: List<WifiNetwork
 
     /** Las bandas tienen nombres o seguridad distintos: al guardar quedarán iguales. */
     val homeDiffers: Boolean get() = home.map { Triple(it.ssid, it.encryption, it.key) }.distinct().size > 1
+
+    /** El país del Wi-Fi si todas las radios tienen el mismo; null si falta en alguna o no coinciden. */
+    val country: String? get() = radios.map { it.country }.distinct().singleOrNull()
 }
 
 /** Lee el estado: las secciones de `wireless`, lo que dice `getWirelessDevices` y los conectados por interfaz. */
@@ -85,6 +107,9 @@ internal fun parseWifi(
             band = bandOf(s.text("band"), s.text("hwmode")),
             enabled = s.text("disabled") != "1",
             up = (status?.get("up") as? JsonPrimitive)?.contentOrNull == "true",
+            // "00" es "el mundo": lo mismo que no haberlo puesto.
+            country = s.text("country")?.uppercase()?.takeIf { COUNTRY_CODE.matches(it) },
+            channel = s.text("channel"),
         )
     }
     val networks = sections.filter { it.type == "wifi-iface" && (it.text("mode") ?: "ap") == "ap" }.mapNotNull { s ->

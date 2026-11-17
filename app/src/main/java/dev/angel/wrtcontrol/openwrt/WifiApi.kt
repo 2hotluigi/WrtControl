@@ -62,7 +62,51 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
             wifiLive(parseWifi(tx.uciSections("wireless"), devices), devices, edit)
         }
     }
+
+    /** Los países que conoce el router (vacío si no tiene Wi-Fi o no deja leerlos). */
+    suspend fun countries(): List<WifiCountry> {
+        val radio = ubus.uciSections("wireless").firstOrNull { it.type == "wifi-device" } ?: return emptyList()
+        return try {
+            parseCountries(ubus.callAs<JsonObject>("iwinfo", "countrylist", buildJsonObject { put("device", radio.name) }))
+        } catch (_: UbusException.AccessDenied) {
+            emptyList()
+        } catch (_: UbusException.Status) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Pone el país [code] en todas las radios. Las que emiten se reinician con las normas nuevas:
+     * si alguna no vuelve (su canal no está permitido en ese país), el router lo deshace. Se espera
+     * más si este teléfono va por ese Wi-Fi ([phoneOnIt]) o si una radio tiene que escuchar radares.
+     */
+    suspend fun setCountry(code: String, phoneOnIt: Boolean) = writeLock.withLock {
+        require(isCountryCode(code)) { "País no válido" }
+        val tx = ubus.openSession()
+        tx.ensureNoPendingApply()
+        val before = tx.uciSections("wireless")
+        val changes = countryPlan(before, code)
+        if (changes.isEmpty()) return@withLock
+        val up = parseWifi(before, tx.wirelessDevices()).radios.filter { it.up }
+        val wasUp = up.map { it.name }.toSet()
+        changes.forEach { tx.uciSet("wireless", it.section, it.values) }
+        val slow = up.isNotEmpty() && (phoneOnIt || up.any { it.mayWaitForRadar })
+        // Justo después de aplicar, las radios siguen "levantadas" un instante antes de reiniciarse.
+        var steady = 0
+        tx.applySafely(
+            failure = txt(R.string.wifi_country_not_applied),
+            isReverted = { fresh -> fresh.uciSections("wireless") == before },
+            rollbackSeconds = if (slow) WIFI_ROLLBACK_SECONDS else ROLLBACK_SECONDS,
+            verifyTimeoutMs = if (slow) WIFI_VERIFY_TIMEOUT_MS else VERIFY_TIMEOUT_MS,
+        ) {
+            steady = if (radiosBack(wasUp, tx.wirelessDevices())) steady + 1 else 0
+            steady >= RADIO_STEADY_CHECKS
+        }
+    }
 }
+
+/** Comprobaciones seguidas (una por segundo) con las radios emitiendo para dar el cambio por bueno. */
+internal const val RADIO_STEADY_CHECKS = 3
 
 /** `luci-rpc getWirelessDevices`: radio → su estado. */
 internal suspend fun UbusCaller.wirelessDevices(): Map<String, JsonObject> =

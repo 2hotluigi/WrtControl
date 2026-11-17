@@ -11,6 +11,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   con el mismo nombre en las dos. Antes de un cambio que saca a alguien del Wi-Fi, la app dice
   cuántos aparatos se desconectarán. Avisa si la red no tiene contraseña o si el Wi-Fi del
   router está apagado (y que puede ser a propósito, si lo dan otros aparatos).
+- Wi-Fi: el país. Si el router no lo tiene puesto (así viene de fábrica, y entonces usa los
+  canales y la potencia más limitados), la app lo avisa y propone el del teléfono. Si el Wi-Fi no
+  vuelve a emitir con el país nuevo, el router lo deja como estaba.
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.

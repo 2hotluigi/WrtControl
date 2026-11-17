@@ -7,6 +7,8 @@ import dev.angel.wrtcontrol.parental.FakeOpenWrt
 import dev.angel.wrtcontrol.plural
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.Credentials
+import dev.angel.wrtcontrol.ui.home.countryName
+import dev.angel.wrtcontrol.ui.home.countryPreview
 import dev.angel.wrtcontrol.ui.home.currentWifi
 import dev.angel.wrtcontrol.ui.home.phoneOnWifi
 import dev.angel.wrtcontrol.ui.home.wifiPreview
@@ -174,5 +176,76 @@ class WirelessTest {
         assertTrue(result.exceptionOrNull() is UserFacingException)
         assertTrue(fake.calls.none { it == "uci.set" })
         assertEquals(JsonPrimitive("OpenWrt"), fake.committed["default_radio1"]!!["ssid"])
+    }
+
+    private fun withCountry(vararg byRadio: Pair<String, String>) = factory.map { s ->
+        val country = byRadio.toMap()[s.name]
+        if (country == null) s else uciSection(s.name, s.type, "band" to s.text("band"), "channel" to s.text("channel"), "country" to country)
+    }
+
+    @Test
+    fun `el pais - falta de fabrica, 00 no cuenta y tiene que ser el mismo en todas las radios`() {
+        assertNull(parseWifi(factory, devices()).country)
+        assertNull("00 es el mundo", parseWifi(withCountry("radio0" to "00", "radio1" to "00"), devices()).country)
+        assertNull("solo una radio lo tiene", parseWifi(withCountry("radio0" to "MX"), devices()).country)
+        assertNull("no coinciden", parseWifi(withCountry("radio0" to "MX", "radio1" to "US"), devices()).country)
+        assertEquals("MX", parseWifi(withCountry("radio0" to "MX", "radio1" to "mx"), devices()).country)
+
+        assertEquals(listOf("radio1"), countryPlan(withCountry("radio0" to "MX"), "MX").map { it.section })
+        assertTrue(countryPlan(withCountry("radio0" to "MX", "radio1" to "MX"), "MX").isEmpty())
+        assertTrue(isCountryCode("MX"))
+        assertFalse(isCountryCode("00"))
+        assertFalse(isCountryCode("mx"))
+    }
+
+    @Test
+    fun `los canales de radar y auto en 5 GHz pueden tardar, los demas no`() {
+        fun radio(band: WifiBand, channel: String?) = WifiRadio("r", band, enabled = true, up = true, channel = channel)
+        assertFalse(radio(WifiBand.Band5, "36").mayWaitForRadar)
+        assertTrue(radio(WifiBand.Band5, "100").mayWaitForRadar)
+        assertTrue(radio(WifiBand.Band5, "auto").mayWaitForRadar)
+        assertFalse(radio(WifiBand.Band5, "149").mayWaitForRadar)
+        assertFalse(radio(WifiBand.Band2, "auto").mayWaitForRadar)
+    }
+
+    @Test
+    fun `la lista de paises del router sale sin el mundo ni los codigos de prueba`() = runTest {
+        val api = api(FakeOpenWrt())
+        assertEquals(listOf("ES", "MX", "US"), api.countries().map { it.code })
+        assertEquals("México", countryName("MX", locale = java.util.Locale.forLanguageTag("es")))
+        assertEquals("lo que diga el router si el teléfono no lo conoce", "Debug", countryName("DB", "Debug"))
+    }
+
+    @Test
+    fun `poner el pais lo escribe en todas las radios y, con el Wi-Fi apagado, no pregunta`() = runTest {
+        val fake = FakeOpenWrt()
+        val api = api(fake)
+
+        // Como de fábrica: las radios están levantadas, pero con sus redes apagadas no emiten nada.
+        assertTrue(countryPreview(api.state(), "MX", emptySet()).notes.isEmpty())
+        api.setCountry("MX", phoneOnIt = false)
+
+        assertEquals("MX", fake.option("radio0", "country"))
+        assertEquals("MX", fake.option("radio1", "country"))
+        assertEquals("MX", api.state().country)
+    }
+
+    @Test
+    fun `con el Wi-Fi emitiendo avisa del reinicio, y si no vuelve con ese pais se deshace`() = runTest {
+        val fake = FakeOpenWrt()
+        val api = api(fake)
+        api.save(WifiEdit("Casa", "clave-segura", WifiSecurity.Wpa2Wpa3, setOf("radio0")), phoneOnIt = false)
+        val state = api.state()
+        assertEquals(listOf(txt(R.string.wifi_country_preview_restart)), countryPreview(state, "US", emptySet()).notes)
+
+        api.setCountry("US", phoneOnIt = false)
+        assertEquals("US", api.state().country)
+
+        fake.wifiBadCountries = setOf("ES")
+        val result = runCatching { api.setCountry("ES", phoneOnIt = false) }
+        advanceUntilIdle()
+        assertTrue(result.exceptionOrNull() is ChangeRevertedException)
+        assertEquals("US", fake.option("radio0", "country"))
+        assertEquals("US", fake.option("radio1", "country"))
     }
 }

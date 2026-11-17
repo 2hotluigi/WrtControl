@@ -480,8 +480,20 @@ redes (invitados, modo cliente, malla) no se tocan.
   fuera hasta que vuelva a entrar con los datos nuevos: el plazo del router pasa de 1 a 3 minutos
   y la app sigue intentando confirmar mientras tanto. Si no vuelve a tiempo, el router lo deshace.
 
-Límites: no hay país, canal, ancho ni potencia todavía (van en las siguientes partes del Wi-Fi).
-Con el país sin poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+- **País.** El `country` de cada radio dice qué canales y cuánta potencia permite la ley. Sin él
+  el router usa "00" (el mundo), lo más restrictivo: en el GL-MT6000, 20 dBm y casi todo 5 GHz
+  solo para escuchar. La app avisa si falta, propone el del teléfono (red móvil, SIM o idioma; sin
+  permisos) y ofrece la lista del propio router (`iwinfo countrylist`, que el ACL de LuCI deja
+  leer). Lo pone en todas las radios a la vez. Las que estaban emitiendo se reinician y tienen que
+  volver a estar levantadas tres comprobaciones seguidas; si alguna no vuelve (su canal no está
+  permitido en ese país), el router lo deshace. Con una radio de 5 GHz en un canal de radar (52 a
+  144) o en `auto`, se espera 3 minutos en vez de 1, porque el router escucha un minuto antes de
+  emitir. `WifiVmTest` lo prueba contra un router con radios de verdad (la VM de la CI no tiene y
+  allí se salta): en el GL-MT6000, 246 países y el cambio confirmado en unos 3 s.
+
+Límites: no hay canal, ancho ni potencia todavía (van en las siguientes partes del Wi-Fi). El
+país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin poner, el
+GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 
 ## Dispositivos: qué hace en el router
 
