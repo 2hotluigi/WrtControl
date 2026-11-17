@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="more_guest_title">Guest Wi-Fi</string>
+    <string name="more_guest_detail">A separate network for visitors, with a QR code</string>
+    <string name="guest_intro">A separate network for visitors: they get internet, but can\'t see your devices or get into the router.</string>
+    <string name="guest_switch">Guest Wi-Fi</string>
+    <string name="guest_off_keeps">Turning it off keeps the name and password for the next visit.</string>
+    <string name="guest_default_name">Guests</string>
+    <string name="guest_default_suffix">%1$s guests</string>
+    <string name="guest_busy">Saving guest Wi-Fi…</string>
+    <string name="guest_error_no_radio">The router\'s Wi-Fi is fully off (the radios, not just your network). Turn it on from LuCI to offer Wi-Fi to guests.</string>
+    <string name="guest_error_not_started">The router didn\'t get to broadcast the guest Wi-Fi, so it was left as it was.</string>
+    <string name="guest_error_not_stopped">The router didn\'t stop broadcasting the guest Wi-Fi, so it was left as it was.</string>
+    <string name="guest_qr_title">To connect</string>
+    <string name="guest_qr_help">Have your visitor point their phone camera at this code, or look for the network “%1$s” and type the password.</string>
+    <string name="guest_qr_description">Guest Wi-Fi QR code</string>
+    <plurals name="guest_clients">
+        <item quantity="one">%d guest connected now</item>
+        <item quantity="other">%d guests connected now</item>
+    </plurals>
+    <string name="guest_preview_title">Change guest Wi-Fi</string>
+    <string name="guest_preview_restart">Your Wi-Fi restarts too: connected devices drop for a few seconds and rejoin on their own.</string>
+</resources>

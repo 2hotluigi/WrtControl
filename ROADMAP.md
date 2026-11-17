@@ -158,6 +158,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
 
 - **Wi-Fi:** nombre y clave, red de invitados aislada con QR para compartirla, horario del Wi-Fi.
   Por partes:
+  - ~~*Invitados:* red aparte, aislada, con QR.~~ Hecho: Más → Wi-Fi de invitados (red, reparto,
+    zona que solo sale a internet y una red por radio), probado con tráfico real en el GL-MT6000.
+    Falta: el acceso rápido desde Inicio, IPv6 para invitados, borrarlo del todo desde la app y
+    probarlo con un teléfono de verdad (el QR y la unión por Wi-Fi).
+  - *Horario del Wi-Fi:* pendiente.
   - ~~*Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
     defecto; avisar de una red abierta, como la `OpenWrt` sin clave que trae el router de fábrica).
     Un cambio de Wi-Fi puede dejar fuera al teléfono que lo hace: `SafeApply` tiene que esperar a

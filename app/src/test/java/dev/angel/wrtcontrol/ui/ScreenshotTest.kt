@@ -49,6 +49,7 @@ import dev.angel.wrtcontrol.ui.home.CountrySection
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
+import dev.angel.wrtcontrol.ui.home.GuestContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
@@ -160,6 +161,17 @@ class ScreenshotTest {
         )
         // Sin país, como viene de fábrica: el aviso propone el del teléfono.
         WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))), suggestedCountry = "MX")
+    }
+
+    /** El Wi-Fi de invitados encendido: nombre, contraseña a la vista y el QR para la visita. */
+    @Test
+    fun invitados() = both("invitados") {
+        val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true))
+        val guest = WifiNetwork(
+            section = "wrtcguest_radio0", radio = "radio0", ssid = "Casa invitados", encryption = "sae-mixed", key = "hk7m2pqx4n",
+            enabled = true, networks = listOf("wrtcguest"), ifname = "phy0-ap1", clients = listOf("AA:00:00:00:00:01", "AA:00:00:00:00:02"),
+        )
+        GuestContent(WifiState(radios, listOf(guest)))
     }
 
     /** Quién hay conectado, con su señal (el de peor señal, primero), y la potencia de una banda. */

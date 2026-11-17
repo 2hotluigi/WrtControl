@@ -77,6 +77,9 @@ class FakeOpenWrt(
     /** Anchos con los que las radios no arrancan (p. ej. "HE160" sin país). */
     var wifiBadHtmodes = setOf<String>()
 
+    /** Las interfaces estáticas nuevas (la de invitados) no llegan a levantarse. */
+    var newInterfacesFail = false
+
     /** Canales en los que las radios no arrancan (el país no los permite). */
     var wifiBadChannels = setOf<String>()
 
@@ -163,7 +166,7 @@ class FakeOpenWrt(
         "dropbear" -> "dropbear"
         "queue" -> "sqm"
         "upnpd", "perm_rule" -> "upnpd"
-        "interface" -> "network"
+        "interface", "device" -> "network"
         "wifi-device", "wifi-iface" -> "wireless"
         "service" -> "ddns"
         else -> if (type.startsWith("wireguard_")) "network" else "firewall"
@@ -231,6 +234,13 @@ class FakeOpenWrt(
                     interfaces.forEach { (name, dev) ->
                         addJsonObject { put("interface", name); put("up", true); put("device", dev); put("l3_device", dev) }
                     }
+                    // Las interfaces estáticas que se hayan creado (la de invitados), levantadas salvo que fallen.
+                    committed.filter { (name, s) -> s[".type"]?.jsonPrimitive?.content == "interface" && name !in interfaces }
+                        .filter { (_, s) -> s["proto"]?.jsonPrimitive?.content == "static" }
+                        .forEach { (name, s) ->
+                            val dev = s["device"]?.jsonPrimitive?.content.orEmpty()
+                            addJsonObject { put("interface", name); put("up", !newInterfacesFail); put("device", dev); put("l3_device", dev) }
+                        }
                 }
             }.toString())
             "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })

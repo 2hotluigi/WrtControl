@@ -519,9 +519,45 @@ redes (invitados, modo cliente, malla) no se tocan.
   Dispositivos) y cómo lo oye el router: señal muy buena (-55 dBm o más), buena (hasta -67),
   justa (hasta -75) o débil. Sale del mismo `iwinfo assoclist`; los de peor señal, primero.
 
-Límites: el
-país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin poner, el
-GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+Límites: el país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin
+poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+
+## Wi-Fi de invitados: qué hace en el router
+
+Una red aparte para las visitas (Más → Wi-Fi de invitados): tienen internet, pero no ven los
+aparatos de casa ni pueden entrar al router. Todo lo que crea la app se llama `wrtcguest…`:
+
+- **network.** Un puente vacío (`br-wrtcguest`) y la interfaz `wrtcguest`, con dirección fija
+  en una /24 privada que no choque con ninguna red del router (192.168.99.1 si está libre).
+- **dhcp.** Su reparto de direcciones, de 2 horas.
+- **firewall.** La zona `wrtcguest`: rechaza todo lo que va al router salvo DHCP y DNS, y solo
+  reenvía hacia internet. Una regla rechaza antes lo que vaya a direcciones privadas
+  (10/8, 172.16/12, 192.168/16): si el router cuelga de otro (doble NAT), la red de delante
+  tampoco se ve.
+- **wireless.** Una red por radio encendida, unida a `wrtcguest` y con `isolate` (los invitados
+  tampoco se ven entre sí). Siempre con contraseña (WPA2/WPA3); la app propone una de 10
+  letras y cifras fáciles de dictar.
+
+La app enseña un código QR (`WIFI:T:WPA;S:…;P:…;;`) que la cámara de cualquier teléfono
+entiende. Apagarlo deja de emitir (`disabled` en sus redes) y conserva lo demás, con su nombre y
+su contraseña, para la próxima visita. Crear o cambiar sus redes reinicia las radios, así que
+el Wi-Fi de casa se corta unos segundos: la app lo avisa antes. Se aplica todo de una vez con
+`uci apply` y reversión: se confirma cuando las radios han vuelto, cada una emite (o no) la red
+y la interfaz está levantada.
+
+Con el control parental: los invitados no son "red de casa" (la cuarentena no los toca y no se
+pueden meter en un perfil), y al guardar se recalculan los servidores DNS de los perfiles para
+que no repartan direcciones en la red nueva.
+
+`GuestVmTest` lo prueba con tráfico real contra un router con radios (la VM de la CI no tiene y
+allí se salta). En el GL-MT6000, un cliente enganchado al puente recibió dirección, resolvió
+nombres y salió a internet, y no pudo abrir la web del router (por ninguna de sus direcciones)
+ni la del módem que tiene delante.
+
+Límites: sin IPv6 para los invitados; no usa una radio apagada (encenderla pondría a emitir
+también las otras redes que tuviera); no hay botón para borrarlo del todo (apagado no emite, y
+se quita borrando las secciones `wrtcguest…` de network, dhcp, firewall y wireless); el Wi-Fi
+de casa todavía no tiene su QR.
 
 ## Dispositivos: qué hace en el router
 
