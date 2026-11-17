@@ -4,14 +4,14 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.txt
+import java.io.IOException
 import java.io.InputStream
-import java.util.zip.GZIPInputStream
 
 /*
  * Quién es cada aparato de la red, para no enseñar "Sin nombre" y una MAC:
  *
  * - El fabricante sale del prefijo de la MAC, con una lista que la app lleva dentro
- *   (assets/oui.txt.gz, de los registros públicos del IEEE; ver tools/update-oui.py). Nunca se
+ *   (assets/oui.txt, de los registros públicos del IEEE; ver tools/update-oui.py). Nunca se
  *   manda una MAC a nadie: dicen qué aparatos hay en una casa.
  * - Una MAC privada (la que inventan Android, iOS y Windows para cada red) no tiene fabricante. Se
  *   reconoce por un bit de su primer byte.
@@ -31,16 +31,22 @@ private const val PREFIX_DIGITS = 6
 
 /**
  * De qué fabricante es cada prefijo de MAC. [open] da el fichero (una línea por fabricante:
- * `Nombre<TAB>AABBCC AABBCD …`, comprimido); se lee entero la primera vez que se pregunta.
+ * `Nombre<TAB>AABBCC AABBCD …`); se lee entero la primera vez que se pregunta. Si no se puede
+ * leer, no hay fabricantes: la lista de aparatos se ve igual, sin ellos.
  */
 class VendorTable(private val open: () -> InputStream) {
     private val prefixes: Map<String, String> by lazy {
         val table = HashMap<String, String>()
-        GZIPInputStream(open()).bufferedReader(Charsets.UTF_8).useLines { lines ->
-            lines.forEach { line ->
-                val name = line.substringBefore('\t')
-                line.substringAfter('\t', "").split(' ').forEach { if (it.length == PREFIX_DIGITS) table[it] = name }
+        try {
+            open().bufferedReader(Charsets.UTF_8).useLines { lines ->
+                lines.forEach { line ->
+                    val name = line.substringBefore('\t')
+                    // trim: un salto de línea de Windows no se lleva por delante el último prefijo.
+                    line.substringAfter('\t', "").trim().split(' ').forEach { if (it.length == PREFIX_DIGITS) table[it] = name }
+                }
             }
+        } catch (_: IOException) {
+            table.clear()
         }
         table
     }

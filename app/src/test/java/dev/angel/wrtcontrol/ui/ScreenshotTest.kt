@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.angel.wrtcontrol.WrtApp
 import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
@@ -26,7 +27,6 @@ import dev.angel.wrtcontrol.openwrt.LuciFeatures
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
-import dev.angel.wrtcontrol.openwrt.VendorTable
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.ubus.SessionAcl
@@ -35,12 +35,13 @@ import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.io.File
 
 /**
  * Capturas de los componentes y de una pantalla con datos de ejemplo, en claro y en oscuro. Se
@@ -115,7 +116,10 @@ class ScreenshotTest {
 
     @Test
     fun dispositivos() = both("dispositivos") {
-        val vendors = VendorTable { File(listOf("src/main/assets", "app/src/main/assets").first { File(it).isDirectory }, "oui.txt.gz").inputStream() }
+        // La de la app de verdad, leída de sus assets como en el teléfono: si el empaquetado la
+        // cambia de nombre o no la incluye, aquí se nota.
+        val vendors = (RuntimeEnvironment.getApplication() as WrtApp).vendors
+        assertEquals("Raspberry Pi Foundation", vendors.vendor("B8:27:EB:00:00:02"))
         fun device(mac: String, name: String?, ip: String, lease: LeaseState = LeaseState.Expires(40_000)) =
             Device(mac, name, listOf(ip), emptyList(), lease)
         DevicesContent(

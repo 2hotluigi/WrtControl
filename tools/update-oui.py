@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera app/src/main/assets/oui.txt.gz: de qué fabricante es cada prefijo de MAC.
+"""Genera app/src/main/assets/oui.txt: de qué fabricante es cada prefijo de MAC.
 
 Sale de la lista `manuf` de Wireshark, que a su vez sale de los registros públicos del IEEE
 (MA-L, los bloques de 24 bits). La app la lleva dentro: nunca se manda una MAC a nadie para
@@ -8,18 +8,18 @@ saber de quién es.
     python tools/update-oui.py                # descarga la lista (se actualiza una vez por semana)
     python tools/update-oui.py ruta/a/manuf   # usa una ya descargada
 
-Formato del resultado (texto UTF-8 comprimido): una línea por fabricante,
-`Nombre<TAB>AABBCC AABBCD …`, con los prefijos en hexadecimal y en mayúsculas.
+Formato del resultado (texto UTF-8): una línea por fabricante, `Nombre<TAB>AABBCC AABBCD …`, con
+los prefijos en hexadecimal y en mayúsculas. Va sin comprimir a propósito: el APK ya comprime los
+assets, y a los que acaban en .gz Android los descomprime y les quita la extensión al empaquetar.
 """
 import gzip
-import io
 import os
 import re
 import sys
 import urllib.request
 
 SOURCE = 'https://www.wireshark.org/download/automated/data/manuf.gz'
-TARGET = os.path.join(os.path.dirname(__file__), '..', 'app', 'src', 'main', 'assets', 'oui.txt.gz')
+TARGET = os.path.join(os.path.dirname(__file__), '..', 'app', 'src', 'main', 'assets', 'oui.txt')
 
 # Coletillas legales que no dicen nada a quien mira la lista de su casa.
 SUFFIXES = re.compile(
@@ -63,13 +63,12 @@ def main():
         if name and not name.lower().startswith(('private', 'ieee registration')):
             vendors.setdefault(name, []).append(parts[0].replace(':', '').upper())
     text = ''.join('%s\t%s\n' % (name, ' '.join(sorted(prefixes))) for name, prefixes in sorted(vendors.items()))
-    out = io.BytesIO()
-    # mtime=0: el mismo contenido da siempre el mismo fichero.
-    with gzip.GzipFile(fileobj=out, mode='wb', compresslevel=9, mtime=0) as gz:
-        gz.write(text.encode('utf-8'))
+    data = text.encode('utf-8')
     os.makedirs(os.path.dirname(TARGET), exist_ok=True)
-    open(TARGET, 'wb').write(out.getvalue())
-    print('%d prefijos de %d fabricantes, %d KB' % (sum(map(len, vendors.values())), len(vendors), len(out.getvalue()) // 1024))
+    open(TARGET, 'wb').write(data)
+    packed = len(gzip.compress(data, 9))
+    print('%d prefijos de %d fabricantes, %d KB (unos %d KB dentro del APK)'
+          % (sum(map(len, vendors.values())), len(vendors), len(data) // 1024, packed // 1024))
 
 
 if __name__ == '__main__':

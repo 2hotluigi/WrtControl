@@ -34,7 +34,7 @@ class WrtApp : Application() {
         private set
 
     /** De qué fabricante es cada prefijo de MAC; va dentro de la app y se lee al usarla. */
-    val vendors = VendorTable { assets.open("oui.txt.gz") }
+    val vendors = VendorTable { assets.open("oui.txt") }
 
     override fun onCreate() {
         super.onCreate()
