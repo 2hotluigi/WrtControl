@@ -40,4 +40,22 @@
     <string name="wifi_preview_phone">This phone will be disconnected too. Connect it to “%1$s” within 3 minutes; otherwise the router will put things back as they were.</string>
     <string name="wifi_preview_open">The network will have no password: anyone nearby will be able to connect.</string>
     <string name="wifi_preview_all_off">Nobody will be able to join the router\'s Wi-Fi until you turn a band back on, by cable or through remote access.</string>
+    <string name="wifi_country_title">Country</string>
+    <string name="wifi_country_help">It tells the router which channels and how much power the law allows where it is.</string>
+    <string name="wifi_country_missing_title">The router doesn\'t know which country it is in</string>
+    <string name="wifi_country_missing_body">Without a country, Wi-Fi uses the most limited channels and power of all, and most of the 5 GHz band can\'t be used.</string>
+    <string name="wifi_country_differs">Each band has a different country. Pick one for both.</string>
+    <string name="wifi_country_use">Set %1$s</string>
+    <string name="wifi_country_other">Pick another country</string>
+    <string name="wifi_country_choose">Pick a country</string>
+    <string name="wifi_country_change">Change</string>
+    <string name="wifi_country_search">Search</string>
+    <string name="wifi_country_list_error">The router didn\'t let the app read its list of countries.</string>
+    <string name="wifi_country_busy">Changing the Wi-Fi country…</string>
+    <string name="wifi_country_not_applied">Wi-Fi didn\'t come back with that country (its channel may not be allowed there), so it was left as it was.</string>
+    <string name="wifi_country_none">Not set</string>
+    <string name="wifi_country_preview_title">Change the Wi-Fi country</string>
+    <string name="wifi_country_preview_restart">Wi-Fi restarts: connected devices drop for a few seconds and rejoin on their own.</string>
+    <string name="wifi_country_preview_radar">The 5 GHz band may take over a minute to come back: on some channels the router first listens for radars.</string>
+    <string name="wifi_country_preview_phone">This phone will drop for a moment too. If it doesn\'t rejoin within 3 minutes, the router will leave things as they were.</string>
 </resources>

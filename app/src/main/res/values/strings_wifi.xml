@@ -42,4 +42,22 @@
     <string name="wifi_preview_phone">Este teléfono también se desconectará. Conéctalo a «%1$s» en menos de 3 minutos; si no, el router volverá a dejarlo como estaba.</string>
     <string name="wifi_preview_open">La red quedará sin contraseña: cualquiera cerca podrá conectarse.</string>
     <string name="wifi_preview_all_off">Nadie podrá conectarse al Wi-Fi del router hasta que vuelvas a encender una banda, por cable o por el acceso remoto.</string>
+    <string name="wifi_country_title">País</string>
+    <string name="wifi_country_help">Dice qué canales y cuánta potencia permite la ley donde está el router.</string>
+    <string name="wifi_country_missing_title">Falta decir en qué país está el router</string>
+    <string name="wifi_country_missing_body">Sin el país, el Wi-Fi usa los canales y la potencia más limitados de todos, y casi toda la banda de 5 GHz se queda sin poder usarse.</string>
+    <string name="wifi_country_differs">Cada banda tiene un país distinto. Elige uno para las dos.</string>
+    <string name="wifi_country_use">Poner %1$s</string>
+    <string name="wifi_country_other">Elegir otro país</string>
+    <string name="wifi_country_choose">Elegir país</string>
+    <string name="wifi_country_change">Cambiar</string>
+    <string name="wifi_country_search">Buscar</string>
+    <string name="wifi_country_list_error">El router no dejó leer su lista de países.</string>
+    <string name="wifi_country_busy">Cambiando el país del Wi-Fi…</string>
+    <string name="wifi_country_not_applied">El Wi-Fi no volvió a emitir con ese país (puede que su canal no esté permitido allí), así que se dejó como estaba.</string>
+    <string name="wifi_country_none">Sin poner</string>
+    <string name="wifi_country_preview_title">Cambiar el país del Wi-Fi</string>
+    <string name="wifi_country_preview_restart">El Wi-Fi se reinicia: los aparatos conectados se desconectan unos segundos y vuelven a entrar solos.</string>
+    <string name="wifi_country_preview_radar">La banda de 5 GHz puede tardar más de un minuto en volver: en algunos canales el router escucha antes si hay radares.</string>
+    <string name="wifi_country_preview_phone">Este teléfono también se desconectará un momento. Si no vuelve a entrar en 3 minutos, el router lo dejará como estaba.</string>
 </resources>

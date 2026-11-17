@@ -148,7 +148,8 @@ class ScreenshotTest {
             section = "default_$radio", radio = radio, ssid = "Casa", encryption = "sae-mixed", key = "clave-de-casa",
             enabled = true, networks = listOf("lan"), ifname = ifname, clients = List(clients) { "AA:00:00:00:00:%02X".format(it) },
         )
-        WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))))
+        // Sin país, como viene de fábrica: el aviso propone el del teléfono.
+        WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))), suggestedCountry = "MX")
     }
 
     @Test

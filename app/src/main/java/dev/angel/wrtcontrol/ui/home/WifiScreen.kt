@@ -40,6 +40,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.RouterAccess
 import dev.angel.wrtcontrol.data.RouterMonitor
+import dev.angel.wrtcontrol.openwrt.WifiCountry
 import dev.angel.wrtcontrol.openwrt.WifiEdit
 import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
@@ -60,6 +61,8 @@ import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.Proposals
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
 import dev.angel.wrtcontrol.ui.watchAsState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 /** Quién está conectado cambia a menudo; el resto, solo desde aquí o desde LuCI. */
@@ -84,6 +87,29 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
             router.use { it.wifi.save(edit, phoneOnIt) }
         }
     }
+
+    /** Los países que conoce el router: null mientras se leen, vacío si no deja leerlos. */
+    var countries by mutableStateOf<List<WifiCountry>?>(null)
+        private set
+
+    init {
+        viewModelScope.launch {
+            countries = try {
+                router.use { it.wifi.countries() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    /** Pone el país [code]; antes enseña [preview] si el cambio reinicia un Wi-Fi que está emitiendo. */
+    fun setCountry(code: String, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        changes.run(txt(R.string.wifi_country_busy), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.wifi.setCountry(code, phoneOnIt) }
+        }
+    }
 }
 
 @Composable
@@ -106,6 +132,9 @@ fun WifiScreen(address: String) {
             error = vm.error?.text(),
             enabled = !locked,
             onSave = { edit -> vm.save(edit, phoneOnWifi(wifi, phoneMacs), wifiPreview(wifi, edit, phoneMacs)) },
+            countries = vm.countries,
+            suggestedCountry = vm.countries?.let { suggestedCountry(context, it) },
+            onCountry = { code -> vm.setCountry(code, phoneOnWifi(wifi, phoneMacs), countryPreview(wifi, code, phoneMacs)) },
         )
     }
     ChangePreviewHost(vm.proposals)
@@ -120,6 +149,9 @@ fun WifiContent(
     error: String? = null,
     enabled: Boolean = true,
     onSave: (WifiEdit) -> Unit = {},
+    countries: List<WifiCountry>? = emptyList(),
+    suggestedCountry: String? = null,
+    onCountry: (String) -> Unit = {},
 ) {
     val current = currentWifi(state)
     // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
@@ -153,6 +185,8 @@ fun WifiContent(
         if (security != WifiSecurity.Open) PasswordField(key, enabled = !busy) { key = it }
         HorizontalDivider()
         Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
+        HorizontalDivider()
+        CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
         if (problem != null && edit != current) {
             Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }

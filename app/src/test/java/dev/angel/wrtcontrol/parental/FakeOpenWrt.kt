@@ -71,6 +71,9 @@ class FakeOpenWrt(
     /** Las radios no vuelven a emitir tras un cambio (un driver que falla, un canal no permitido). */
     var wifiBroken = false
 
+    /** Países con los que las radios no arrancan (su canal no está permitido allí). */
+    var wifiBadCountries = setOf<String>()
+
     /** Aparatos conectados a cada interfaz Wi-Fi ("phy0-ap0" → MAC). */
     var wifiClients = mapOf<String, List<String>>()
 
@@ -82,7 +85,8 @@ class FakeOpenWrt(
         fun text(s: Map<String, JsonElement>, key: String) = s[key]?.jsonPrimitive?.content
         val radios = committed.filter { text(it.value, ".type") == "wifi-device" }
         radios.keys.forEachIndexed { index, radio ->
-            val up = !wifiBroken && text(radios.getValue(radio), "disabled") != "1"
+            val up = !wifiBroken && text(radios.getValue(radio), "disabled") != "1" &&
+                text(radios.getValue(radio), "country") !in wifiBadCountries
             putJsonObject(radio) {
                 put("up", up)
                 put("pending", false)
@@ -217,6 +221,13 @@ class FakeOpenWrt(
             }.toString())
             "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })
             "luci-rpc.getWirelessDevices" -> ok(wirelessDevices().toString())
+            "iwinfo.countrylist" -> ok(buildJsonObject {
+                putJsonArray("results") {
+                    // Como el router: "el mundo", países de verdad y un código de pruebas que no es un país.
+                    listOf(Triple("00", "World", "00"), Triple("US", "United States", "US"), Triple("MX", "Mexico", "MX"), Triple("ES", "Spain", "ES"), Triple("DB", "Debug", "00"))
+                        .forEach { (code, name, iso) -> addJsonObject { put("code", code); put("country", name); put("iso3166", iso); put("active", code == "00") } }
+                }
+            }.toString())
             "iwinfo.assoclist" -> ok(buildJsonObject {
                 putJsonArray("results") { wifiClients[arg("device")].orEmpty().forEach { addJsonObject { put("mac", it) } } }
             }.toString())
