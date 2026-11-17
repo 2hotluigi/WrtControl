@@ -9,6 +9,7 @@ datastore = "1.3.0"
 coroutines = "1.11.0"
 serialization = "1.12.0"
 okhttp = "5.5.1"
+zxing = "3.5.4"
 junit = "4.13.2"
 biometric = "1.1.0"
 # biometric trae fragment 1.2.5, que no admite los lanzadores de resultados de Compose (permisos).
@@ -33,6 +34,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }

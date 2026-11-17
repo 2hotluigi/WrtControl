@@ -42,6 +42,7 @@ import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
+import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import dev.angel.wrtcontrol.ui.login.SetupContent
 import dev.angel.wrtcontrol.ui.login.SetupStep
@@ -177,6 +178,12 @@ class ScreenshotTest {
                 SetupContent(step, emptyPassword = true, board = status.board, capabilities = capabilities)
             }
         }
+    }
+
+    /** El código para añadir otro teléfono: blanco y negro también en oscuro, para que lo lea cualquier cámara. */
+    @Test
+    fun `anadir otro telefono`() = both("anadir-telefono") {
+        PairScreen("192.168.8.1", "root")
     }
 
     @Test

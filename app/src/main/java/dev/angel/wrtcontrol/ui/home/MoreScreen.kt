@@ -28,7 +28,7 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 
-private enum class MorePage { Menu, Features, Router }
+private enum class MorePage { Menu, Features, Router, Pair }
 
 /** Lo que no es del día a día: las funciones que se instalan, los detalles del router y salir. */
 @Composable
@@ -44,12 +44,18 @@ fun MoreScreen(connection: Connection.SignedIn, onSignOut: () -> Unit) {
             Entry(R.string.more_router_title, R.string.more_router_detail, R.drawable.ic_dashboard, "more-router") {
                 page = MorePage.Router
             }
+            Entry(R.string.more_pair_title, R.string.more_pair_detail, R.drawable.ic_kind_phone, "more-pair") {
+                page = MorePage.Pair
+            }
             Entry(R.string.home_sign_out, R.string.more_sign_out_detail, R.drawable.ic_logout, "more-sign-out", chevron = false) {
                 onSignOut()
             }
         }
         MorePage.Features -> SubPage(R.string.more_features_title, onBack = { page = MorePage.Menu }) { AddonsScreen(connection.address) }
         MorePage.Router -> SubPage(R.string.more_router_title, onBack = { page = MorePage.Menu }) { StatusScreen() }
+        MorePage.Pair -> SubPage(R.string.more_pair_title, onBack = { page = MorePage.Menu }) {
+            PairScreen(connection.address, connection.username)
+        }
     }
 }
 

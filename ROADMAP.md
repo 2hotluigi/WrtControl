@@ -91,7 +91,9 @@ marcha guiada. Cada uno se apoya en los anteriores.
   vez que un teléfono entra en un router, cuatro pasos antes de la app: qué router es y si su
   versión está probada, poner contraseña si no tiene, qué puede hacer y qué va a cambiar. Probado
   en el emulador contra el GL-MT6000.
-  Falta: emparejar otros teléfonos por QR. El usuario de la app va con el agente (Hito 3).
+  Segunda parte hecha: "Añadir otro teléfono" enseña un código QR con la dirección y el usuario
+  (nunca la contraseña); la cámara del otro teléfono abre la app con eso rellenado.
+  El usuario de la app va con el agente (Hito 3).
 - **Dispositivos con identidad**, primera parte hecha: fabricante por el prefijo de la MAC con una
   lista que va dentro de la app (290 KB, de los registros públicos del IEEE vía la lista `manuf` de
   Wireshark; `tools/update-oui.py` la regenera), aviso de MAC privada, icono por clase de aparato y

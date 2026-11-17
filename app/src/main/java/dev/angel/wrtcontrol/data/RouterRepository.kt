@@ -65,6 +65,11 @@ class RouterRepository(
     /** Acceso remoto de este teléfono al router conectado, si lo tiene y ya se sabe qué router es. */
     val tunnel: StateFlow<TunnelConfig?> = _tunnel.asStateFlow()
 
+    private val _pairing = MutableStateFlow<PairingLink?>(null)
+
+    /** El router que otro teléfono le pasó a este con su código QR, mientras no se haya entrado en él. */
+    val pairing: StateFlow<PairingLink?> = _pairing.asStateFlow()
+
     @Volatile
     private var api: OpenWrtApi? = null
 
@@ -93,11 +98,21 @@ class RouterRepository(
         }
         // El login real se hace en la primera llamada (UbusClient renueva la sesión solo).
         routerId = saved.routerId
+        // Ya hay un router guardado: un código escaneado no lo sustituye.
+        _pairing.value = null
         useTunnel(tunnelFor(saved.address, saved.routerId))
         open(UbusClient(RouterAddress.endpoint(saved.address), http, Credentials(saved.username, saved.password)))
         // Quien ya venía usando la app con este router no necesita que se lo presenten.
         store.setSetupDone(saved.address)
         _state.value = Connection.SignedIn(saved.address, saved.username, saved.password.isEmpty())
+    }
+
+    /**
+     * Otro teléfono le pasó a este la dirección de su router (ver Pairing.kt). Solo sirve para
+     * rellenar la pantalla de conexión: si ya se está dentro de un router, no cambia nada.
+     */
+    fun offerPairing(link: PairingLink) {
+        if (_state.value !is Connection.SignedIn) _pairing.value = link
     }
 
     /** Prueba las credenciales contra el router y, si funcionan, las guarda. */
@@ -119,6 +134,7 @@ class RouterRepository(
         routerId = id ?: known
         if (id != null && id != known) useTunnel(tunnelFor(address.trim(), id))
         open(newClient)
+        _pairing.value = null
         val needsSetup = !store.setupDone(address.trim())
         _state.value = Connection.SignedIn(address.trim(), username, password.isEmpty(), needsSetup)
     }

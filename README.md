@@ -440,6 +440,14 @@ saltar (`SetupScreen`):
 4. **Qué va a cambiar en tu router:** nada todavía; lo que se escriba irá marcado como de la app y
    cada cambio se deshace solo si falla.
 
+**Añadir otro teléfono** (Más → Añadir otro teléfono): un código QR con un enlace
+`wrtcontrol://connect?address=192.168.1.1&user=root`. La cámara del otro teléfono lo abre con la
+app, que rellena la dirección y el usuario; la contraseña se escribe a mano y nunca va en el código.
+Un enlace así puede venir de cualquiera (una web, un cartel), así que solo se acepta con una IPv4
+de red privada escrita tal cual: no sirve para llevar a nadie a escribir la contraseña de su router
+en un servidor de internet. Si ya se está dentro de un router, se ignora. La app solo dibuja el
+código (con el codificador de ZXing); leerlo es cosa de la cámara del teléfono.
+
 Nada de esto toca el router, salvo poner la contraseña si el usuario quiere. Que ya se hizo se
 apunta en el teléfono, por dirección del router: no se repite al volver a entrar, y quien ya usaba
 la app con ese router no la ve.
@@ -640,5 +648,5 @@ WrtControl es software libre: se puede redistribuir y modificar bajo los términ
 posterior (`GPL-3.0-or-later`). Quien distribuya una versión modificada tiene que publicar su
 código con la misma licencia. Se distribuye sin ninguna garantía.
 
-Las dependencias conservan sus licencias: AndroidX, OkHttp y gVisor (Apache-2.0), wireguard-go
+Las dependencias conservan sus licencias: AndroidX, OkHttp, ZXing y gVisor (Apache-2.0), wireguard-go
 (MIT) y TweetNaCl, de donde sale el X25519 (dominio público).

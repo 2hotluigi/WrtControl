@@ -123,6 +123,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    // Solo para dibujar el código QR con el que se añade otro teléfono (no lee códigos: eso lo hace la cámara).
+    implementation(libs.zxing.core)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment)
     // Acceso remoto: WireGuard en espacio de usuario (tunnel/, compilado con tools/build-tunnel.sh).

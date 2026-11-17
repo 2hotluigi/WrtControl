@@ -34,16 +34,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.angel.wrtcontrol.BuildConfig
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.data.Connection
+import dev.angel.wrtcontrol.data.PairingLink
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LocalRepository
+import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.parental.homeGateway
 import dev.angel.wrtcontrol.ui.userMessage
 import kotlinx.coroutines.CancellationException
@@ -51,11 +54,17 @@ import kotlinx.coroutines.launch
 
 /**
  * [gateway]: la puerta de enlace del Wi-Fi en el que está el teléfono, que casi siempre es el
- * router. Se propone la primera vez; después manda la última dirección que se usó.
+ * router. Se propone la primera vez; después manda la última dirección que se usó. [pairing]: el
+ * router que otro teléfono le acaba de pasar a este con su código QR, que manda sobre todo lo demás.
  */
-class LoginViewModel(private val repo: RouterRepository, initial: Connection.SignedOut, val gateway: String? = null) : ViewModel() {
-    var address by mutableStateOf(initial.lastAddress ?: gateway ?: BuildConfig.DEFAULT_ROUTER)
-    var username by mutableStateOf(initial.lastUsername ?: "root")
+class LoginViewModel(
+    private val repo: RouterRepository,
+    initial: Connection.SignedOut,
+    val gateway: String? = null,
+    val pairing: PairingLink? = null,
+) : ViewModel() {
+    var address by mutableStateOf(pairing?.address ?: initial.lastAddress ?: gateway ?: BuildConfig.DEFAULT_ROUTER)
+    var username by mutableStateOf(pairing?.username ?: initial.lastUsername ?: "root")
     var password by mutableStateOf("")
     var busy by mutableStateOf(false)
         private set
@@ -85,7 +94,9 @@ class LoginViewModel(private val repo: RouterRepository, initial: Connection.Sig
 fun LoginScreen(state: Connection.SignedOut) {
     val repo = LocalRepository.current
     val context = LocalContext.current
-    val vm: LoginViewModel = viewModel { LoginViewModel(repo, state, homeGateway(context)) }
+    val pairing by repo.pairing.collectAsStateWithLifecycle()
+    // Si llega un código con la pantalla ya abierta, se empieza de nuevo con lo que trae.
+    val vm: LoginViewModel = viewModel(key = "login:${pairing?.toUri()}") { LoginViewModel(repo, state, homeGateway(context), pairing) }
 
     Surface(Modifier.fillMaxSize()) {
         Box(
@@ -110,6 +121,9 @@ fun LoginScreen(state: Connection.SignedOut) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 state.notice?.let { ErrorBanner(it.text()) }
+                if (vm.pairing != null) {
+                    NoticeCard(stringResource(R.string.login_paired_title), stringResource(R.string.login_paired_body))
+                }
 
                 OutlinedTextField(
                     value = vm.address,
@@ -119,7 +133,7 @@ fun LoginScreen(state: Connection.SignedOut) {
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     // La dirección propuesta es la del router de este Wi-Fi: se dice de dónde sale.
-                    supportingText = if (vm.gateway != null && vm.address.trim() == vm.gateway) {
+                    supportingText = if (vm.pairing == null && vm.gateway != null && vm.address.trim() == vm.gateway) {
                         { Text(stringResource(R.string.login_address_detected)) }
                     } else {
                         null
