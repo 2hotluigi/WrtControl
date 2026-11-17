@@ -9,6 +9,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ### Añadido
 - Dispositivos: tocando un aparato se le pone nombre ("Tele de la sala"), se le fija la dirección
   y se dice de quién es. Se guarda en el router, así que lo ven todos los teléfonos con la app.
+- Dispositivos: cortar internet a un aparato suelto, un rato (30 minutos, 1 o 2 horas) o hasta
+  que se lo devuelvas, esté o no en el perfil de una persona. Mientras haya algún aparato así,
+  los teléfonos con una versión anterior de la app solo pueden mirar: hay que actualizarlos.
 - Dispositivos: cada aparato dice si está en línea, sin actividad o desconectado. Los que tienen
   nombre o dirección guardados siguen en la lista aunque no estén.
 

@@ -211,6 +211,12 @@ extra opcional, un filtro de contenido y la opción de impedir que sus dispositi
 configuración del router. Además hay un ajuste para toda la red: dispositivos nuevos en
 cuarentena.
 
+También se puede dejar sin internet a un aparato suelto, esté o no en un perfil, desde
+Dispositivos: 30 minutos, 1 o 2 horas, o hasta que se le devuelva ("bloqueado"). Se guarda en
+los ajustes (`list paused`, la MAC sola o `MAC=hora de fin`) y es una regla MARK más, como la de
+la pausa de un perfil: con `stop_date` si tiene fin, así que el router le devuelve internet solo.
+Se suma a lo que diga su perfil. Al teléfono desde el que se usa la app no se le puede cortar.
+
 **Dónde se guarda.** En `/etc/config/firewall`, en secciones `wrtcontrol_profile`,
 `wrtcontrol_schedule` y `wrtcontrol_settings` que fw4 y LuCI ignoran. Así los datos y las reglas se aplican y se
 revierten juntos. Todo lo de la app empieza por `wrtc_`.
@@ -223,6 +229,9 @@ revierten juntos. Todo lo de la app empieza por `wrtc_`.
 - Si el router lo configuró una versión con un esquema más nuevo, la app solo lee: no guarda,
   no cambia la zona horaria ni restaura copias, y pide actualizarla. Se sube el esquema solo
   cuando una versión anterior no puede ignorar lo nuevo.
+- Se escribe el esquema más bajo que basta para lo guardado. El 2 es el de las pausas por
+  aparato (una versión anterior conservaría la lista, pero al guardar borraría sus reglas): solo
+  mientras haya alguna, los teléfonos con una versión anterior quedan en solo lectura.
 
 **Cómo bloquea.**
 1. Reglas MARK de fw4 por MAC (`src '*'`, `dest '*'`, `proto all`): marcan el tráfico reenviado

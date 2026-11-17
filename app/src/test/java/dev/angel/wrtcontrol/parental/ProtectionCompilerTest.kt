@@ -977,7 +977,7 @@ class ProtectionCompilerTest {
     fun `los ajustes por defecto solo escriben la version del formato`() {
         assertTrue(configSections(ParentalConfig(emptyList())).isEmpty())
         val sections = configSections(ParentalConfig(listOf(juan)))
-        assertEquals(mapOf("schema" to UciValue.Text("$SCHEMA_VERSION")), sections.single { it.name == SETTINGS_SECTION }.options)
+        assertEquals(mapOf("schema" to UciValue.Text("1")), sections.single { it.name == SETTINGS_SECTION }.options)
         assertEquals(ParentalSettings(), readSettings(sections))
         // Un perfil sin nada nuevo tampoco escribe sus opciones.
         val profile = sections.single { it.name == "wrtc_p_j1" }

@@ -96,8 +96,9 @@ marcha guiada. Cada uno se apoya en los anteriores.
   Segunda parte hecha: nombre editable guardado en el router (`wrtc_name` en las secciones `host`
   de `dhcp`), dirección fija, de quién es, en línea o no (tabla de vecinos) y la misma identidad
   en Familia y Seguridad.
-  Falta: pausar y bloquear un aparato suelto (hoy las pausas son por persona: hace falta que el
-  control parental admita reglas por aparato) y probar mDNS para los que no dicen su nombre.
+  Tercera parte hecha: pausar y bloquear un aparato suelto (pausas por aparato en los ajustes del
+  control parental, esquema 2; probado en las VM y en el GL-MT6000).
+  Falta: probar mDNS para los que no dicen su nombre.
 - **Dispositivos con identidad:** nombre editable (guardado en el router), icono y fabricante
   (OUI), en línea o no, y acciones: pausar, bloquear, asignar a una persona, fijar IP. Avisar de las
   MAC aleatorias (bit de dirección local) y guiar para fijarlas.

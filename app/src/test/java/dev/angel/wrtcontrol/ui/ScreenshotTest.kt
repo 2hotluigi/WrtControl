@@ -30,9 +30,11 @@ import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.linkAdvice
+import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
@@ -44,6 +46,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDateTime
 
 /**
  * Capturas de los componentes y de una pantalla con datos de ejemplo, en claro y en oscuro. Se
@@ -136,6 +139,11 @@ class ScreenshotTest {
             ),
             vendors,
             profiles = listOf(Profile("a1", "Ana", listOf("9C:29:76:00:00:01"))),
+            // Uno sin internet un rato y otro bloqueado.
+            pauses = DevicePauses(
+                mapOf("9C:29:76:00:00:01" to Pause.Until(LocalDateTime.of(2026, 11, 5, 19, 30)), "24:6F:28:00:00:03" to Pause.Indefinite),
+                LocalDateTime.of(2026, 11, 5, 18, 0),
+            ),
             onOpen = {},
         )
     }

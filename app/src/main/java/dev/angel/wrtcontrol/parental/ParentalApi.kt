@@ -502,7 +502,10 @@ private val DEFAULT_DROPBEAR = UciSection("main", "dropbear", emptyMap())
 private fun ParentalConfig.shiftedTo(offset: Int): ParentalConfig {
     val from = settings.timeOffset ?: return copy(settings = settings.copy(timeOffset = offset))
     val shift = (offset - from).toLong()
-    return copy(profiles = profiles.map { it.shiftedBy(shift) }, settings = settings.copy(timeOffset = offset))
+    val pauses = settings.devicePauses.mapValues { (_, pause) ->
+        (pause as? Pause.Until)?.let { Pause.Until(it.end.plusSeconds(shift)) } ?: pause
+    }
+    return copy(profiles = profiles.map { it.shiftedBy(shift) }, settings = settings.copy(timeOffset = offset, devicePauses = pauses))
 }
 
 /** El perfil con las horas guardadas movidas [seconds]. */

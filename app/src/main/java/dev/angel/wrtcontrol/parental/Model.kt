@@ -58,16 +58,25 @@ data class ParentalSettings(
      * cambio se mueven para que sigan siendo el mismo instante.
      */
     val timeOffset: Int? = null,
+    /**
+     * Aparatos sueltos sin internet, estén o no en un perfil: MAC → hasta cuándo (hora local del
+     * router) o sin fin ("bloqueado"). Se suma a lo que diga su perfil.
+     */
+    val devicePauses: Map<String, Pause> = emptyMap(),
     /** Opciones que esta versión no conoce (de una más nueva): se guardan tal cual. */
     val extra: Map<String, UciValue> = emptyMap(),
 )
+
+/** Sin las pausas de aparatos que ya terminaron. */
+fun ParentalSettings.withoutExpired(now: LocalDateTime): ParentalSettings =
+    copy(devicePauses = devicePauses.filterValues { it !is Pause.Until || it.end.isAfter(now) })
 
 /** Todo lo que la app guarda en el router. */
 data class ParentalConfig(
     val profiles: List<Profile>,
     val settings: ParentalSettings = ParentalSettings(),
-    /** Versión del formato con que se guardó (ver [SCHEMA_VERSION]). */
-    val schema: Int = SCHEMA_VERSION,
+    /** Versión del formato con que se guardó (ver [SCHEMA_VERSION]); al escribir se usa la que haga falta ([schemaFor]). */
+    val schema: Int = 1,
     /** Secciones de datos de una versión más nueva que esta no conoce: se guardan tal cual. */
     val preserved: List<UciSection> = emptyList(),
 ) {
