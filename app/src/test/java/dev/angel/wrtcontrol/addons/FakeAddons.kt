@@ -43,6 +43,12 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
 
     val protos = mutableSetOf("dhcp", "dhcpv6", "static", "ppp")
 
+    /**
+     * Veces que el router no contesta al preguntar por los protocolos: instalar un `luci-*` recarga
+     * rpcd y, si la llamada lo pilla a medias, uhttpd se queda hasta 30 s sin atender a nadie.
+     */
+    var unresponsiveCalls = 0
+
     /** Acciones de luci.setInitAction o de rc init: "network restart", "sqm enable"... */
     val initActions = mutableListOf<String>()
 
@@ -207,7 +213,12 @@ class FakeAddons(val fake: FakeOpenWrt = FakeOpenWrt()) {
                     }
                 }
             }.toString())
-            "network.get_proto_handlers" -> ok(buildJsonObject { protos.forEach { putJsonObject(it) {} } }.toString())
+            "network.get_proto_handlers" -> if (unresponsiveCalls > 0) {
+                unresponsiveCalls--
+                Reply.NetworkError
+            } else {
+                ok(buildJsonObject { protos.forEach { putJsonObject(it) {} } }.toString())
+            }
             "file.exec" -> if (arg("command") != "/sbin/ifup") null else {
                 val iface = a["params"]!!.jsonArray.first().jsonPrimitive.content
                 ifups += iface

@@ -96,6 +96,18 @@ class AddonsApiTest {
     }
 
     @Test
+    fun `si el router tarda en contestar tras instalar WireGuard se espera y la red se reinicia igual`() = runTest {
+        val f = FakeAddons()
+        f.unresponsiveCalls = 2 // rpcd recargándose: uhttpd no atiende durante un rato
+        val api = api(f)
+
+        api.install(Addon.WireGuard, PackageTool.PackageManager)
+
+        assertEquals(listOf("network restart"), f.initActions)
+        assertEquals(AddonStatus.Installed, api.state().status(Addon.WireGuard, api.packages()))
+    }
+
+    @Test
     fun `desde 25_12_6 sin luci setInitAction reinicia la red y arranca UPnP con rc init`() = runTest {
         val f = FakeAddons()
         f.noSetInitAction = true
