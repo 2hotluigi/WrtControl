@@ -8,22 +8,13 @@ import dev.angel.wrtcontrol.parental.VERIFY_TIMEOUT_MS
 import dev.angel.wrtcontrol.parental.applySafely
 import dev.angel.wrtcontrol.parental.ensureNoPendingApply
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ubus.UbusCaller
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusSession
-import dev.angel.wrtcontrol.ubus.callAs
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 
 /** Cuánto se le da al teléfono para volver a entrar cuando el cambio lo saca del Wi-Fi. */
@@ -109,6 +100,27 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
     }
 
     /**
+     * Escanea con [radio] (unos segundos; con el Wi-Fi encendido puede ir a tirones mientras) y dice
+     * qué canal le conviene. null si no se puede escanear o no hay nada que proponer.
+     */
+    suspend fun channelAdvice(radio: String): ChannelAdvice? {
+        val current = ubus.readWifi(withClients = false).radios.firstOrNull { it.name == radio }
+        val seen = ubus.scan(radio)
+        val allowed = ubus.allowedChannels(radio)
+        return if (current == null || seen == null || allowed == null) null else adviseChannel(current, allowed, seen)
+    }
+
+    /** Pone [radio] en el canal [channel]. Si emitía y no vuelve (el país no lo permite), el router lo deshace. */
+    suspend fun setChannel(radio: String, channel: Int, phoneOnIt: Boolean) = writeLock.withLock {
+        val tx = ubus.openSession()
+        tx.ensureNoPendingApply()
+        val before = tx.uciSections("wireless")
+        val up = parseWifi(before, tx.wirelessDevices()).radios.filter { it.up }
+        val radar = up.firstOrNull { it.name == radio }?.copy(channel = channel.toString())?.mayWaitForRadar == true
+        tx.applyToRadios(before, channelPlan(before, radio, channel), up, phoneOnIt || radar, R.string.wifi_channel_not_applied)
+    }
+
+    /**
      * Aplica [changes] a las radios, con reversión: las de [up] (las que estaban levantadas) tienen
      * que volver a estarlo varias comprobaciones seguidas, porque justo después de aplicar siguen
      * "levantadas" un instante antes de reiniciarse. [slow]: se les da 3 minutos en vez de 1.
@@ -139,38 +151,3 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
 
 /** Comprobaciones seguidas (una por segundo) con las radios emitiendo para dar el cambio por bueno. */
 internal const val RADIO_STEADY_CHECKS = 3
-
-/** `luci-rpc getWirelessDevices`: radio → su estado. */
-internal suspend fun UbusCaller.wirelessDevices(): Map<String, JsonObject> =
-    callAs<JsonObject>("luci-rpc", "getWirelessDevices").mapNotNull { (k, v) -> (v as? JsonObject)?.let { k to it } }.toMap()
-
-/** Lee el Wi-Fi. Con [withClients], también quién está conectado a cada red (si el router deja verlo). */
-internal suspend fun UbusCaller.readWifi(withClients: Boolean): WifiState = coroutineScope {
-    val sections = async { uciSections("wireless") }
-    val devices = async { wirelessDevices() }
-    val bare = parseWifi(sections.await(), devices.await())
-    if (!withClients) return@coroutineScope bare
-    val clients = bare.networks.mapNotNull { it.ifname }.map { ifname -> async { assoclist(ifname)?.let { ifname to it } } }
-    val htmodes = bare.radios.map { radio -> async { htmodes(radio.name)?.let { radio.name to it } } }
-    parseWifi(sections.await(), devices.await(), clients.awaitAll().filterNotNull().toMap(), htmodes.awaitAll().filterNotNull().toMap())
-}
-
-/** Los estándares y anchos que admite [radio] (`iwinfo info`), o null si el router no deja verlo. */
-internal suspend fun UbusCaller.htmodes(radio: String): List<String>? = try {
-    val modes = callAs<JsonObject>("iwinfo", "info", buildJsonObject { put("device", radio) })["htmodes"] as? JsonArray
-    modes?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
-} catch (e: CancellationException) {
-    throw e
-} catch (_: UbusException) {
-    null
-}
-
-/** Las MAC conectadas a [ifname], o null si el router no deja verlo. */
-private suspend fun UbusCaller.assoclist(ifname: String): List<String>? = try {
-    val results = callAs<JsonObject>("iwinfo", "assoclist", buildJsonObject { put("device", ifname) })["results"] as? JsonArray
-    results.orEmpty().mapNotNull { ((it as? JsonObject)?.get("mac") as? JsonPrimitive)?.contentOrNull?.uppercase() }
-} catch (e: CancellationException) {
-    throw e
-} catch (_: UbusException) {
-    null
-}
