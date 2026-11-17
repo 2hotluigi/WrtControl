@@ -74,6 +74,61 @@ class ChangeRunnerTest {
         assertNull(runner.error)
     }
 
+    private val warning = ChangePreview(raw("Bloquear la tele"), notes = listOf(raw("Se queda sin internet")))
+
+    @Test
+    fun `un cambio con algo que avisar espera a que el usuario lo acepte`() = runTest {
+        val runner = runner()
+        var done = 0
+
+        runner.propose(warning) { runner.run(raw("Bloqueando")) { done++ } }
+        runCurrent()
+        assertEquals(warning, runner.proposal)
+        assertEquals("todavía no se ha tocado el router", 0, done)
+
+        runner.accept()
+        runCurrent()
+        assertNull(runner.proposal)
+        assertEquals(1, done)
+        // Aceptar dos veces no lo repite.
+        runner.accept()
+        runCurrent()
+        assertEquals(1, done)
+    }
+
+    @Test
+    fun `si el usuario lo deja, no se hace`() = runTest {
+        val runner = runner()
+        var done = 0
+
+        runner.propose(warning) { done++ }
+        runner.dismiss()
+        runner.accept()
+
+        assertNull(runner.proposal)
+        assertEquals(0, done)
+    }
+
+    @Test
+    fun `sin nada que avisar se hace ya, y con un cambio en curso no se propone otro`() = runTest {
+        val runner = runner()
+        val gate = CompletableDeferred<Unit>()
+        var done = 0
+
+        runner.propose(null) { done++ }
+        runner.propose(ChangePreview(raw("Guardar la tele"))) { done++ }
+        assertEquals(2, done)
+        assertNull(runner.proposal)
+
+        runner.run(raw("Guardando")) { gate.await() }
+        runCurrent()
+        runner.propose(warning) { done++ }
+        assertNull(runner.proposal)
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(2, done)
+    }
+
     private val interfaces = listOf(NetInterface("lan", up = true, proto = "static", ipv4 = listOf(IpAddress("192.168.1.1", 24))))
 
     private fun TestScope.devices(fake: FakeOpenWrt): DevicesApi {

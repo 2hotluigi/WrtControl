@@ -53,6 +53,7 @@ import dev.angel.wrtcontrol.parental.newId
 import dev.angel.wrtcontrol.parental.zoneCheck
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ApplyingBanner
+import dev.angel.wrtcontrol.ui.ChangePreviewHost
 import dev.angel.wrtcontrol.ui.ErrorBanner
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
@@ -170,7 +171,7 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
                             formatUtcOffset(zone.phoneOffsetSeconds),
                         ),
                     ) {
-                        Button(onClick = { vm.useZone(ZoneId.systemDefault()) }, enabled = !busy) {
+                        Button(onClick = { vm.useZone(ZoneId.systemDefault(), zone.routerZone) }, enabled = !busy) {
                             Text(stringResource(R.string.parental_use_phone_zone))
                         }
                     }
@@ -356,6 +357,7 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
             onDismiss = { askPassword = false; vm.error = null },
         )
     }
+    ChangePreviewHost(vm.proposals)
 }
 
 @Composable

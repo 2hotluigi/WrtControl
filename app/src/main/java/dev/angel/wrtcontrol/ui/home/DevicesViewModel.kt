@@ -11,8 +11,10 @@ import dev.angel.wrtcontrol.openwrt.DeviceEdit
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.ui.ChangePreview
 import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ChangeRunner
+import dev.angel.wrtcontrol.ui.Proposals
 
 /**
  * Lo que el usuario deja puesto en un aparato. [owner]: de qué persona es (el id de su perfil), ""
@@ -27,6 +29,9 @@ class DevicesViewModel(private val router: RouterAccess, private val monitor: Ro
     /** El cambio que se está guardando ahora mismo en el router (null si nada). */
     val progress: ChangeProgress? get() = changes.current
 
+    /** El cambio que espera a que el usuario vea lo que va a cambiar y lo acepte. */
+    val proposals: Proposals get() = changes
+
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
     var error: Txt?
         get() = changes.error
@@ -37,8 +42,13 @@ class DevicesViewModel(private val router: RouterAccess, private val monitor: Ro
     /**
      * Guarda [change] en el router: primero el nombre y la dirección fija, y después, si cambió, de
      * quién es. [phoneMacs]: este teléfono, que queda como administrador (ver ParentalApi.update).
+     * Si [preview] trae avisos, antes se enseña y espera a que el usuario lo acepte.
      */
-    fun save(device: Device, change: DeviceChange, phoneMacs: Set<String>, onSaved: () -> Unit) =
+    fun save(device: Device, change: DeviceChange, phoneMacs: Set<String>, preview: ChangePreview?, onSaved: () -> Unit) {
+        changes.propose(preview) { saveNow(device, change, phoneMacs, onSaved) }
+    }
+
+    private fun saveNow(device: Device, change: DeviceChange, phoneMacs: Set<String>, onSaved: () -> Unit) =
         run(txt(R.string.devices_busy_saving, change.label ?: device.name ?: device.mac), onSaved) { api ->
             if (change.label != device.label || change.fixedIp != device.fixedIp) {
                 val interfaces = monitor.interfaces.fresh(RouterMonitor.SHARED_MAX_AGE)
@@ -58,8 +68,13 @@ class DevicesViewModel(private val router: RouterAccess, private val monitor: Ro
     /**
      * Deja a [device] sin internet [minutes] minutos (contados con el reloj del router), o hasta
      * que se le devuelva si es null ("bloqueado"). Se suma a lo que diga el perfil de su persona.
+     * [preview]: lo que se enseña antes, si hay que avisar (ver [save]).
      */
-    fun pause(device: Device, minutes: Long?, phoneMacs: Set<String>, onDone: () -> Unit) =
+    fun pause(device: Device, minutes: Long?, phoneMacs: Set<String>, preview: ChangePreview?, onDone: () -> Unit) {
+        changes.propose(preview) { pauseNow(device, minutes, phoneMacs, onDone) }
+    }
+
+    private fun pauseNow(device: Device, minutes: Long?, phoneMacs: Set<String>, onDone: () -> Unit) =
         run(txt(R.string.devices_busy_pausing, device.name ?: device.mac), onDone) { api ->
             api.parental.update(phoneMacs) { config, now ->
                 val pause = minutes?.let { Pause.Until(now.plusMinutes(it).withNano(0)) } ?: Pause.Indefinite

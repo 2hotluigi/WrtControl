@@ -21,7 +21,10 @@ import dev.angel.wrtcontrol.parental.parseBackup
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ChangeRunner
+import dev.angel.wrtcontrol.ui.Proposals
+import dev.angel.wrtcontrol.ui.passwordPreview
 import dev.angel.wrtcontrol.ui.userMessage
+import dev.angel.wrtcontrol.ui.zonePreview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -139,6 +142,9 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     val progress: ChangeProgress? get() = changes.current
 
     val busy: Txt? get() = changes.busy
+
+    /** El cambio que espera a que el usuario vea lo que va a cambiar y lo acepte. */
+    val proposals: Proposals get() = changes
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
     var error: Txt?
@@ -292,12 +298,15 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
         api.parental.update(phoneMacs(), force = true) { config, _ -> config }
     }
 
-    fun useZone(zone: ZoneId) = run(txt(R.string.parental_busy_timezone)) { api ->
-        api.parental.setTimezone(zone.id, zone.rules.getOffset(Instant.now()).totalSeconds, phoneMacs())
-        null
+    /** Pone el router en [zone]. [routerZone]: la que tiene ahora, para enseñar antes qué cambia. */
+    fun useZone(zone: ZoneId, routerZone: String?) = changes.propose(zonePreview(routerZone, zone.id)) {
+        run(txt(R.string.parental_busy_timezone)) { api ->
+            api.parental.setTimezone(zone.id, zone.rules.getOffset(Instant.now()).totalSeconds, phoneMacs())
+            null
+        }
     }
 
-    fun changePassword(password: String, onDone: () -> Unit) {
+    fun changePassword(password: String, onDone: () -> Unit) = changes.propose(passwordPreview()) {
         changes.run(txt(R.string.parental_busy_password), onSuccess = onDone) { repo.changePassword(password) }
     }
 

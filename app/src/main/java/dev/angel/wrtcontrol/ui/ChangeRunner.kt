@@ -25,10 +25,43 @@ class ChangeRunner(
     private val scope: CoroutineScope,
     private val describe: (Exception) -> Txt = { it.userMessage() },
     private val log: (String, Exception) -> Unit = { message, e -> Log.w("WrtControl", message, e) },
-) {
+) : Proposals {
     /** El cambio en curso, o null si no hay ninguno. */
     var current by mutableStateOf<ChangeProgress?>(null)
         private set
+
+    /** El cambio que espera a que el usuario lo acepte, o null. */
+    override var proposal by mutableStateOf<ChangePreview?>(null)
+        private set
+
+    private var proposed: (() -> Unit)? = null
+
+    /**
+     * Antes de hacer un cambio: si [preview] trae algo que conviene saber antes (avisos), se queda
+     * propuesto hasta que el usuario lo acepte ([accept]) o lo deje ([dismiss]); si no, [start] se
+     * hace ya. Con un cambio en curso no se propone otro.
+     */
+    fun propose(preview: ChangePreview?, start: () -> Unit) {
+        when {
+            current != null -> Unit
+            preview == null || preview.notes.isEmpty() -> start()
+            else -> {
+                proposal = preview
+                proposed = start
+            }
+        }
+    }
+
+    override fun accept() {
+        val start = proposed
+        dismiss()
+        start?.invoke()
+    }
+
+    override fun dismiss() {
+        proposal = null
+        proposed = null
+    }
 
     /** Error del último cambio, hasta que el usuario lo cierre o haga otro. */
     var error by mutableStateOf<Txt?>(null)
