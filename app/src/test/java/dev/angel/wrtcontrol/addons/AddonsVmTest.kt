@@ -15,7 +15,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
@@ -71,6 +74,22 @@ class AddonsVmTest {
     }
 
     private fun log(msg: String) = println("[${LocalTime.now().withNano(0)}] $msg")
+
+    /**
+     * Al fallar una prueba, lo que pasaba en el router en ese momento: el registro no dice si rpcd
+     * estaba sin contestar (y con él uhttpd, que le pide permiso para cada llamada) ni qué lo ocupaba.
+     */
+    @get:Rule
+    val routerOnFailure = object : TestWatcher() {
+        override fun failed(e: Throwable, description: Description) {
+            if (vm == null) return
+            val state = ssh(
+                "ubus -t 3 call session list >/dev/null 2>&1; echo \"rpcd contesta: \$? (0 = sí)\"; " +
+                    "ps w | grep -E 'rpcd|uhttpd|opkg|apk |netifd|miniupnpd|init.d' | grep -v grep",
+            )
+            log("al fallar '${description.methodName}': $state")
+        }
+    }
 
     /**
      * Las pruebas dejan la función como al instalar el paquete. En un router que ya la usa (el de

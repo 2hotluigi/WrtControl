@@ -42,6 +42,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - UPnP: en OpenWrt 24.10, si miniupnpd se caía nada más arrancar, la app podía darlo por
   activado al preguntar justo cuando el router lo relanzaba. Ahora tiene que seguir en marcha
   unos segundos; si no, el router lo deshace y la app lo dice.
+- Acceso remoto: al instalar WireGuard, si el router tardaba en contestar justo después de
+  instalar el paquete (puede quedarse hasta medio minuto sin atender), la app daba la instalación
+  por fallida y no reiniciaba la red. Ahora espera a que vuelva y termina.
 
 ## [0.3.0]
 

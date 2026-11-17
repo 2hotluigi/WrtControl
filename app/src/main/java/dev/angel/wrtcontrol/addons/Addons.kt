@@ -414,7 +414,7 @@ class AddonsApi(
     suspend fun finishWireGuard() = writeLock.withLock { loadProtocol("wireguard") }
 
     private suspend fun loadProtocol(proto: String) {
-        if (proto in ubus.protoHandlers()) return
+        if (proto in handlersAfterInstall()) return
         try {
             ubus.initAction("network", "restart")
         } catch (e: UbusException.Network) {
@@ -432,6 +432,25 @@ class AddonsApi(
             throw UserFacingException(txt(R.string.addons_protocol_not_loaded))
         }
     }
+
+    /**
+     * Los protocolos de netifd nada más instalar un paquete. Instalar un `luci-*` recarga rpcd, y
+     * si la siguiente llamada lo pilla a medias, uhttpd se queda esperando su permiso sin atender a
+     * nadie (hasta 30 s, la mitad de su `script_timeout`): un fallo de red aquí no dice que algo
+     * fuera mal, así que se reintenta hasta que el router vuelve a contestar.
+     */
+    private suspend fun handlersAfterInstall(): Set<String> = withTimeoutOrNull(restartWaitMs) {
+        var found: Set<String>? = null
+        while (found == null) {
+            found = try {
+                ubus.protoHandlers()
+            } catch (_: UbusException.Network) {
+                delay(pollMs)
+                null
+            }
+        }
+        found
+    } ?: throw UbusException.Network("El router no volvió a responder después de instalar el paquete.")
 
     /**
      * Crea o cambia una cola de SQM. Se aplica con reversión: si el router deja de responder

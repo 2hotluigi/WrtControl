@@ -289,10 +289,25 @@ class VmIntegrationTest {
     /**
      * ¿Llega el cliente a [url]? Cuenta como conectado aunque el servidor responda con un error o
      * una redirección que el cliente no sigue (no tiene DNS); como bloqueado, el reset o el rechazo.
+     *
+     * Las reglas de la app rechazan (reset), nunca descartan en silencio: un bloqueo falla al momento.
+     * Si el fallo llega al agotar los 4 s de espera, no hubo ni respuesta ni rechazo, y lo normal es
+     * que el servidor de internet haya tardado: se apunta qué hizo el router con esa conexión y se
+     * repite, para no dar por bloqueado lo que solo fue lento. (El mensaje no los distingue: según la
+     * versión, uclient-fetch dice "Failed to send request" para las dos cosas.)
      */
     private fun connects(url: String): Boolean {
-        val out = ssh("$IP_FULL netns exec wrtc_client wget -T 4 -O /dev/null --no-check-certificate $url 2>&1; true")
-        log("wget $url: ${out.lines().filter { it.isNotBlank() }.takeLast(2)}")
+        var out = ""
+        repeat(NO_ANSWER_TRIES) { attempt ->
+            val t0 = System.currentTimeMillis()
+            out = ssh("$IP_FULL netns exec wrtc_client wget -T $WGET_TIMEOUT_SECONDS -O /dev/null --no-check-certificate $url 2>&1; true")
+            val waited = System.currentTimeMillis() - t0 >= WGET_TIMEOUT_SECONDS * 1000
+            log("wget $url: ${out.lines().filter { it.isNotBlank() }.takeLast(2)}")
+            if (!waited || BLOCKED_MESSAGES.none { it in out }) return BLOCKED_MESSAGES.none { it in out }
+            val host = url.substringAfter("://").substringBefore('/').substringBefore(':')
+            val seen = ssh("grep 'src=$clientIp ' /proc/net/nf_conntrack | grep -F 'dst=$host ' | tail -2 || true")
+            log("sin respuesta (intento ${attempt + 1} de $NO_ANSWER_TRIES); conntrack: ${seen.lines().filter { it.isNotBlank() }}")
+        }
         return BLOCKED_MESSAGES.none { it in out }
     }
 
@@ -602,6 +617,10 @@ class VmIntegrationTest {
         val BLOCKED_MESSAGES = listOf(
             "Operation not permitted", "Connection refused", "Connection reset", "timed out", "Failed to send request", "Connection failed",
         )
+
+        /** Lo que espera wget a que el servidor conteste, y las veces que se repite si no contesta. */
+        const val WGET_TIMEOUT_SECONDS = 4
+        const val NO_ANSWER_TRIES = 3
 
         /** Con setsid, `ip` puede resolver al applet de BusyBox, que no tiene `netns`. */
         const val IP_FULL = "/usr/libexec/ip-full"
