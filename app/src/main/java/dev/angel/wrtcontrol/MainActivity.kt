@@ -1,9 +1,11 @@
 package dev.angel.wrtcontrol
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
+import dev.angel.wrtcontrol.data.parsePairingLink
 import dev.angel.wrtcontrol.ui.AppLockGate
 import dev.angel.wrtcontrol.ui.AppRoot
 import dev.angel.wrtcontrol.ui.LocalNetworkGate
@@ -15,10 +17,23 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val app = application as WrtApp
+        // Solo al abrirse con el enlace: al girar la pantalla no se vuelve a ofrecer.
+        if (savedInstanceState == null) offerPairing(intent)
         setContent {
             WrtTheme {
                 AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings, app.vendors) } }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        offerPairing(intent)
+    }
+
+    /** La app se abrió con el código QR de otro teléfono (ver data/Pairing.kt): se propone ese router. */
+    private fun offerPairing(intent: Intent?) {
+        val link = parsePairingLink(intent?.dataString) ?: return
+        (application as WrtApp).repository.offerPairing(link)
     }
 }
