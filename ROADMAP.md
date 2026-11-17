@@ -119,6 +119,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - **Motor de transacciones genérico:** `SafeApply` como plan → vista previa → aplicar → verificar →
   confirmar, para cualquier función, con un único componente de "Aplicando… si algo falla el
   router vuelve atrás solo".
+  Hecho, salvo la vista previa: `applySafely` da sus fases (aplicar, comprobar, confirmar,
+  deshacer) por el contexto de la corrutina, `ChangeRunner` lleva el cambio en curso de cada
+  pantalla y `ApplyingBanner` lo enseña igual en Familia, Seguridad, Dispositivos y Funciones del
+  router. La vista previa ("esto es lo que va a cambiar") irá con el Wi-Fi y la puesta en marcha,
+  que es donde hay algo que avisar antes: el teléfono se desconecta, cambia la contraseña.
 - ~~**Detección de capacidades:** objetos de ubus, ACL, paquetes, radios, RAM y flash. Cada función se
   muestra como disponible, "se instalará" o no compatible.~~
   Hecho: `Capabilities`, con los permisos de la sesión (los devuelve el login de rpcd), los objetos

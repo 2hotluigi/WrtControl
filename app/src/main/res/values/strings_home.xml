@@ -111,7 +111,7 @@
     <string name="devices_edit_save">Guardar</string>
     <string name="devices_edit_cancel">Cancelar</string>
     <string name="devices_edit_hint">Toca un aparato para ponerle nombre, fijar su dirección o decir de quién es.</string>
-    <string name="devices_busy_saving">Guardando «%1$s»… Si algo falla, el router vuelve atrás solo.</string>
+    <string name="devices_busy_saving">Guardando «%1$s»…</string>
     <string name="devices_paused_until">Sin internet hasta %1$s</string>
     <string name="devices_blocked">Bloqueado: sin internet</string>
     <string name="devices_internet_title">Internet</string>
@@ -119,7 +119,7 @@
     <string name="devices_internet_block">Bloquear</string>
     <string name="devices_internet_resume">Devolver internet</string>
     <string name="devices_internet_this_phone">Es este teléfono: desde aquí no se le corta internet.</string>
-    <string name="devices_busy_pausing">Cortando internet a «%1$s»… Si algo falla, el router vuelve atrás solo.</string>
+    <string name="devices_busy_pausing">Cortando internet a «%1$s»…</string>
     <string name="devices_busy_resuming">Devolviendo internet a «%1$s»…</string>
     <string name="devices_error_mac">Ese aparato no tiene una MAC válida.</string>
     <string name="devices_error_ip_invalid">Esa dirección no es una IPv4 válida.</string>

@@ -2,4 +2,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
     <string name="common_stale_data">Datos sin actualizar: %1$s</string>
     <string name="common_retrying">Reintentando…</string>
+    <string name="apply_step">%1$d · %2$s</string>
+    <string name="apply_step_apply">Aplicar</string>
+    <string name="apply_step_verify">Comprobar</string>
+    <string name="apply_step_confirm">Confirmar</string>
+    <string name="apply_phase_applying">Enviando el cambio al router.</string>
+    <string name="apply_phase_verifying">Comprobando que funciona. Si algo falla, el router vuelve atrás solo.</string>
+    <string name="apply_phase_confirming">Funciona. Confirmando para que se quede.</string>
+    <string name="apply_phase_reverting">No funcionó. El router lo está deshaciendo solo; puede tardar un minuto.</string>
 </resources>

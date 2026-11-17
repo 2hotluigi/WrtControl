@@ -10,7 +10,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -30,8 +32,10 @@ import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.linkAdvice
+import dev.angel.wrtcontrol.parental.ApplyPhase
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
+import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.DevicePauses
@@ -93,6 +97,21 @@ class ScreenshotTest {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {}) { Text("Pausar a…") }
                 OutlinedButton(onClick = {}) { Text("Wi-Fi de invitados") }
+            }
+        }
+    }
+
+    /** Un cambio en curso, como se ve en cualquier pantalla: sin fases, en cada paso y deshaciéndose. */
+    @Test
+    fun aplicando() = both("aplicando") {
+        // Como en una vista previa: la barra de progreso se dibuja quieta (animada, la captura no acabaría).
+        CompositionLocalProvider(LocalInspectionMode provides true) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ApplyingBanner(ChangeProgress(raw("Instalando WireGuard…")))
+                ApplyingBanner(ChangeProgress(raw("Guardando «Tele de la sala»…"), ApplyPhase.Applying))
+                ApplyingBanner(ChangeProgress(raw("Pausando a Ana…"), ApplyPhase.Verifying))
+                ApplyingBanner(ChangeProgress(raw("Activando la cuarentena…"), ApplyPhase.Confirming))
+                ApplyingBanner(ChangeProgress(raw("Activando UPnP…"), ApplyPhase.Reverting))
             }
         }
     }
