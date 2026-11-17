@@ -157,11 +157,17 @@ marcha guiada. Cada uno se apoya en los anteriores.
 ## Hito 2 · Lo que se espera de un router (P1)
 
 - **Wi-Fi:** nombre y clave, red de invitados aislada con QR para compartirla, horario del Wi-Fi.
-  Hoy la app no toca `/etc/config/wireless`. Por partes:
-  - *Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
+  Por partes:
+  - ~~*Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
     defecto; avisar de una red abierta, como la `OpenWrt` sin clave que trae el router de fábrica).
     Un cambio de Wi-Fi puede dejar fuera al teléfono que lo hace: `SafeApply` tiene que esperar a
-    que el teléfono vuelva a entrar antes de confirmar.
+    que el teléfono vuelva a entrar antes de confirmar.~~
+    Hecho: Más → Wi-Fi, un solo nombre y clave para las dos bandas, vista previa de quién se
+    queda fuera y, si es este teléfono, 3 minutos (en vez de 1) para volver a entrar antes de que
+    el router lo deshaga. Probado en el GL-MT6000 con la red `WrtControl-prueba` (2,4 y 5 GHz) y
+    vuelto a dejar como estaba desde la app. Falta probar el caso del teléfono conectado por ese
+    Wi-Fi con un teléfono de verdad, y ofrecer añadir la red nueva con un toque
+    (`ACTION_WIFI_ADD_NETWORKS`).
   - *País:* sin `country`, el router emite con los canales y la potencia más restrictivos. Pedirlo
     en la puesta en marcha (proponer el del teléfono).
   - *Canal y ancho por resultado*, no por número: "más alcance" o "más velocidad" (20/40 MHz en

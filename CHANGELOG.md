@@ -7,6 +7,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ## [Sin publicar]
 
 ### Añadido
+- Wi-Fi (en Más): nombre, contraseña, seguridad (WPA2/WPA3 por defecto) y qué bandas emiten,
+  con el mismo nombre en las dos. Antes de un cambio que saca a alguien del Wi-Fi, la app dice
+  cuántos aparatos se desconectarán. Avisa si la red no tiene contraseña o si el Wi-Fi del
+  router está apagado (y que puede ser a propósito, si lo dan otros aparatos).
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.
@@ -50,6 +54,10 @@ La app cambia de cara y de orden: empieza por cómo está la red, no por los dat
   usen varias pantallas.
 
 ### Añadido
+- Wi-Fi (en Más): nombre, contraseña, seguridad (WPA2/WPA3 por defecto) y qué bandas emiten,
+  con el mismo nombre en las dos. Antes de un cambio que saca a alguien del Wi-Fi, la app dice
+  cuántos aparatos se desconectarán. Avisa si la red no tiene contraseña o si el Wi-Fi del
+  router está apagado (y que puede ser a propósito, si lo dan otros aparatos).
 - Inicio: si el router tiene internet y desde cuándo, cuántos dispositivos hay, los perfiles en
   pausa y lo que pide atención (router sin contraseña, reglas sin aplicar, dispositivos nuevos).
 - Salud del cable de internet: Inicio avisa si el cable entre el módem y el router se desconecta

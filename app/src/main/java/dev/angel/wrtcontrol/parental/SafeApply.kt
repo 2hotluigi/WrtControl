@@ -127,6 +127,10 @@ internal suspend fun UbusSession.ensureNoPendingApply() {
  * pendientes, así que no sirve para leer).
  *
  * Si se cancela la corrutina a mitad, no se confirma nada y el router lo revierte solo.
+ *
+ * [rollbackSeconds] y [verifyTimeoutMs]: el plazo del router para deshacerlo y lo que se espera a
+ * [isLive]. Un cambio que deja al teléfono sin conexión un rato (el Wi-Fi por el que habla) necesita
+ * más que el minuto de siempre para volver a entrar y confirmarlo.
  */
 internal suspend fun UbusSession.applySafely(
     failure: Txt,
@@ -135,11 +139,13 @@ internal suspend fun UbusSession.applySafely(
     afterApply: suspend () -> Unit = {},
     /** Lo que haya que hacer cuando el router ya lo deshizo (p. ej. volver a reiniciar esa interfaz). */
     afterRevert: suspend () -> Unit = {},
+    rollbackSeconds: Int = ROLLBACK_SECONDS,
+    verifyTimeoutMs: Long = VERIFY_TIMEOUT_MS,
     isLive: suspend () -> Boolean,
 ) {
     phase(ApplyPhase.Applying)
     try {
-        uciApply(rollback = true, timeoutSeconds = ROLLBACK_SECONDS)
+        uciApply(rollback = true, timeoutSeconds = rollbackSeconds)
     } catch (e: UbusException.Status) {
         if (e.code == UBUS_PERMISSION_DENIED) throw PendingChangeException()
         throw e
@@ -149,7 +155,7 @@ internal suspend fun UbusSession.applySafely(
     phase(ApplyPhase.Verifying)
 
     var reason = failure
-    val live = withTimeoutOrNull(VERIFY_TIMEOUT_MS) {
+    val live = withTimeoutOrNull(verifyTimeoutMs) {
         do {
             delay(VERIFY_INTERVAL_MS)
             // Un fallo puntual (p. ej. el router ocupado recargando) no decide nada: se reintenta.
@@ -171,7 +177,7 @@ internal suspend fun UbusSession.applySafely(
         phase(ApplyPhase.Reverting)
         runCatchingNonCancel { uciRollback() }
         // Sin permiso para `uci rollback`, el router lo deshace al vencer el plazo: se mira hasta entonces.
-        val budget = ROLLBACK_SECONDS * 1000L + REVERT_GRACE_MS - applied.elapsedNow().inWholeMilliseconds
+        val budget = rollbackSeconds * 1000L + REVERT_GRACE_MS - applied.elapsedNow().inWholeMilliseconds
         val reverted = withTimeoutOrNull(budget.coerceAtLeast(VERIFY_INTERVAL_MS)) {
             while (!checkReverted(isReverted)) delay(VERIFY_INTERVAL_MS * 2)
             true

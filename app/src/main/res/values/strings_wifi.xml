@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="more_wifi_title">Wi-Fi</string>
+    <string name="more_wifi_detail">Nombre, contraseña y bandas del Wi-Fi del router</string>
+    <string name="wifi_none">Este router no tiene Wi-Fi.</string>
+    <string name="wifi_name_label">Nombre de la red</string>
+    <string name="wifi_password_label">Contraseña</string>
+    <string name="wifi_password_show">Ver</string>
+    <string name="wifi_password_hide">Ocultar</string>
+    <string name="wifi_security_title">Seguridad</string>
+    <string name="wifi_security_mixed">WPA2/WPA3 (recomendada)</string>
+    <string name="wifi_security_wpa3">Solo WPA3</string>
+    <string name="wifi_security_wpa2">Solo WPA2 (para aparatos antiguos)</string>
+    <string name="wifi_security_open">Sin contraseña</string>
+    <string name="wifi_bands_title">Bandas</string>
+    <string name="wifi_bands_help">Las dos con el mismo nombre: cada aparato elige la suya. La de 5 GHz va más rápido y la de 2,4 GHz llega más lejos.</string>
+    <plurals name="wifi_band_clients">
+        <item quantity="one">%d conectado</item>
+        <item quantity="many">%d conectados</item>
+        <item quantity="other">%d conectados</item>
+    </plurals>
+    <string name="wifi_save">Guardar</string>
+    <string name="wifi_busy_saving">Guardando el Wi-Fi…</string>
+    <string name="wifi_off_title">El Wi-Fi del router está apagado</string>
+    <string name="wifi_off_body">Si en tu casa el Wi-Fi lo dan otros aparatos (repetidores, Deco, otro router), déjalo así. Si no, enciende al menos una banda.</string>
+    <string name="wifi_open_title">Tu Wi-Fi no tiene contraseña</string>
+    <string name="wifi_open_body">Cualquiera cerca puede conectarse, usar tu internet y ver lo que no vaya cifrado. Ponle una contraseña.</string>
+    <string name="wifi_differs">Ahora cada banda tiene un nombre o una contraseña distintos. Al guardar, las dos quedarán con los de aquí.</string>
+    <string name="wifi_error_ssid_empty">Ponle un nombre a la red.</string>
+    <string name="wifi_error_ssid_long">El nombre es demasiado largo: 32 letras como mucho, menos con acentos o emojis.</string>
+    <string name="wifi_error_key">La contraseña tiene que tener entre 8 y 63 caracteres, sin acentos ni ñ.</string>
+    <string name="wifi_error_not_applied">El router no volvió a emitir el Wi-Fi con el cambio, así que se dejó como estaba.</string>
+    <string name="wifi_preview_title">Cambiar el Wi-Fi</string>
+    <string name="wifi_preview_password_new">Una nueva</string>
+    <string name="wifi_preview_on">Encendida</string>
+    <string name="wifi_preview_off">Apagada</string>
+    <plurals name="wifi_preview_clients">
+        <item quantity="one">%d aparato conectado se desconectará y tendrá que volver a entrar con los datos nuevos.</item>
+        <item quantity="many">%d aparatos conectados se desconectarán y tendrán que volver a entrar con los datos nuevos.</item>
+        <item quantity="other">%d aparatos conectados se desconectarán y tendrán que volver a entrar con los datos nuevos.</item>
+    </plurals>
+    <string name="wifi_preview_phone">Este teléfono también se desconectará. Conéctalo a «%1$s» en menos de 3 minutos; si no, el router volverá a dejarlo como estaba.</string>
+    <string name="wifi_preview_open">La red quedará sin contraseña: cualquiera cerca podrá conectarse.</string>
+    <string name="wifi_preview_all_off">Nadie podrá conectarse al Wi-Fi del router hasta que vuelvas a encender una banda, por cable o por el acceso remoto.</string>
+</resources>

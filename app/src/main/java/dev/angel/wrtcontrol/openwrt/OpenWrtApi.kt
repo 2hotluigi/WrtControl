@@ -35,6 +35,9 @@ class OpenWrtApi(
     /** El nombre y la dirección fija de cada aparato (escribe en `dhcp` con reversión automática). */
     val deviceSettings = DevicesApi(ubus, writeLock)
 
+    /** El Wi-Fi de casa: nombre, clave, seguridad y bandas (escribe en `wireless` con reversión automática). */
+    val wifi = WifiApi(ubus, writeLock)
+
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 
     suspend fun setPassword(username: String, password: String) = ubus.setPassword(username, password)
