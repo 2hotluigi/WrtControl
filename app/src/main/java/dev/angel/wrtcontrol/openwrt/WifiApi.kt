@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.openwrt
 
+import androidx.annotation.StringRes
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.parental.ROLLBACK_SECONDS
@@ -10,6 +11,7 @@ import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.UbusCaller
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
+import dev.angel.wrtcontrol.ubus.UbusSession
 import dev.angel.wrtcontrol.ubus.callAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -85,21 +87,51 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val before = tx.uciSections("wireless")
-        val changes = countryPlan(before, code)
-        if (changes.isEmpty()) return@withLock
         val up = parseWifi(before, tx.wirelessDevices()).radios.filter { it.up }
+        val slow = phoneOnIt || up.any { it.mayWaitForRadar }
+        tx.applyToRadios(before, countryPlan(before, code), up, slow, R.string.wifi_country_not_applied)
+    }
+
+    /**
+     * Pone [radio] a [width] MHz (ver WirelessWidth.kt). Si emitía, se reinicia; si no vuelve (el
+     * canal no admite ese ancho, o a 160 MHz falta el país), el router lo deshace. A 160 MHz se
+     * espera más: el router escucha un minuto por si hay radares antes de emitir.
+     */
+    suspend fun setWidth(radio: String, width: Int, phoneOnIt: Boolean) = writeLock.withLock {
+        val tx = ubus.openSession()
+        tx.ensureNoPendingApply()
+        val before = tx.uciSections("wireless")
+        val supported = tx.htmodes(radio).orEmpty()
+        val changes = widthPlan(before, radio, width, supported)
+        val up = parseWifi(before, tx.wirelessDevices()).radios.filter { it.up }
+        val slow = phoneOnIt || width == WIDTH_160 || up.any { it.name == radio && it.mayWaitForRadar }
+        tx.applyToRadios(before, changes, up, slow, R.string.wifi_width_not_applied)
+    }
+
+    /**
+     * Aplica [changes] a las radios, con reversión: las de [up] (las que estaban levantadas) tienen
+     * que volver a estarlo varias comprobaciones seguidas, porque justo después de aplicar siguen
+     * "levantadas" un instante antes de reiniciarse. [slow]: se les da 3 minutos en vez de 1.
+     */
+    private suspend fun UbusSession.applyToRadios(
+        before: List<UciSection>,
+        changes: List<WifiChange.Set>,
+        up: List<WifiRadio>,
+        slow: Boolean,
+        @StringRes failure: Int,
+    ) {
+        if (changes.isEmpty()) return
+        changes.forEach { uciSet("wireless", it.section, it.values) }
         val wasUp = up.map { it.name }.toSet()
-        changes.forEach { tx.uciSet("wireless", it.section, it.values) }
-        val slow = up.isNotEmpty() && (phoneOnIt || up.any { it.mayWaitForRadar })
-        // Justo después de aplicar, las radios siguen "levantadas" un instante antes de reiniciarse.
+        val patient = slow && up.isNotEmpty()
         var steady = 0
-        tx.applySafely(
-            failure = txt(R.string.wifi_country_not_applied),
+        applySafely(
+            failure = txt(failure),
             isReverted = { fresh -> fresh.uciSections("wireless") == before },
-            rollbackSeconds = if (slow) WIFI_ROLLBACK_SECONDS else ROLLBACK_SECONDS,
-            verifyTimeoutMs = if (slow) WIFI_VERIFY_TIMEOUT_MS else VERIFY_TIMEOUT_MS,
+            rollbackSeconds = if (patient) WIFI_ROLLBACK_SECONDS else ROLLBACK_SECONDS,
+            verifyTimeoutMs = if (patient) WIFI_VERIFY_TIMEOUT_MS else VERIFY_TIMEOUT_MS,
         ) {
-            steady = if (radiosBack(wasUp, tx.wirelessDevices())) steady + 1 else 0
+            steady = if (radiosBack(wasUp, wirelessDevices())) steady + 1 else 0
             steady >= RADIO_STEADY_CHECKS
         }
     }
@@ -119,7 +151,18 @@ internal suspend fun UbusCaller.readWifi(withClients: Boolean): WifiState = coro
     val bare = parseWifi(sections.await(), devices.await())
     if (!withClients) return@coroutineScope bare
     val clients = bare.networks.mapNotNull { it.ifname }.map { ifname -> async { assoclist(ifname)?.let { ifname to it } } }
-    parseWifi(sections.await(), devices.await(), clients.awaitAll().filterNotNull().toMap())
+    val htmodes = bare.radios.map { radio -> async { htmodes(radio.name)?.let { radio.name to it } } }
+    parseWifi(sections.await(), devices.await(), clients.awaitAll().filterNotNull().toMap(), htmodes.awaitAll().filterNotNull().toMap())
+}
+
+/** Los estándares y anchos que admite [radio] (`iwinfo info`), o null si el router no deja verlo. */
+internal suspend fun UbusCaller.htmodes(radio: String): List<String>? = try {
+    val modes = callAs<JsonObject>("iwinfo", "info", buildJsonObject { put("device", radio) })["htmodes"] as? JsonArray
+    modes?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+} catch (e: CancellationException) {
+    throw e
+} catch (_: UbusException) {
+    null
 }
 
 /** Las MAC conectadas a [ifname], o null si el router no deja verlo. */

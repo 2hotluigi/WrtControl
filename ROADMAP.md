@@ -176,6 +176,8 @@ marcha guiada. Cada uno se apoya en los anteriores.
   - *Canal y ancho por resultado*, no por número: "más alcance" o "más velocidad" (20/40 MHz en
     2,4 GHz; 80 o 160 MHz en 5 GHz, explicando DFS: el router puede tardar un minuto en emitir y
     cambiar de canal si detecta un radar). Buscar el canal menos ocupado (`iwinfo scan` por ubus).
+    Primera parte hecha: "Velocidad y alcance" en Más → Wi-Fi, con lo recomendado o lo más rápido
+    en cada banda (solo lo que la radio admite). Falta buscar el canal menos ocupado.
   - *Potencia* y lista de equipos conectados por banda con su señal (ya está en `iwinfo`).
   - *Wi-Fi apagado a propósito:* si lo dan otros puntos de acceso (en la casa de pruebas, dos Deco
     en modo AP), decirlo en vez de avisar de "Wi-Fi apagado".

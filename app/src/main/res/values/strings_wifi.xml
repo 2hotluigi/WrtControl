@@ -60,4 +60,20 @@
     <string name="wifi_country_preview_restart">El Wi-Fi se reinicia: los aparatos conectados se desconectan unos segundos y vuelven a entrar solos.</string>
     <string name="wifi_country_preview_radar">La banda de 5 GHz puede tardar más de un minuto en volver: en algunos canales el router escucha antes si hay radares.</string>
     <string name="wifi_country_preview_phone">Este teléfono también se desconectará un momento. Si no vuelve a entrar en 3 minutos, el router lo dejará como estaba.</string>
+    <string name="wifi_width_title">Velocidad y alcance</string>
+    <string name="wifi_width_2_20">Más alcance y menos cortes (recomendado)</string>
+    <string name="wifi_width_2_40">Más velocidad</string>
+    <string name="wifi_width_2_help">La de más velocidad solo sirve si no hay Wi-Fi de vecinos cerca: si los hay, el router sigue como en la recomendada.</string>
+    <string name="wifi_width_5_80">Equilibrado (recomendado)</string>
+    <string name="wifi_width_5_160">Máxima velocidad cerca del router</string>
+    <string name="wifi_width_5_help">Con la máxima, el router usa canales que comparte con radares: al arrancar escucha un minuto antes de emitir y puede cambiar de canal él solo. Llega algo menos lejos.</string>
+    <string name="wifi_width_needs_country">Para la máxima velocidad hay que poner antes el país.</string>
+    <string name="wifi_width_now">Ahora: %1$d MHz, un ajuste que la app no ofrece.</string>
+    <string name="wifi_width_mhz">%1$d MHz</string>
+    <string name="wifi_width_unknown">Otro</string>
+    <string name="wifi_channel_label">Canal de 5 GHz</string>
+    <string name="wifi_width_busy">Cambiando el Wi-Fi…</string>
+    <string name="wifi_width_not_applied">El Wi-Fi no volvió a emitir con ese ajuste, así que se dejó como estaba.</string>
+    <string name="wifi_width_preview_title">Cambiar la velocidad y el alcance</string>
+    <string name="wifi_width_preview_radar">El router escuchará un minuto por si hay radares antes de volver a emitir en 5 GHz.</string>
 </resources>
