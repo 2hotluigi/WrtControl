@@ -1,0 +1,255 @@
+package dev.angel.wrtcontrol.ui.home
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.Txt
+import dev.angel.wrtcontrol.data.RouterAccess
+import dev.angel.wrtcontrol.data.RouterMonitor
+import dev.angel.wrtcontrol.openwrt.WifiEdit
+import dev.angel.wrtcontrol.openwrt.WifiSecurity
+import dev.angel.wrtcontrol.openwrt.WifiState
+import dev.angel.wrtcontrol.openwrt.remembered
+import dev.angel.wrtcontrol.openwrt.wifiProblem
+import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.txt
+import dev.angel.wrtcontrol.ui.ApplyingBanner
+import dev.angel.wrtcontrol.ui.ChangePreview
+import dev.angel.wrtcontrol.ui.ChangePreviewHost
+import dev.angel.wrtcontrol.ui.ChangeProgress
+import dev.angel.wrtcontrol.ui.ChangeRunner
+import dev.angel.wrtcontrol.ui.ErrorBanner
+import dev.angel.wrtcontrol.ui.LoadableContent
+import dev.angel.wrtcontrol.ui.LocalAppLocked
+import dev.angel.wrtcontrol.ui.LocalRepository
+import dev.angel.wrtcontrol.ui.NoticeCard
+import dev.angel.wrtcontrol.ui.Proposals
+import dev.angel.wrtcontrol.ui.parental.phoneAddresses
+import dev.angel.wrtcontrol.ui.watchAsState
+import kotlin.time.Duration.Companion.seconds
+
+/** Quién está conectado cambia a menudo; el resto, solo desde aquí o desde LuCI. */
+private val WIFI_REFRESH = 15.seconds
+
+class WifiViewModel(private val router: RouterAccess, private val monitor: RouterMonitor) : ViewModel() {
+    private val changes = ChangeRunner(viewModelScope)
+
+    val progress: ChangeProgress? get() = changes.current
+
+    val proposals: Proposals get() = changes
+
+    var error: Txt?
+        get() = changes.error
+        set(value) {
+            changes.error = value
+        }
+
+    /** Guarda [edit]; antes enseña [preview] si trae avisos. [phoneOnIt]: ver WifiApi.save. */
+    fun save(edit: WifiEdit, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        changes.run(txt(R.string.wifi_busy_saving), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.wifi.save(edit, phoneOnIt) }
+        }
+    }
+}
+
+@Composable
+fun WifiScreen(address: String) {
+    val repo = LocalRepository.current
+    val vm: WifiViewModel = viewModel(key = "wifi:$address") { WifiViewModel(repo, repo.monitor) }
+    val state by repo.monitor.wifi.watchAsState(WIFI_REFRESH)
+    // Para saber si este teléfono está en el Wi-Fi que se cambia (por su MAC según el router).
+    val devices by repo.monitor.devices.watchAsState(WIFI_REFRESH)
+    val context = LocalContext.current
+    val locked = LocalAppLocked.current
+
+    LoadableContent(state) { wifi, loadError ->
+        val ips = phoneAddresses(context)
+        val phoneMacs = devices.data.orEmpty().filter { d -> !d.remembered && d.ipv4.any { it in ips } }.map { it.mac }.toSet()
+        WifiContent(
+            state = wifi,
+            loadError = loadError,
+            progress = vm.progress,
+            error = vm.error?.text(),
+            enabled = !locked,
+            onSave = { edit -> vm.save(edit, phoneOnWifi(wifi, phoneMacs), wifiPreview(wifi, edit, phoneMacs)) },
+        )
+    }
+    ChangePreviewHost(vm.proposals)
+}
+
+/** "Tu Wi-Fi": nombre, seguridad, contraseña y bandas, y por qué avisar si está apagado o abierto. */
+@Composable
+fun WifiContent(
+    state: WifiState,
+    loadError: String? = null,
+    progress: ChangeProgress? = null,
+    error: String? = null,
+    enabled: Boolean = true,
+    onSave: (WifiEdit) -> Unit = {},
+) {
+    val current = currentWifi(state)
+    // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
+    var ssid by rememberSaveable(current) { mutableStateOf(current.ssid) }
+    var key by rememberSaveable(current) { mutableStateOf(current.key) }
+    var security by rememberSaveable(current) { mutableStateOf(current.security) }
+    var radios by rememberSaveable(current) { mutableStateOf(current.radios.toList()) }
+    val edit = WifiEdit(ssid.trim(), key, security, radios.toSet())
+    val problem = wifiProblem(edit)
+    val busy = progress != null || !enabled
+
+    Column(
+        Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (loadError != null) ErrorBanner(stringResource(R.string.common_stale_data, loadError))
+        if (state.radios.isEmpty()) {
+            Text(stringResource(R.string.wifi_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            return@Column
+        }
+        WifiNotices(state, current)
+        OutlinedTextField(
+            value = ssid,
+            onValueChange = { ssid = it },
+            label = { Text(stringResource(R.string.wifi_name_label)) },
+            singleLine = true,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth().testTag("wifi-ssid"),
+        )
+        SecurityPicker(security, enabled = !busy) { security = it }
+        if (security != WifiSecurity.Open) PasswordField(key, enabled = !busy) { key = it }
+        HorizontalDivider()
+        Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
+        if (problem != null && edit != current) {
+            Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+        // Junto al botón, que es donde se está mirando al guardar (arriba quedarían fuera de la vista).
+        if (error != null) ErrorBanner(error)
+        if (progress != null) ApplyingBanner(progress)
+        Button(
+            onClick = { onSave(edit) },
+            enabled = !busy && problem == null && edit != current,
+            modifier = Modifier.align(Alignment.End).testTag("wifi-save"),
+        ) { Text(stringResource(R.string.wifi_save)) }
+    }
+}
+
+/** Una fila por radio, con cuántos hay conectados a su red ahora. */
+@Composable
+private fun Bands(state: WifiState, on: Set<String>, enabled: Boolean, onChange: (radio: String, on: Boolean) -> Unit) {
+    Text(stringResource(R.string.wifi_bands_title), style = MaterialTheme.typography.titleSmall)
+    Hint(R.string.wifi_bands_help)
+    state.radios.forEach { radio ->
+        val network = state.home.firstOrNull { it.radio == radio.name }
+        BandRow(
+            label = radio.band?.let { stringResource(it.label) } ?: radio.name,
+            clients = network?.clients?.size?.takeIf { network.ifname != null },
+            on = radio.name in on,
+            enabled = enabled,
+            tag = "wifi-band-${radio.name}",
+        ) { onChange(radio.name, it) }
+    }
+}
+
+@Composable
+private fun Hint(text: Int) {
+    Text(stringResource(text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
+private fun WifiNotices(state: WifiState, current: WifiEdit) {
+    when {
+        current.radios.isEmpty() -> NoticeCard(stringResource(R.string.wifi_off_title), stringResource(R.string.wifi_off_body))
+        current.security == WifiSecurity.Open -> {
+            NoticeCard(stringResource(R.string.wifi_open_title), stringResource(R.string.wifi_open_body))
+        }
+    }
+    if (state.homeDiffers) Hint(R.string.wifi_differs)
+}
+
+@Composable
+private fun SecurityPicker(selected: WifiSecurity, enabled: Boolean, onSelect: (WifiSecurity) -> Unit) {
+    Text(stringResource(R.string.wifi_security_title), style = MaterialTheme.typography.titleSmall)
+    Column {
+        WifiSecurity.entries.forEach { option ->
+            val select = Modifier.selectable(selected = option == selected, enabled = enabled, role = Role.RadioButton) { onSelect(option) }
+            Row(
+                Modifier.fillMaxWidth().then(select),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = option == selected, onClick = null, enabled = enabled)
+                Text(stringResource(option.label), modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PasswordField(key: String, enabled: Boolean, onChange: (String) -> Unit) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    OutlinedTextField(
+        value = key,
+        onValueChange = onChange,
+        label = { Text(stringResource(R.string.wifi_password_label)) },
+        singleLine = true,
+        enabled = enabled,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        trailingIcon = {
+            TextButton(onClick = { visible = !visible }) {
+                Text(stringResource(if (visible) R.string.wifi_password_hide else R.string.wifi_password_show))
+            }
+        },
+        modifier = Modifier.fillMaxWidth().testTag("wifi-key"),
+    )
+}
+
+@Composable
+private fun BandRow(label: String, clients: Int?, on: Boolean, enabled: Boolean, tag: String, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            if (clients != null) {
+                Text(
+                    pluralStringResource(R.plurals.wifi_band_clients, clients, clients),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(checked = on, onCheckedChange = onChange, enabled = enabled, modifier = Modifier.testTag(tag))
+    }
+}

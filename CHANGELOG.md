@@ -7,6 +7,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ## [Sin publicar]
 
 ### Añadido
+- Wi-Fi (en Más): nombre, contraseña, seguridad (WPA2/WPA3 por defecto) y qué bandas emiten,
+  con el mismo nombre en las dos. Antes de un cambio que saca a alguien del Wi-Fi, la app dice
+  cuántos aparatos se desconectarán. Avisa si la red no tiene contraseña o si el Wi-Fi del
+  router está apagado (y que puede ser a propósito, si lo dan otros aparatos).
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.
@@ -33,6 +37,11 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   deshaciendo en vez de quedarse esperando sin explicar nada.
 - Familia y Seguridad llaman a cada aparato igual que Dispositivos: con el nombre que le pusiste,
   el suyo o su fabricante ("Aparato Samsung"), en vez de "Sin nombre" o la MAC.
+
+### Corregido
+- UPnP: en OpenWrt 24.10, si miniupnpd se caía nada más arrancar, la app podía darlo por
+  activado al preguntar justo cuando el router lo relanzaba. Ahora tiene que seguir en marcha
+  unos segundos; si no, el router lo deshace y la app lo dice.
 
 ## [0.3.0]
 

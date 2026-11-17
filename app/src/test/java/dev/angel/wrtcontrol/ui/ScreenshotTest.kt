@@ -31,6 +31,9 @@ import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
+import dev.angel.wrtcontrol.openwrt.WifiNetwork
+import dev.angel.wrtcontrol.openwrt.WifiRadio
+import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.parental.ApplyPhase
 import dev.angel.wrtcontrol.parental.Pause
@@ -45,6 +48,7 @@ import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import dev.angel.wrtcontrol.ui.home.WifiContent
 import dev.angel.wrtcontrol.ui.home.blockPreview
 import dev.angel.wrtcontrol.ui.home.devicePreview
 import dev.angel.wrtcontrol.ui.login.SetupContent
@@ -134,6 +138,17 @@ class ScreenshotTest {
             ChangePreviewBody(blockPreview(raw("Tele de la sala")))
             ChangePreviewBody(passwordPreview())
         }
+    }
+
+    /** El Wi-Fi como lo deja la app: las dos bandas con el mismo nombre, y cuántos hay en cada una. */
+    @Test
+    fun wifi() = both("wifi") {
+        val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true), WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true))
+        fun network(radio: String, ifname: String, clients: Int) = WifiNetwork(
+            section = "default_$radio", radio = radio, ssid = "Casa", encryption = "sae-mixed", key = "clave-de-casa",
+            enabled = true, networks = listOf("lan"), ifname = ifname, clients = List(clients) { "AA:00:00:00:00:%02X".format(it) },
+        )
+        WifiContent(WifiState(radios, listOf(network("radio0", "phy0-ap0", 3), network("radio1", "phy1-ap0", 9))))
     }
 
     @Test

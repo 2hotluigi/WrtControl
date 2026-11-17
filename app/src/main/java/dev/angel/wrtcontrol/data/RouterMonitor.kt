@@ -12,6 +12,7 @@ import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WanLink
+import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -144,6 +145,9 @@ class RouterMonitor(
             router.use { it.capabilities(knownBoard, knownInfo) }
         }
     }
+
+    /** El Wi-Fi de casa y quién está conectado a cada banda. */
+    val wifi: Feed<WifiState> = feed { router.use { it.wifi.state() } }
 
     /** Perfiles, horarios y protección. */
     val parental: Feed<ParentalSnapshot> = feed { router.use { it.parental.load() } }

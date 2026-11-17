@@ -461,6 +461,28 @@ Nada de esto toca el router, salvo poner la contraseña si el usuario quiere. Qu
 apunta en el teléfono, por dirección del router: no se repite al volver a entrar, y quien ya usaba
 la app con ese router no la ve.
 
+## Wi-Fi: qué hace en el router
+
+"Tu Wi-Fi" son las redes de punto de acceso unidas a la red de casa (`lan`) en
+`/etc/config/wireless`, una por radio. La app les pone a todas el mismo nombre, clave y seguridad
+(el aparato elige la banda) y enciende o apaga cada una con su `disabled`; no apaga la radio, que
+puede servir a otras redes. Si una radio no tiene red de casa, la crea (`home_<radio>`). Las demás
+redes (invitados, modo cliente, malla) no se tocan.
+
+- **Seguridad.** WPA2/WPA3 (`sae-mixed`) por defecto; también solo WPA3 (`sae`), solo WPA2 (`psk2`)
+  o sin contraseña (`none`, que borra la `key`). Lo necesita un `wpad` con SAE, que traen los
+  routers desde 23.05 (`wpad-basic-mbedtls`).
+- **Quién hay conectado.** Con `iwinfo assoclist` de cada red (el ACL de LuCI lo deja), para
+  decir antes de guardar cuántos aparatos se van a desconectar.
+- **Cómo se aplica.** Con `uci apply` y reversión: se confirma cuando `luci-rpc
+  getWirelessDevices` dice que cada radio está levantada, sin cambios pendientes y emitiendo (o
+  no) la red con el nombre nuevo. Si el teléfono que hace el cambio está en ese Wi-Fi, se queda
+  fuera hasta que vuelva a entrar con los datos nuevos: el plazo del router pasa de 1 a 3 minutos
+  y la app sigue intentando confirmar mientras tanto. Si no vuelve a tiempo, el router lo deshace.
+
+Límites: no hay país, canal, ancho ni potencia todavía (van en las siguientes partes del Wi-Fi).
+Con el país sin poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+
 ## Dispositivos: qué hace en el router
 
 Tocando un aparato se le pone nombre, se le fija la dirección y se dice de quién es.

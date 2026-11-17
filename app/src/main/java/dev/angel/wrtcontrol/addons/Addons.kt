@@ -144,6 +144,9 @@ data class AddonsState(
 /** Comprobaciones (una por segundo) tras aplicar SQM antes de darlo por bueno (procd + run.sh). */
 internal const val SQM_SETTLE_POLLS = 10
 
+/** Comprobaciones seguidas (una por segundo) con miniupnpd en marcha para darlo por arrancado. */
+internal const val UPNP_STEADY_CHECKS = 3
+
 /** Ya hay otra cola de SQM activa en ese dispositivo: sqm-scripts aplicaría las dos. */
 class SqmConflictException(device: String) : Exception("SQM conflict on $device"), UserFacing {
     override val text: Txt = txt(R.string.addons_sqm_conflict, device)
@@ -513,6 +516,10 @@ class AddonsApi(
         // La recarga la hace el disparador que miniupnpd registra en procd al arrancar. Si alguien
         // paró el servicio (LuCI → Sistema → Arranque), no hay disparador: se arranca o para a mano.
         var kicked = false
+        // procd vuelve a lanzar un miniupnpd que se cae al arrancar (p. ej. con una dirección externa
+        // reservada) y `rc list` dice "en marcha" si se pregunta justo en ese instante: para darlo por
+        // arrancado tiene que seguir en marcha varias comprobaciones seguidas.
+        var steady = 0
         tx.applySafely(
             failure = txt(if (enabled == true) R.string.addons_upnp_not_started else R.string.addons_upnp_not_applied),
             isReverted = { fresh -> fresh.uciSections("upnpd", "upnpd").firstOrNull() == section },
@@ -532,7 +539,8 @@ class AddonsApi(
                         kicked = true
                         optional { tx.initAction("miniupnpd", if (enabled) "start" else "stop") }
                     }
-                    running == enabled
+                    steady = if (running == enabled) steady + 1 else 0
+                    steady >= if (enabled) UPNP_STEADY_CHECKS else 1
                 }
             },
         )

@@ -68,6 +68,37 @@ class FakeOpenWrt(
      */
     var ignoredRecords = setOf<String>()
 
+    /** Las radios no vuelven a emitir tras un cambio (un driver que falla, un canal no permitido). */
+    var wifiBroken = false
+
+    /** Aparatos conectados a cada interfaz Wi-Fi ("phy0-ap0" → MAC). */
+    var wifiClients = mapOf<String, List<String>>()
+
+    /**
+     * Como `luci-rpc getWirelessDevices` con lo confirmado: cada radio encendida emite sus redes
+     * encendidas, con interfaz `phy<radio>-ap<n>`.
+     */
+    private fun wirelessDevices(): JsonObject = buildJsonObject {
+        fun text(s: Map<String, JsonElement>, key: String) = s[key]?.jsonPrimitive?.content
+        val radios = committed.filter { text(it.value, ".type") == "wifi-device" }
+        radios.keys.forEachIndexed { index, radio ->
+            val up = !wifiBroken && text(radios.getValue(radio), "disabled") != "1"
+            putJsonObject(radio) {
+                put("up", up)
+                put("pending", false)
+                putJsonObject("config") { text(radios.getValue(radio), "band")?.let { put("band", it) } }
+                putJsonArray("interfaces") {
+                    if (up) {
+                        committed.filter { text(it.value, ".type") == "wifi-iface" && text(it.value, "device") == radio && text(it.value, "disabled") != "1" }
+                            .keys.forEachIndexed { n, section ->
+                                addJsonObject { put("section", section); put("ifname", "phy$index-ap$n") }
+                            }
+                    }
+                }
+            }
+        }
+    }
+
     /** El ACL no deja listar directorios (`file.list` da "permiso denegado"). */
     var fileListDenied = false
 
@@ -115,6 +146,7 @@ class FakeOpenWrt(
         "queue" -> "sqm"
         "upnpd", "perm_rule" -> "upnpd"
         "interface" -> "network"
+        "wifi-device", "wifi-iface" -> "wireless"
         "service" -> "ddns"
         else -> if (type.startsWith("wireguard_")) "network" else "firewall"
     }
@@ -184,6 +216,10 @@ class FakeOpenWrt(
                 }
             }.toString())
             "file.exec" -> exec(arg("command")!!, a["params"]!!.jsonArray.map { it.jsonPrimitive.content })
+            "luci-rpc.getWirelessDevices" -> ok(wirelessDevices().toString())
+            "iwinfo.assoclist" -> ok(buildJsonObject {
+                putJsonArray("results") { wifiClients[arg("device")].orEmpty().forEach { addJsonObject { put("mac", it) } } }
+            }.toString())
             else -> status(3)
         }
     }

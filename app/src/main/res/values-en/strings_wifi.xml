@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="more_wifi_title">Wi-Fi</string>
+    <string name="more_wifi_detail">Name, password and bands of the router\'s Wi-Fi</string>
+    <string name="wifi_none">This router has no Wi-Fi.</string>
+    <string name="wifi_name_label">Network name</string>
+    <string name="wifi_password_label">Password</string>
+    <string name="wifi_password_show">Show</string>
+    <string name="wifi_password_hide">Hide</string>
+    <string name="wifi_security_title">Security</string>
+    <string name="wifi_security_mixed">WPA2/WPA3 (recommended)</string>
+    <string name="wifi_security_wpa3">WPA3 only</string>
+    <string name="wifi_security_wpa2">WPA2 only (for older devices)</string>
+    <string name="wifi_security_open">No password</string>
+    <string name="wifi_bands_title">Bands</string>
+    <string name="wifi_bands_help">Both with the same name: each device picks its own. 5 GHz is faster and 2.4 GHz reaches farther.</string>
+    <plurals name="wifi_band_clients">
+        <item quantity="one">%d connected</item>
+        <item quantity="other">%d connected</item>
+    </plurals>
+    <string name="wifi_save">Save</string>
+    <string name="wifi_busy_saving">Saving the Wi-Fi…</string>
+    <string name="wifi_off_title">The router\'s Wi-Fi is off</string>
+    <string name="wifi_off_body">If Wi-Fi at home comes from other devices (extenders, Deco, another router), leave it like this. Otherwise, turn on at least one band.</string>
+    <string name="wifi_open_title">Your Wi-Fi has no password</string>
+    <string name="wifi_open_body">Anyone nearby can connect, use your internet and see whatever is not encrypted. Give it a password.</string>
+    <string name="wifi_differs">Right now each band has a different name or password. When you save, both will use the ones here.</string>
+    <string name="wifi_error_ssid_empty">Give the network a name.</string>
+    <string name="wifi_error_ssid_long">The name is too long: 32 characters at most, fewer with accents or emoji.</string>
+    <string name="wifi_error_key">The password must be 8 to 63 characters, without accents.</string>
+    <string name="wifi_error_not_applied">The router did not bring the Wi-Fi back up with the change, so it was left as it was.</string>
+    <string name="wifi_preview_title">Change the Wi-Fi</string>
+    <string name="wifi_preview_password_new">A new one</string>
+    <string name="wifi_preview_on">On</string>
+    <string name="wifi_preview_off">Off</string>
+    <plurals name="wifi_preview_clients">
+        <item quantity="one">%d connected device will be disconnected and will have to join again with the new details.</item>
+        <item quantity="other">%d connected devices will be disconnected and will have to join again with the new details.</item>
+    </plurals>
+    <string name="wifi_preview_phone">This phone will be disconnected too. Connect it to “%1$s” within 3 minutes; otherwise the router will put things back as they were.</string>
+    <string name="wifi_preview_open">The network will have no password: anyone nearby will be able to connect.</string>
+    <string name="wifi_preview_all_off">Nobody will be able to join the router\'s Wi-Fi until you turn a band back on, by cable or through remote access.</string>
+</resources>
