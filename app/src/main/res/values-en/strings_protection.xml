@@ -8,7 +8,6 @@
         <item quantity="one">%1$d device waiting</item>
         <item quantity="other">%1$d devices waiting</item>
     </plurals>
-    <string name="protection_unnamed">Unnamed</string>
     <string name="protection_disconnected">Disconnected</string>
     <string name="protection_this_phone">This phone</string>
     <string name="protection_approve">Approve</string>

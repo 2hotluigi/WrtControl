@@ -12,6 +12,7 @@ import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
+import dev.angel.wrtcontrol.openwrt.remembered
 import dev.angel.wrtcontrol.parental.ParentalConfig
 import dev.angel.wrtcontrol.parental.ParentalSettings
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
@@ -50,7 +51,10 @@ data class ParentalData(
 ) {
     /** Dispositivos conectados que esperan aprobación (solo con la cuarentena activa). */
     val pending: List<Device>
-        get() = if (!snapshot.settings.quarantine) emptyList() else devices.filter { it.mac !in snapshot.config.approvedMacs }
+        get() {
+            if (!snapshot.settings.quarantine) return emptyList()
+            return devices.filter { it.mac !in snapshot.config.approvedMacs && !it.remembered }
+        }
 }
 
 class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {

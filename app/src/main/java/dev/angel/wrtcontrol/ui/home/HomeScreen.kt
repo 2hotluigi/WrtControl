@@ -112,7 +112,7 @@ private fun TabContent(tab: Tab, connection: Connection.SignedIn, onTab: (Tab) -
                 },
             )
         }
-        Tab.Devices -> DevicesScreen()
+        Tab.Devices -> DevicesScreen(connection.address)
         Tab.Family -> ParentalScreen(connection, ParentalSection.Family)
         Tab.Security -> ParentalScreen(connection, ParentalSection.Security)
         Tab.More -> MoreScreen(connection, onSignOut)

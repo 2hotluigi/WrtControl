@@ -1,4 +1,4 @@
-# Pruebas contra OpenWrt de verdad (VmIntegrationTest y AddonsVmTest) en QEMU, en cada versión
+# Pruebas contra OpenWrt de verdad (VmIntegrationTest, AddonsVmTest y DevicesVmTest) en QEMU, en cada versión
 # soportada. Cada noche, en los PR que tocan el control parental, los paquetes o estas pruebas, y a mano.
 name: OpenWrt
 
@@ -111,8 +111,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: VmIntegrationTest y AddonsVmTest
-        run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*AddonsVmTest*' --rerun
+      - name: VmIntegrationTest, AddonsVmTest y DevicesVmTest
+        run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*VmTest*' --rerun
 
       - name: Registro del router
         if: always()

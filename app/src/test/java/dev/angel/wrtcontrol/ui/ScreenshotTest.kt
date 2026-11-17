@@ -25,10 +25,12 @@ import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.LuciFeatures
 import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.linkAdvice
+import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.DevicesContent
@@ -124,13 +126,17 @@ class ScreenshotTest {
             Device(mac, name, listOf(ip), emptyList(), lease)
         DevicesContent(
             listOf(
-                device("9C:29:76:00:00:01", "moto-g-de-Ana", "192.168.1.20"),
-                device("B8:27:EB:00:00:02", "raspberrypi", "192.168.1.21", LeaseState.Permanent),
-                device("24:6F:28:00:00:03", null, "192.168.1.22"),
-                device("A6:11:22:00:00:04", null, "192.168.1.23"),
+                // De una persona y en línea; con nombre puesto y dirección fija; sin actividad; desconectado.
+                device("9C:29:76:00:00:01", "moto-g-de-Ana", "192.168.1.20").copy(presence = Presence.Online),
+                device("B8:27:EB:00:00:02", "Servidor de casa", "192.168.1.21", LeaseState.Permanent)
+                    .copy(label = "Servidor de casa", fixedIp = "192.168.1.21", presence = Presence.Online),
+                device("24:6F:28:00:00:03", null, "192.168.1.22").copy(presence = Presence.Idle),
+                device("A6:11:22:00:00:04", null, "192.168.1.23").copy(presence = Presence.Offline),
                 device("00:99:99:00:00:05", null, "192.168.1.24", LeaseState.None),
             ),
             vendors,
+            profiles = listOf(Profile("a1", "Ana", listOf("9C:29:76:00:00:01"))),
+            onOpen = {},
         )
     }
 

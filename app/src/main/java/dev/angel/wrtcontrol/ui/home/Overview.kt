@@ -7,6 +7,7 @@ import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.WanLink
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.openwrt.problems
+import dev.angel.wrtcontrol.openwrt.remembered
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 
@@ -48,7 +49,7 @@ fun overview(
     // Con IPv4 y con IPv6 hay dos salidas: cuenta la que lleva más tiempo en pie.
     val uplinks = interfaces.filter { it.up && it.hasDefaultRoute }
     val pending = if (parental?.settings?.quarantine == true && devices != null) {
-        devices.count { it.mac !in parental.config.approvedMacs }
+        devices.count { it.mac !in parental.config.approvedMacs && !it.remembered }
     } else {
         0
     }
@@ -64,7 +65,8 @@ fun overview(
         cableMbps = link?.speedMbps,
         linkAdvice = linkAdvice(problems),
         onlineSeconds = uplinks.mapNotNull { it.uptime }.maxOrNull(),
-        devices = devices?.size,
+        // Los que solo salen porque tienen nombre guardado no están en la red.
+        devices = devices?.count { !it.remembered },
         profiles = parental?.profiles?.size,
         paused = paused,
         newDevices = pending,

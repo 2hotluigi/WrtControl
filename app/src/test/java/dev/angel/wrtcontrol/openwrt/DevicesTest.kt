@@ -132,6 +132,62 @@ class DevicesTest {
     }
 
     @Test
+    fun `el nombre que puso el usuario manda, y los aparatos guardados salen aunque no esten`() {
+        val leases = DhcpLeases(v4 = listOf(DhcpLeases.Lease4("aa:bb:cc:dd:ee:01", "192.168.56.120", "tablet-dhcp", JsonPrimitive(3600))))
+        val records = listOf(
+            DeviceRecord("host_aabbccddee01", "AA:BB:CC:DD:EE:01", "Tableta de Ana", null),
+            DeviceRecord("host_aabbccddee09", "AA:BB:CC:DD:EE:09", "Impresora", "192.168.56.60"),
+        )
+        val neighbors = parseNeighbors(
+            """
+            192.168.56.120 dev br-lan lladdr aa:bb:cc:dd:ee:01 ref 1 used 0/0/0 probes 1 REACHABLE
+            192.168.56.1 dev br-lan lladdr 0a:00:27:00:00:3d STALE
+            192.168.56.60 dev br-lan  FAILED
+            fe80::1 dev br-lan lladdr 0a:00:27:00:00:3d router STALE
+            """.trimIndent(),
+        )
+        val devices = buildDeviceList(hints, leases, interfaces, records, neighbors).associateBy { it.mac }
+
+        val tablet = devices.getValue("AA:BB:CC:DD:EE:01")
+        assertEquals("Tableta de Ana", tablet.name)
+        assertEquals("Tableta de Ana", tablet.label)
+        assertEquals(Presence.Online, tablet.presence)
+        assertFalse(tablet.remembered)
+        assertEquals(Presence.Idle, devices.getValue("0A:00:27:00:00:3D").presence)
+        val printer = devices.getValue("AA:BB:CC:DD:EE:09")
+        assertEquals(listOf("192.168.56.60"), printer.ipv4)
+        assertEquals("192.168.56.60", printer.fixedIp)
+        assertEquals(Presence.Offline, printer.presence)
+        assertTrue("solo sale porque tiene nombre guardado", printer.remembered)
+    }
+
+    @Test
+    fun `sin tabla de vecinos no se dice quien esta`() {
+        val devices = buildDeviceList(hints, DhcpLeases(), interfaces)
+        assertTrue(devices.all { it.presence == Presence.Unknown && !it.remembered })
+    }
+
+    @Test
+    fun `de un aparato con varias direcciones cuenta la que contesta`() {
+        val neighbors = parseNeighbors(
+            "192.168.1.20 dev br-lan lladdr AA:BB:CC:DD:EE:01 STALE\n" +
+                "fd00::20 dev br-lan lladdr aa:bb:cc:dd:ee:01 DELAY\n" +
+                "192.168.1.30 dev br-lan  INCOMPLETE\n",
+        )
+        assertEquals(mapOf("AA:BB:CC:DD:EE:01" to Presence.Online), neighbors)
+    }
+
+    @Test
+    fun `direcciones que puede tener un aparato de casa`() {
+        assertTrue(usableLanAddress("192.168.56.50", interfaces))
+        assertFalse("la del router", usableLanAddress("192.168.56.2", interfaces))
+        assertFalse("la de la red", usableLanAddress("192.168.56.0", interfaces))
+        assertFalse("la de difusión", usableLanAddress("192.168.56.255", interfaces))
+        assertFalse("la red del proveedor", usableLanAddress("10.0.3.20", interfaces))
+        assertFalse(usableLanAddress("no-es-ip", interfaces))
+    }
+
+    @Test
     fun `lista vacia sin datos`() {
         assertTrue(buildDeviceList(emptyMap(), DhcpLeases(), interfaces).isEmpty())
     }

@@ -14,19 +14,71 @@ sealed interface LeaseState {
     data class Expires(val seconds: Long) : LeaseState
 }
 
+/** Si el aparato está ahora en la red, según la tabla de vecinos del router. */
+enum class Presence {
+    /** El router acaba de hablar con él. */
+    Online,
+
+    /** Sigue en la tabla, pero lleva un rato sin tráfico: dormido, o se acaba de ir. */
+    Idle,
+
+    /** No contesta o ya no está en la tabla. */
+    Offline,
+
+    /** El router no deja ver la tabla de vecinos. */
+    Unknown,
+}
+
 data class Device(
     val mac: String,
+    /** Cómo llamarlo: el nombre que le puso el usuario ([label]) o, si no, el que dice el aparato. */
     val name: String?,
     val ipv4: List<String>,
     val ipv6: List<String>,
     val lease: LeaseState,
+    /** El nombre que le puso el usuario, guardado en el router (ver [DeviceRecord]). */
+    val label: String? = null,
+    /** La dirección que el router le reserva siempre, si tiene. */
+    val fixedIp: String? = null,
+    val presence: Presence = Presence.Unknown,
 )
+
+/**
+ * No está en la red: sale en la lista solo porque el usuario le puso nombre o le fijó la dirección.
+ * No cuenta como conectado ni espera aprobación.
+ */
+val Device.remembered: Boolean get() = presence == Presence.Offline && lease == LeaseState.None
 
 internal fun leaseState(expires: JsonPrimitive?): LeaseState = when {
     expires == null -> LeaseState.Permanent
     expires.booleanOrNull == false -> LeaseState.Permanent
     else -> expires.longOrNull?.let { LeaseState.Expires(it) } ?: LeaseState.Permanent
 }
+
+/** [ip] como número, o null si no es una IPv4 bien escrita. */
+internal fun parseIpv4(ip: String): Long? = ipv4ToLong(ip.trim())
+
+/**
+ * Redes de casa: "lan" y las demás interfaces sin la ruta por defecto (invitados, IoT...).
+ * Sin las otras, un equipo con IP fija en el Wi-Fi de invitados no saldría en la lista y,
+ * con la cuarentena, no habría forma de aprobarlo.
+ */
+internal fun lanNetworks(interfaces: List<NetInterface>): List<IpAddress> =
+    interfaces.filter { it.name == "lan" || (!it.hasDefaultRoute && !it.name.startsWith("wan")) }.flatMap { it.ipv4 }
+
+/** ¿Puede [ip] ser la dirección de un aparato de casa? De una red de casa, y ni la del router ni la de la red o la de difusión. */
+fun usableLanAddress(ip: String, interfaces: List<NetInterface>): Boolean {
+    val address = ipv4ToLong(ip)
+    val net = lanNetworks(interfaces).firstOrNull { ipv4InSubnet(ip, it) }
+    val ofRouter = interfaces.any { i -> i.ipv4.any { it.address == ip } }
+    if (address == null || net == null || ofRouter) return false
+    val hostBits = MAX_MASK - net.mask
+    val last = (1L shl hostBits) - 1
+    val host = address and last
+    return hostBits >= 2 && host != 0L && host != last
+}
+
+private const val MAX_MASK = 32
 
 private fun ipv4ToLong(ip: String): Long? {
     val parts = ip.split('.')
@@ -55,23 +107,49 @@ private class DeviceBuilder(val mac: String) {
     val ipv6 = LinkedHashSet<String>()
     var lease: LeaseState = LeaseState.None
 
-    fun build() = Device(mac, name, ipv4.toList(), ipv6.toList(), lease)
+    fun build(record: DeviceRecord?, presence: Presence) =
+        Device(mac, record?.label ?: name, ipv4.toList(), ipv6.toList(), lease, record?.label, record?.fixedIp, presence)
+}
+
+/** Los estados de `ip neigh` en los que el vecino contesta. */
+private val ALIVE = setOf("REACHABLE", "DELAY", "PROBE", "PERMANENT")
+
+/**
+ * Salida de `ip -4 neigh show` e `ip -6 neigh show` ("192.168.1.20 dev br-lan lladdr aa:bb:… REACHABLE"):
+ * MAC → lo mejor que se sabe de ella entre todas sus direcciones. Los vecinos sin MAC (FAILED,
+ * INCOMPLETE) no dicen de quién son: quien no sale aquí, no está.
+ */
+fun parseNeighbors(output: String): Map<String, Presence> {
+    val found = HashMap<String, Presence>()
+    for (line in output.lineSequence()) {
+        val words = line.trim().split(' ').filter { it.isNotEmpty() }
+        val at = words.indexOf("lladdr")
+        val mac = words.getOrNull(at + 1)?.takeIf { at >= 0 }?.uppercase() ?: continue
+        val presence = when (words.last()) {
+            in ALIVE -> Presence.Online
+            "STALE" -> Presence.Idle
+            else -> Presence.Offline
+        }
+        if (presence < (found[mac] ?: Presence.Unknown)) found[mac] = presence
+    }
+    return found
 }
 
 /**
  * Combina las pistas de host y las concesiones DHCP en la lista de clientes de la LAN.
  * Excluye las direcciones del propio router y los vecinos del lado WAN.
+ * [records]: lo que el usuario guardó de cada aparato; los que no están ahora salen igual, como
+ * desconectados. [neighbors]: la tabla de vecinos ([parseNeighbors]), o null si no se puede ver.
  */
 fun buildDeviceList(
     hints: Map<String, HostHint>,
     leases: DhcpLeases,
     interfaces: List<NetInterface>,
+    records: List<DeviceRecord> = emptyList(),
+    neighbors: Map<String, Presence>? = null,
 ): List<Device> {
     val routerIps = interfaces.flatMap { i -> i.ipv4.map { it.address } }.toSet()
-    // Redes de casa: "lan" y las demás interfaces sin la ruta por defecto (invitados, IoT...).
-    // Sin las otras, un equipo con IP fija en el Wi-Fi de invitados no saldría en la lista y,
-    // con la cuarentena, no habría forma de aprobarlo.
-    val lanNets = interfaces.filter { it.name == "lan" || (!it.hasDefaultRoute && !it.name.startsWith("wan")) }.flatMap { it.ipv4 }
+    val lanNets = lanNetworks(interfaces)
     fun inLan(ip: String) = ip !in routerIps && lanNets.any { ipv4InSubnet(ip, it) }
 
     val devices = LinkedHashMap<String, DeviceBuilder>()
@@ -112,7 +190,12 @@ fun buildDeviceList(
         d.ipv6 += addrs
     }
 
-    return devices.values.map { it.build() }.sortedWith(
+    val known = records.associateBy { it.mac }
+    // Los que tienen nombre o dirección guardados pero ahora no están: se siguen viendo.
+    for (record in records) if (record.mac !in devices) get(record.mac).also { d -> record.fixedIp?.let { d.ipv4 += it } }
+    fun presence(mac: String) = if (neighbors == null) Presence.Unknown else neighbors[mac] ?: Presence.Offline
+
+    return devices.values.map { it.build(known[it.mac], presence(it.mac)) }.sortedWith(
         compareBy<Device, Long?>(nullsLast()) { d -> d.ipv4.firstOrNull()?.let(::ipv4ToLong) }.thenBy { it.mac },
     )
 }
