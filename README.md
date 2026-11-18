@@ -535,8 +535,8 @@ redes (invitados, modo cliente, malla) no se tocan.
   aparato de la casa (repetidores, mesh en modo punto de acceso). Entonces la app no avisa de
   "Wi-Fi apagado": lo explica, en Más → Wi-Fi y en la tarjeta del Wi-Fi de Inicio.
 
-Límites: el país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin
-poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+La puesta en marcha pide el país en un paso propio si el router tiene Wi-Fi y alguna radio está
+sin él (el mismo cambio que en Más → Wi-Fi, con su reversión). Con el país sin poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 
 ## Wi-Fi de invitados: qué hace en el router
 

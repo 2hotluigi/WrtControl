@@ -64,6 +64,7 @@ import dev.angel.wrtcontrol.ui.home.WidthSection
 import dev.angel.wrtcontrol.ui.home.WifiContent
 import dev.angel.wrtcontrol.ui.home.blockPreview
 import dev.angel.wrtcontrol.ui.home.devicePreview
+import dev.angel.wrtcontrol.ui.login.CountryStepState
 import dev.angel.wrtcontrol.ui.login.SetupContent
 import dev.angel.wrtcontrol.ui.login.SetupStep
 import org.junit.Assert.assertEquals
@@ -296,12 +297,14 @@ class ScreenshotTest {
         )
     }
 
-    /** Los cuatro pasos de la puesta en marcha, con un router sin contraseña (el caso que más enseña). */
+    /** Los pasos de la puesta en marcha, con un router sin contraseña ni país del Wi-Fi (el caso que más enseña). */
     @Test
     fun `puesta en marcha`() {
+        val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true), WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true))
+        val country = CountryStepState(WifiState(radios, emptyList()), countries = emptyList(), suggested = "MX")
         SetupStep.entries.forEach { step ->
             both("puesta-en-marcha-${step.ordinal + 1}") {
-                SetupContent(step, emptyPassword = true, board = status.board, capabilities = capabilities)
+                SetupContent(step, emptyPassword = true, board = status.board, capabilities = capabilities, country = country)
             }
         }
     }
