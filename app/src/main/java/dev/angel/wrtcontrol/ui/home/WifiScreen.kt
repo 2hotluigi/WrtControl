@@ -65,6 +65,7 @@ import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.Proposals
 import dev.angel.wrtcontrol.ui.deviceTitle
+import dev.angel.wrtcontrol.ui.parental.onWifiBehind
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
 import dev.angel.wrtcontrol.ui.rememberVendors
 import dev.angel.wrtcontrol.ui.watchAsState
@@ -229,6 +230,7 @@ fun WifiScreen(address: String) {
         val phoneMacs = devices.data.orEmpty().filter { d -> !d.remembered && d.ipv4.any { it in ips } }.map { it.mac }.toSet()
         WifiContent(
             state = wifi,
+            otherAccessPoints = onWifiBehind(context, address),
             loadError = loadError,
             progress = vm.progress,
             error = vm.error?.text(),
@@ -263,6 +265,7 @@ fun WifiScreen(address: String) {
 @Composable
 fun WifiContent(
     state: WifiState,
+    otherAccessPoints: Boolean = false,
     loadError: String? = null,
     progress: ChangeProgress? = null,
     error: String? = null,
@@ -301,7 +304,7 @@ fun WifiContent(
             Text(stringResource(R.string.wifi_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
             return@Column
         }
-        WifiNotices(state, current)
+        WifiNotices(state, current, otherAccessPoints)
         OutlinedTextField(
             value = ssid,
             onValueChange = { ssid = it },
@@ -359,8 +362,10 @@ private fun Hint(text: Int) {
 }
 
 @Composable
-private fun WifiNotices(state: WifiState, current: WifiEdit) {
+private fun WifiNotices(state: WifiState, current: WifiEdit, otherAccessPoints: Boolean) {
     when {
+        // Este teléfono está por Wi-Fi en la red de casa y el router no emite: lo dan otros aparatos.
+        current.radios.isEmpty() && otherAccessPoints -> Hint(R.string.wifi_off_others)
         current.radios.isEmpty() -> NoticeCard(stringResource(R.string.wifi_off_title), stringResource(R.string.wifi_off_body))
         current.security == WifiSecurity.Open -> {
             NoticeCard(stringResource(R.string.wifi_open_title), stringResource(R.string.wifi_open_body))

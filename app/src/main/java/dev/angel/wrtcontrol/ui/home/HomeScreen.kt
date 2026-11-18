@@ -15,6 +15,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -52,6 +53,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
     val scope = rememberCoroutineScope()
     val board by repo.monitor.board.watchAsState(NAME_REFRESH)
     var tab by rememberSaveable { mutableIntStateOf(Tab.Overview.ordinal) }
+    var morePage by rememberSaveable { mutableStateOf(MorePage.Menu) }
     val link = repo.transport?.link?.collectAsStateWithLifecycle()?.value ?: Link.Direct
 
     Scaffold(
@@ -79,7 +81,11 @@ fun HomeScreen(connection: Connection.SignedIn) {
                 Tab.entries.forEach { t ->
                     NavigationBarItem(
                         selected = tab == t.ordinal,
-                        onClick = { tab = t.ordinal },
+                        onClick = {
+                            // Más abre siempre su menú (Inicio pudo dejarla en el Wi-Fi).
+                            if (t == Tab.More) morePage = MorePage.Menu
+                            tab = t.ordinal
+                        },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
                         label = { TabLabel(t) },
                         modifier = Modifier.testTag("tab-${t.name}"),
@@ -89,7 +95,14 @@ fun HomeScreen(connection: Connection.SignedIn) {
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            TabContent(Tab.entries[tab], connection, onTab = { tab = it.ordinal }, onSignOut = { scope.launch { repo.signOut() } })
+            TabContent(
+                Tab.entries[tab],
+                connection,
+                morePage = morePage,
+                onMorePage = { morePage = it },
+                onTab = { tab = it.ordinal },
+                onSignOut = { scope.launch { repo.signOut() } },
+            )
         }
     }
 }
@@ -101,20 +114,29 @@ private fun TabLabel(tab: Tab) {
 }
 
 @Composable
-private fun TabContent(tab: Tab, connection: Connection.SignedIn, onTab: (Tab) -> Unit, onSignOut: () -> Unit) {
+private fun TabContent(
+    tab: Tab,
+    connection: Connection.SignedIn,
+    morePage: MorePage,
+    onMorePage: (MorePage) -> Unit,
+    onTab: (Tab) -> Unit,
+    onSignOut: () -> Unit,
+) {
     when (tab) {
         Tab.Overview -> OverviewScreen(connection) { link ->
-            onTab(
-                when (link) {
-                    OverviewLink.Devices -> Tab.Devices
-                    OverviewLink.Family -> Tab.Family
-                    OverviewLink.Security -> Tab.Security
-                },
-            )
+            when (link) {
+                OverviewLink.Devices -> onTab(Tab.Devices)
+                OverviewLink.Family -> onTab(Tab.Family)
+                OverviewLink.Security -> onTab(Tab.Security)
+                OverviewLink.Wifi, OverviewLink.Guest -> {
+                    onMorePage(if (link == OverviewLink.Wifi) MorePage.Wifi else MorePage.Guest)
+                    onTab(Tab.More)
+                }
+            }
         }
         Tab.Devices -> DevicesScreen(connection.address)
         Tab.Family -> ParentalScreen(connection, ParentalSection.Family)
         Tab.Security -> ParentalScreen(connection, ParentalSection.Security)
-        Tab.More -> MoreScreen(connection, onSignOut)
+        Tab.More -> MoreScreen(connection, morePage, onMorePage, onSignOut)
     }
 }

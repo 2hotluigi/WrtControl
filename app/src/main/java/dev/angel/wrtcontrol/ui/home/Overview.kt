@@ -5,6 +5,7 @@ import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.WanLink
+import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.openwrt.problems
 import dev.angel.wrtcontrol.openwrt.remembered
@@ -12,7 +13,39 @@ import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 
 /** A dónde lleva lo que se toca en Inicio. */
-enum class OverviewLink { Devices, Family, Security }
+enum class OverviewLink { Devices, Family, Security, Wifi, Guest }
+
+/** Las páginas de Más. Inicio abre algunas directamente (el Wi-Fi). */
+enum class MorePage { Menu, Wifi, Guest, Features, Router, Pair }
+
+/** Cómo está el Wi-Fi de casa, para Inicio. */
+sealed interface HomeWifi {
+    /** Emite: con qué nombre y cuántos aparatos hay conectados al router. */
+    data class On(val ssid: String, val clients: Int) : HomeWifi
+
+    /** Encendido en los ajustes, pero ahora no emite (lo apagó el horario). */
+    data object Paused : HomeWifi
+
+    /** Apagado, y este teléfono está en la red de casa por Wi-Fi: lo dan otros aparatos (repetidores, mesh). */
+    data object OtherAccessPoints : HomeWifi
+
+    data object Off : HomeWifi
+}
+
+/**
+ * El Wi-Fi de casa según [state]. [phoneOnHomeWifi]: el teléfono llega al router por Wi-Fi en la
+ * red de casa. Si el router no emite, ese Wi-Fi lo da otro aparato. null si el router no tiene Wi-Fi.
+ */
+fun homeWifi(state: WifiState, phoneOnHomeWifi: Boolean): HomeWifi? {
+    if (state.radios.isEmpty()) return null
+    val emitting = state.home.filter { it.ifname != null }
+    return when {
+        emitting.isNotEmpty() -> HomeWifi.On(emitting.first().ssid, emitting.sumOf { it.clients.size })
+        state.homeOn.isNotEmpty() && state.someRadioDown -> HomeWifi.Paused
+        phoneOnHomeWifi -> HomeWifi.OtherAccessPoints
+        else -> HomeWifi.Off
+    }
+}
 
 /** Algo que pide atención en Inicio, por orden de urgencia. */
 enum class Attention { Cable, NoPassword, RulesInactive, NewDevices }
