@@ -373,7 +373,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
     (ACL de escritura). El contador "Bloqueado" de Firewalla necesita `ban_nftcount 1` (viene a
     0); con él, cada IP cuenta sus paquetes y `banip report json` da el resumen por lista,
     entrante y saliente. Probado: tres conexiones de un dispositivo a una IP de la lista,
-    bloqueadas y contadas. Falta medir el tráfico entrante en un router con IP pública real.
+    bloqueadas y contadas. Entrante, probado con un "atacante" en la zona wan (`inet-up`): la app
+    añade su IP a `/etc/banip/banip.blocklist` con `file.write` (ACL de escritura) y sus pings y
+    conexiones TCP al router quedan descartados y contados (11 paquetes, `sum_cntinbound`). Cuenta
+    paquetes, no intentos de conexión: decirlo así o agrupar. Falta ver el volumen real en una WAN
+    con IP pública.
   - *Bloquear anuncios en toda la casa* (`luci-app-adblock-fast`): **alcanzable, P1.** Viene apagado
     y sin listas activas (trae Hagezi, OISD, StevenBlack...). rpcd propio `luci.adblock-fast`:
     `getInitStatus` (estado, número de dominios, errores) y `setInitAction`. Con Hagezi Pro
@@ -391,9 +395,34 @@ marcha guiada. Cada uno se apoya en los anteriores.
     solo al instalarse, en modo "reiniciar el router si no responde 8.8.8.8 en 6 h". Mejor
     `restart_iface` con la WAN: probado que la reinicia tras el periodo sin ping y lo deja escrito
     en el registro, que la app puede enseñar como "internet se recuperó solo a las…".
-  - Sin probar todavía, para más adelante: `luci-app-wol` (encender un equipo; rpcd `luci.wol`),
-    `luci-app-apinger` (latencia y pérdidas, ubus `apinger`), `luci-app-wifihistory` (solo 25.12,
-    en RAM), `mwan3` (internet de respaldo) y `pbr` (un dispositivo por VPN). Descartados: AdGuard
+  - *Encender un equipo* (`luci-app-wol`, 16 KB): **alcanzable, P2.** rpcd `luci.wol`: `stat` dice
+    qué herramienta hay y `exec` acepta solo `etherwake`/`wakeonlan` con sus argumentos. Probado:
+    el paquete mágico llega al dispositivo de la LAN (capturado). Un botón "Encender" en su ficha;
+    con el acceso remoto, desde fuera. Que el equipo despierte depende de su BIOS/tarjeta.
+  - *Calidad de la conexión* (`luci-app-apinger`, 70 KB): **parcial, P3.** Viene sin destinos. Con
+    uno (UCI `target` + `rc init`), ubus `apinger status` da latencia y pings enviados/recibidos en
+    directo, y el registro las alarmas (caída detectada en ~10 s y su vuelta). Pero `loss` sale
+    vacío, la alarma de retardo de serie es de 5–20 ms (salta en casi cualquier línea) y no guarda
+    historial (solo gráficas PNG). Para "cortes de hoy" da más el registro de watchcat o mwan3.
+  - *Historial de dispositivos Wi-Fi* (`luci-app-wifihistory`, **solo 25.12**): **alcanzable sin
+    probar con radios, P2.** Leído el código: cada 30 s apunta cada MAC asociada (primera y última
+    vez, SSID, nombre e IP) y `luci.wifihistory getHistory` la devuelve. La ruta está fija en
+    `/var/lib/wifihistory` (RAM): para conservarla, el truco de cron de vnStat. En la VM no se pudo
+    asociar un cliente con `mac80211_hwsim` (hostapd dentro de `ujail` no se registra en ubus, y
+    fuera de él el script de la radio le pasa el país `00`); probarlo en un router con Wi-Fi.
+  - *Internet de respaldo* (`luci-app-mwan3`): **alcanzable, P2.** Sigue en iptables/ipset
+    (`iptables-nft`) también en 25.12. Probado con una segunda WAN de pruebas (un veth a otro
+    namespace): `mwan3 status` por ubus da el estado, la latencia y la pérdida de cada WAN; con la
+    política `wan_wanb`, al cortar la principal el tráfico de la LAN pasa a la de respaldo y vuelve
+    solo al recuperarse, con todo en el registro. Hay que poner `track_ip` y `metric` distintos por
+    WAN y elegir la política; la de serie es "balanced". La segunda WAN real (teléfono por USB,
+    otro módem) necesita sus drivers. Sus marcas (0x3F00) ya están reservadas en la app.
+  - *Un dispositivo por otra salida o VPN* (`luci-app-pbr`, 143 KB): **alcanzable, P2.** Viene
+    apagado. rpcd `luci.pbr`: `getInterfaces`, `getInitStatus`, `setInitAction`. Probado: una
+    política por IP del cliente lo saca por la segunda WAN y el resto sigue por la principal. Marca
+    con `0x00ff0000`, sin pisar la del control parental (comprobar las dos juntas con una prueba de
+    VM). Las políticas por dominio necesitan `dnsmasq-full` (nftset). No mezclarlo con mwan3.
+  - Descartados: AdGuard
     Home, Tailscale, cloudflared, CrowdSec y NextDNS (binarios de Go de 8 a 30 MB, y repiten lo que
     ya hace la app), `luci-app-statistics` (solo da PNG), Unbound y SmartDNS (sustituyen el DNS).
 
