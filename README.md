@@ -479,6 +479,10 @@ redes (invitados, modo cliente, malla) no se tocan.
   no) la red con el nombre nuevo. Si el teléfono que hace el cambio está en ese Wi-Fi, se queda
   fuera hasta que vuelva a entrar con los datos nuevos: el plazo del router pasa de 1 a 3 minutos
   y la app sigue intentando confirmar mientras tanto. Si no vuelve a tiempo, el router lo deshace.
+  Para volver a entrar sin buscar la red en Ajustes, desde que empieza el cambio la app ofrece
+  "Guardar en este teléfono": en Android 11 o más, `ACTION_WIFI_ADD_NETWORKS` abre el diálogo del
+  sistema con la red ya rellenada (WPA2/WPA3 se guarda como WPA2, que entra igual); antes, abre
+  los ajustes de Wi-Fi.
 
 - **País.** El `country` de cada radio dice qué canales y cuánta potencia permite la ley. Sin él
   el router usa "00" (el mundo), lo más restrictivo: en el GL-MT6000, 20 dBm y casi todo 5 GHz

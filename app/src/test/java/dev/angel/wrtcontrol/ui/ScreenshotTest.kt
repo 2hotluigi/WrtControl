@@ -33,9 +33,11 @@ import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
+import dev.angel.wrtcontrol.openwrt.WifiEdit
 import dev.angel.wrtcontrol.openwrt.WifiNetwork
 import dev.angel.wrtcontrol.openwrt.WifiRadio
 import dev.angel.wrtcontrol.openwrt.WifiSchedule
+import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.parental.ApplyPhase
@@ -44,6 +46,7 @@ import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
+import dev.angel.wrtcontrol.ui.home.AddNetworkCard
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.ChannelSearch
 import dev.angel.wrtcontrol.ui.home.ChannelSection
@@ -211,6 +214,14 @@ class ScreenshotTest {
         val schedule = WifiSchedule(schedules, LocalDateTime.of(2026, 11, 16, 23, 30))
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ScheduleSection(WifiState(radios, emptyList()), schedule, unavailable = false, enabled = true, onChange = {}, onTurnOn = {})
+        }
+    }
+
+    /** Tras cambiar el nombre del Wi-Fi: guardarlo en este teléfono con un toque. */
+    @Test
+    fun wifiGuardarRed() = both("wifi-guardar-red") {
+        Column(Modifier.padding(16.dp)) {
+            AddNetworkCard(WifiEdit("Casa nueva", "clave-de-casa", WifiSecurity.Wpa2Wpa3, setOf("radio0")), onDone = {})
         }
     }
 

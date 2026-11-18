@@ -29,6 +29,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   dan otros aparatos (repetidores, Deco) en vez de avisar de que está apagado.
 - Puesta en marcha: si el Wi-Fi del router no tiene país, un paso nuevo lo pide y propone el del
   teléfono.
+- Wi-Fi: al cambiar el nombre o la contraseña, "Guardar en este teléfono" guarda la red nueva con
+  un toque (Android 11 o más), sin buscarla en Ajustes.
 - Wi-Fi: horario. Apaga el Wi-Fi del router (también el de invitados) a las horas que elijas,
   por ejemplo de 23:00 a 07:00 de domingo a jueves, y lo vuelve a encender solo. Dentro del
   horario, "Encender ahora" lo enciende hasta la próxima hora de apagar. Si se va la luz o
