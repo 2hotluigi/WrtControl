@@ -121,4 +121,7 @@
     <string name="wifi_schedule_cron_failed">El horario está guardado, pero el servicio de tareas programadas (cron) no arrancó: el Wi-Fi no se apagará solo.</string>
     <string name="wifi_schedule_always_off">Con ese horario el Wi-Fi no se encendería nunca. Si no lo quieres, apaga las bandas arriba.</string>
     <string name="wifi_off_others">El Wi-Fi del router está apagado y este teléfono está conectado a la red de casa por Wi-Fi: lo dan otros aparatos (repetidores, Deco, otro router). Si es así, déjalo apagado.</string>
+    <string name="wifi_add_title">Guarda «%1$s» en este teléfono</string>
+    <string name="wifi_add_body">Así se conecta solo a la red nueva, sin buscarla en Ajustes ni escribir la contraseña.</string>
+    <string name="wifi_add_action">Guardar en este teléfono</string>
 </resources>

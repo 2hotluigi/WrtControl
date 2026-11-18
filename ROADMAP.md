@@ -175,8 +175,9 @@ marcha guiada. Cada uno se apoya en los anteriores.
     queda fuera y, si es este teléfono, 3 minutos (en vez de 1) para volver a entrar antes de que
     el router lo deshaga. Probado en el GL-MT6000 con la red `WrtControl-prueba` (2,4 y 5 GHz) y
     vuelto a dejar como estaba desde la app. Falta probar el caso del teléfono conectado por ese
-    Wi-Fi con un teléfono de verdad, y ofrecer añadir la red nueva con un toque
-    (`ACTION_WIFI_ADD_NETWORKS`).
+    Wi-Fi con un teléfono de verdad. Hecho después: al cambiar el nombre, la clave o la seguridad,
+    "Guardar en este teléfono" (`ACTION_WIFI_ADD_NETWORKS`, Android 11+; antes, los ajustes de
+    Wi-Fi), ofrecido desde que empieza el cambio para que el teléfono pueda volver a entrar.
   - ~~*País:* sin `country`, el router emite con los canales y la potencia más restrictivos. Pedirlo
     en la puesta en marcha (proponer el del teléfono).~~
     Hecho: Más → Wi-Fi avisa si falta, propone el del teléfono y deja elegir entre los que conoce

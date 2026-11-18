@@ -99,11 +99,24 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
             changes.error = value
         }
 
-    /** Guarda [edit]; antes enseña [preview] si trae avisos. [phoneOnIt]: ver WifiApi.save. */
-    fun save(edit: WifiEdit, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
-        changes.run(txt(R.string.wifi_busy_saving), onFinished = { monitor.wifi.refresh() }) {
+    /**
+     * La red que se acaba de poner (otro nombre, contraseña o seguridad), para guardarla en este
+     * teléfono. Se ofrece desde que empieza el cambio: si el teléfono iba por ese Wi-Fi, la
+     * necesita para volver a entrar antes de que el router lo deshaga.
+     */
+    var newNetwork by mutableStateOf<WifiEdit?>(null)
+
+    /** Guarda [edit] (antes era [before]); antes enseña [preview] si trae avisos. [phoneOnIt]: ver WifiApi.save. */
+    fun save(before: WifiEdit, edit: WifiEdit, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        val offered = newNetwork
+        if (offersNewNetwork(before, edit)) newNetwork = edit
+        val started = changes.run(txt(R.string.wifi_busy_saving), onFinished = {
+            if (changes.error != null) newNetwork = null
+            monitor.wifi.refresh()
+        }) {
             router.use { it.wifi.save(edit, phoneOnIt) }
         }
+        if (!started) newNetwork = offered
     }
 
     /** Los países que conoce el router: null mientras se leen, vacío si no deja leerlos. */
@@ -235,7 +248,9 @@ fun WifiScreen(address: String) {
             progress = vm.progress,
             error = vm.error?.text(),
             enabled = !locked,
-            onSave = { edit -> vm.save(edit, phoneOnWifi(wifi, phoneMacs), wifiPreview(wifi, edit, phoneMacs)) },
+            onSave = { edit -> vm.save(currentWifi(wifi), edit, phoneOnWifi(wifi, phoneMacs), wifiPreview(wifi, edit, phoneMacs)) },
+            newNetwork = vm.newNetwork,
+            onNetworkAdded = { vm.newNetwork = null },
             countries = vm.countries,
             suggestedCountry = vm.countries?.let { suggestedCountry(context, it) },
             onCountry = { code -> vm.setCountry(code, phoneOnWifi(wifi, phoneMacs), countryPreview(wifi, code, phoneMacs)) },
@@ -266,6 +281,8 @@ fun WifiScreen(address: String) {
 fun WifiContent(
     state: WifiState,
     otherAccessPoints: Boolean = false,
+    newNetwork: WifiEdit? = null,
+    onNetworkAdded: () -> Unit = {},
     loadError: String? = null,
     progress: ChangeProgress? = null,
     error: String? = null,
@@ -331,6 +348,7 @@ fun WifiContent(
         // Junto al botón, que es donde se está mirando al guardar (arriba quedarían fuera de la vista).
         if (error != null) ErrorBanner(error)
         if (progress != null) ApplyingBanner(progress)
+        if (newNetwork != null) AddNetworkCard(newNetwork, onDone = onNetworkAdded)
         Button(
             onClick = { onSave(edit) },
             enabled = !busy && problem == null && edit != current,

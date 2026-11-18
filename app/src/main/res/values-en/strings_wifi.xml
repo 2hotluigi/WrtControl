@@ -119,4 +119,7 @@
     <string name="wifi_schedule_cron_failed">The schedule is saved, but the scheduled tasks service (cron) didn\'t start: the Wi-Fi won\'t turn off by itself.</string>
     <string name="wifi_schedule_always_off">With that schedule the Wi-Fi would never be on. If you don\'t want it, turn the bands off above.</string>
     <string name="wifi_off_others">The router\'s Wi-Fi is off and this phone is on the home network over Wi-Fi: other devices provide it (extenders, mesh, another router). If so, leave it off.</string>
+    <string name="wifi_add_title">Save “%1$s” on this phone</string>
+    <string name="wifi_add_body">So it joins the new network by itself, without looking for it in Settings or typing the password.</string>
+    <string name="wifi_add_action">Save on this phone</string>
 </resources>
