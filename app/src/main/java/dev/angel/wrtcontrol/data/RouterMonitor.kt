@@ -7,6 +7,7 @@ import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.HomeLayout
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
@@ -64,6 +65,9 @@ class RouterMonitor(
     /** Las redes del router (WAN, LAN, invitados…) y sus direcciones. */
     val interfaces: Feed<List<NetInterface>> = feed { router.use { it.interfaces() } }
 
+    /** Cuál es la red de casa (del cortafuegos): casi nunca cambia. */
+    val layout: Feed<HomeLayout> = feed { router.use { it.homeLayout() } }
+
     val status: Feed<StatusData> = feed {
         coroutineScope {
             val about = async { board.fresh(STABLE_MAX_AGE) }
@@ -87,8 +91,12 @@ class RouterMonitor(
     /** Los equipos de casa, con los nombres que se hayan averiguado ya ([askNames]). */
     val devices: Feed<List<Device>> = feed {
         val mine = session
-        val known = interfaces.fresh(SHARED_MAX_AGE)
-        val list = router.use { it.devices(known) }
+        val (known, home) = coroutineScope {
+            val networks = async { interfaces.fresh(SHARED_MAX_AGE) }
+            val split = async { layout.fresh(STABLE_MAX_AGE) }
+            networks.await() to split.await()
+        }
+        val list = router.use { it.devices(known, home) }
         if (mine == session) askNames(list)
         names.named(list)
     }
@@ -131,8 +139,9 @@ class RouterMonitor(
         coroutineScope {
             val about = async { board.fresh(STABLE_MAX_AGE) }
             val networks = async { interfaces.fresh(STABLE_MAX_AGE) }
+            val split = async { layout.fresh(STABLE_MAX_AGE) }
             val (knownBoard, knownInterfaces) = about.await() to networks.await()
-            router.use { it.routerId(knownBoard, knownInterfaces) }
+            router.use { it.routerId(knownBoard, knownInterfaces, split.await()) }
         }
     }
 

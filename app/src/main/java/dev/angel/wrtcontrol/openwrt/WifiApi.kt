@@ -36,7 +36,8 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val before = tx.uciSections("wireless")
-        val changes = wifiPlan(before, edit)
+        val home = tx.homeLayout().home
+        val changes = wifiPlan(before, edit, home)
         if (changes.isEmpty()) return@withLock
         changes.forEach { tx.stage(it) }
         tx.applySafely(
@@ -46,7 +47,7 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
             verifyTimeoutMs = if (phoneOnIt) WIFI_VERIFY_TIMEOUT_MS else VERIFY_TIMEOUT_MS,
         ) {
             val devices = tx.wirelessDevices()
-            wifiLive(parseWifi(tx.uciSections("wireless"), devices), devices, edit)
+            wifiLive(parseWifi(tx.uciSections("wireless"), devices, home = home), devices, edit)
         }
     }
 

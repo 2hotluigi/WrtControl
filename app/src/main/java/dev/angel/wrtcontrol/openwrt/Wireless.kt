@@ -87,11 +87,10 @@ data class WifiNetwork(
     val clients: List<String> = emptyList(),
     /** Con qué fuerza oye el router a cada conectado (MAC → dBm), de los que lo diga. */
     val signals: Map<String, Int> = emptyMap(),
+    /** Es de "Tu Wi-Fi": un punto de acceso de la red de casa (ver HomeNetwork.kt). */
+    val isHome: Boolean = DEFAULT_HOME_NETWORK in networks,
 ) {
     val security: WifiSecurity? get() = wifiSecurity(encryption)
-
-    /** Es de "Tu Wi-Fi": un punto de acceso de la red de casa. */
-    val isHome: Boolean get() = "lan" in networks
 }
 
 data class WifiState(val radios: List<WifiRadio>, val networks: List<WifiNetwork>) {
@@ -118,13 +117,18 @@ data class WifiState(val radios: List<WifiRadio>, val networks: List<WifiNetwork
 /** Lo demás que dice `iwinfo`: la señal de cada conectado (interfaz → MAC → dBm) y el tope de potencia de cada radio. */
 internal data class WifiExtras(val signals: Map<String, Map<String, Int>> = emptyMap(), val maxPower: Map<String, Int> = emptyMap())
 
-/** Lee el estado: las secciones de `wireless`, lo que dice `getWirelessDevices` y los conectados por interfaz. */
+/**
+ * Lee el estado: las secciones de `wireless`, lo que dice `getWirelessDevices` y los conectados por
+ * interfaz. [home]: las redes de casa ([HomeLayout.home]); sus puntos de acceso son "Tu Wi-Fi".
+ */
+@Suppress("LongParameterList") // Lo que se ha leído del router, cada cosa por su lado.
 internal fun parseWifi(
     sections: List<UciSection>,
     devices: Map<String, JsonObject>,
     clients: Map<String, List<String>> = emptyMap(),
     htmodes: Map<String, List<String>> = emptyMap(),
     extras: WifiExtras = WifiExtras(),
+    home: List<String> = listOf(DEFAULT_HOME_NETWORK),
 ): WifiState {
     val running = devices.mapValues { (_, d) -> runningInterfaces(d) }
     val radios = sections.filter { it.type == "wifi-device" }.map { s ->
@@ -157,6 +161,7 @@ internal fun parseWifi(
             ifname = ifname,
             clients = ifname?.let { clients[it] }.orEmpty(),
             signals = ifname?.let { extras.signals[it] }.orEmpty(),
+            isHome = s.items("network").any { it in home },
         )
     }
     return WifiState(radios.sortedBy { it.name }, networks)
@@ -214,8 +219,11 @@ internal sealed interface WifiChange {
     data class Add(val section: UciSection) : WifiChange
 }
 
-/** Lo que hay que cambiar en [sections] para que "Tu Wi-Fi" quede como dice [edit]. */
-internal fun wifiPlan(sections: List<UciSection>, edit: WifiEdit): List<WifiChange> {
+/**
+ * Lo que hay que cambiar en [sections] para que "Tu Wi-Fi" quede como dice [edit]. [home]: las
+ * redes de casa, con la principal primero; en ella se crea la red de una radio que no la tenía.
+ */
+internal fun wifiPlan(sections: List<UciSection>, edit: WifiEdit, home: List<String> = listOf(DEFAULT_HOME_NETWORK)): List<WifiChange> {
     val open = edit.security == WifiSecurity.Open
     val taken = sections.map { it.name }.toMutableSet()
     return sections.filter { it.type == "wifi-device" }.flatMap { radio ->
@@ -227,12 +235,13 @@ internal fun wifiPlan(sections: List<UciSection>, edit: WifiEdit): List<WifiChan
             put("disabled", if (on) "0" else "1")
         }
         val iface = sections.firstOrNull { s ->
-            s.type == "wifi-iface" && s.text("device") == radio.name && (s.text("mode") ?: "ap") == "ap" && "lan" in s.items("network")
+            s.type == "wifi-iface" && s.text("device") == radio.name && (s.text("mode") ?: "ap") == "ap" &&
+                s.items("network").any { it in home }
         }
         buildList {
             if (on && radio.text("disabled") == "1") add(WifiChange.Set(radio.name, mapOf("disabled" to "0")))
             when {
-                iface == null && on -> add(WifiChange.Add(newHomeIface(radio.name, taken, wanted)))
+                iface == null && on -> add(WifiChange.Add(newHomeIface(radio.name, home.first(), taken, wanted)))
                 iface == null -> Unit
                 else -> addAll(ifaceChanges(iface, wanted, open))
             }
@@ -250,13 +259,13 @@ private fun ifaceChanges(iface: UciSection, wanted: Map<String, String>, open: B
     )
 }
 
-private fun newHomeIface(radio: String, taken: MutableSet<String>, values: Map<String, String>): UciSection {
+private fun newHomeIface(radio: String, network: String, taken: MutableSet<String>, values: Map<String, String>): UciSection {
     val name = generateSequence(0) { it + 1 }.map { if (it == 0) "home_$radio" else "home_${radio}_$it" }.first { it !in taken }
     taken += name
     return UciSection(
         name,
         "wifi-iface",
-        (mapOf("device" to radio, "mode" to "ap", "network" to "lan") + values).mapValues { (_, v) -> UciValue.Text(v) },
+        (mapOf("device" to radio, "mode" to "ap", "network" to network) + values).mapValues { (_, v) -> UciValue.Text(v) },
     )
 }
 

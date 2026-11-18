@@ -52,6 +52,18 @@ No usa el listado de paquetes, que pesa cientos de KB. Lo que el router no deja 
 por malo. Hoy se enseña en "Estado"; la puesta en marcha guiada y las pantallas nuevas lo usarán
 para no ofrecer lo que no va a funcionar.
 
+### Cuál es la red de casa
+
+La app no supone que la red de casa se llama `lan`: la saca del cortafuegos (`HomeNetwork.kt`),
+que es lo que la define en cualquier OpenWrt. Es la de una zona sin NAT que deja entrar al router
+(`input ACCEPT`, o el de `defaults` si la zona no lo dice) y tiene un `forwarding` hacia una zona
+con NAT (internet). Quedan fuera una red de invitados hecha a mano (no deja entrar al router) y las
+zonas que crea la app (`wrtc…`). Si hay varias, va primero `lan`; si no hay ninguna o no se puede
+leer el cortafuegos, se usa `lan`, como antes. De ahí salen la MAC que identifica al router, "Tu
+Wi-Fi" y dónde se crea una red nueva. Para Dispositivos cuentan todas las redes del lado de dentro
+(las zonas sin NAT, también la de invitados) menos la del acceso remoto. `HomeNetworkVmTest`
+renombra `lan` a `casa` en la VM y comprueba todo esto.
+
 Leer no tiene efectos. Lo que la app apunta a partir de lo leído (qué router es y por qué
 direcciones se llega a él desde fuera, para el acceso remoto) va aparte, en `followRouter`, que
 reacciona a las lecturas las haya pedido la pantalla que las haya pedido.
@@ -316,7 +328,7 @@ la app con ese router no la ve.
 
 ## Wi-Fi: qué hace en el router
 
-"Tu Wi-Fi" son las redes de punto de acceso unidas a la red de casa (`lan`) en
+"Tu Wi-Fi" son las redes de punto de acceso unidas a la red de casa (ver "Cuál es la red de casa") en
 `/etc/config/wireless`, una por radio. La app les pone a todas el mismo nombre, clave y seguridad
 (el aparato elige la banda) y enciende o apaga cada una con su `disabled`; no apaga la radio, que
 puede servir a otras redes. Si una radio no tiene red de casa, la crea (`home_<radio>`). Las demás

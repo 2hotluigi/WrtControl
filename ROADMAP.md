@@ -54,7 +54,7 @@ no se repite aquí.
 
 | Tarea | Prioridad | Hecho cuando |
 |---|---|---|
-| Red de casa sin suponer que se llama `lan`: hoy el Wi-Fi, Dispositivos y la identificación del router buscan la interfaz por ese nombre | P1 | Se descubre por la zona del cortafuegos; una prueba con la LAN renombrada |
+| ~~Red de casa sin suponer que se llama `lan`: hoy el Wi-Fi, Dispositivos y la identificación del router buscan la interfaz por ese nombre~~ | P1 | Hecho: `HomeNetwork.kt` la saca del cortafuegos (zona sin NAT, que deja entrar al router y sale a internet; fuera las de la app y una de invitados hecha a mano), con `lan` primero y de reserva. Dispositivos usa todas las redes del lado de dentro menos el acceso remoto. Probado con `HomeNetworkTest` y `HomeNetworkVmTest`, que renombra `lan` a `casa` en la VM (interfaz, zona, reglas, DHCP y Wi-Fi): la app la encuentra, identifica el mismo router y sigue viendo al cliente de pruebas. El Wi-Fi renombrado, solo con pruebas unitarias (la VM no tiene radios) |
 | Etiqueta por función en "Estado": probada en este router, no probada o no soportada (hoy es por versión de OpenWrt) | P1 | Cada función dice en qué está |
 | Informe de dispositivo: exportar desde la app, anonimizado (sin MAC, IP, nombres, claves ni redes), las respuestas de ubus y UCI que lee la app | P1 | Un botón en Más → Router que lo comparte; una prueba garantiza que no sale nada personal |
 | Pruebas de contrato contra esos informes: cada router que alguien aporta amplía la matriz | P1 | Al menos tres informes de routers distintos pasan las pruebas |
