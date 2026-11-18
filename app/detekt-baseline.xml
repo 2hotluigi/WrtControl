@@ -25,7 +25,7 @@
     <ID>CyclomaticComplexMethod:ParentalApi.kt:DnsCheck$private suspend fun filtersUpstream: Boolean</ID>
     <ID>CyclomaticComplexMethod:ParentalApi.kt:DnsCheck$suspend fun ready: Boolean</ID>
     <ID>CyclomaticComplexMethod:ParentalScreen.kt:@Composable fun ParentalScreen</ID>
-    <ID>CyclomaticComplexMethod:ParentalScreen.kt:@Composable private fun ProfileCard</ID>
+    <ID>CyclomaticComplexMethod:ParentalScreen.kt:@Composable internal fun ProfileCard</ID>
     <ID>CyclomaticComplexMethod:ProfileEditor.kt:@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun ProfileEditor</ID>
     <ID>CyclomaticComplexMethod:RouterTransport.kt:RouterTransport$fun startTunnel: Unit</ID>
     <ID>CyclomaticComplexMethod:ScheduleDialog.kt:@Composable fun ScheduleDialog</ID>

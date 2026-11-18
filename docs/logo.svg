@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108" role="img" aria-label="WrtControl">
+  <rect width="108" height="108" rx="26" fill="#2346D6"/>
+  <g transform="translate(54 55) scale(1.15) translate(-54 -55)">
+  <g fill="none" stroke="#fff" stroke-width="4">
+    <path d="M54,30 L73,37 V53 C73,66 65,75 54,80 C43,75 35,66 35,53 V37 Z" stroke-linejoin="round"/>
+    <path d="M43.39,53.39 A15,15 0 0 1 64.61,53.39 M48.34,58.34 A8,8 0 0 1 59.66,58.34" stroke-linecap="round"/>
+  </g>
+  <circle cx="54" cy="63.5" r="2.8" fill="#fff"/>
+  </g>
+</svg>

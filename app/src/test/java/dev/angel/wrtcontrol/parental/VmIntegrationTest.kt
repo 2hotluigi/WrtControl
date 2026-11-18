@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Prueba manual contra un OpenWrt de verdad (la VM de VirtualBox), con tráfico real.
  * Necesita un cliente en un namespace de red del router con la MAC [CLIENT_MAC]
- * (ver el README) y acceso por SSH sin contraseña. Se activa así:
+ * (ver docs/desarrollo.md) y acceso por SSH sin contraseña. Se activa así:
  *
  *   set WRTCONTROL_VM=192.168.56.2
  *   gradlew testDebugUnitTest --tests "*VmIntegrationTest*"
@@ -340,7 +340,7 @@ class VmIntegrationTest {
 
     /**
      * Comprueba el fichero de reglas en uso con el analizador de nftables 1.0.2 de OpenWrt 22.03,
-     * si está en la VM (/tmp/nft102, ver el README). Se envuelve en una tabla como hace fw4.
+     * si está en la VM (/tmp/nft102, ver docs/desarrollo.md). Se envuelve en una tabla como hace fw4.
      */
     private fun checkWith1_0_2(path: String) {
         if (ssh("test -x /tmp/nft102/usr/sbin/nft && echo SI || echo NO").lines().last() != "SI") {

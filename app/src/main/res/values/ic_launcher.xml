@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El azul de marca ("Cobalto", el primary del tema claro). -->
+    <color name="ic_launcher_background">#2346D6</color>
+</resources>

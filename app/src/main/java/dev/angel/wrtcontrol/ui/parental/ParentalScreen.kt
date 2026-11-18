@@ -368,7 +368,7 @@ private fun newProfile(data: ParentalData): Profile =
     Profile(newId(data.snapshot.profiles.map { it.id }.toSet()), "", emptyList(), protectRouter = true)
 
 @Composable
-private fun ProfileCard(
+internal fun ProfileCard(
     profile: Profile,
     data: ParentalData,
     busy: Boolean,

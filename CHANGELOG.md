@@ -2,11 +2,13 @@
 
 Lo que cambia en cada versión publicada, para quien usa la app. Cada PR que cambia algo visible
 añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de la versión (ver
-"Publicar una versión" en el README).
+"Publicar una versión" en docs/desarrollo.md).
 
 ## [Sin publicar]
 
 ### Añadido
+- Icono propio de la app: un escudo con las ondas del Wi-Fi, también en versión monocroma para los
+  iconos temáticos de Android 13 o más.
 - Wi-Fi (en Más): nombre, contraseña, seguridad (WPA2/WPA3 por defecto) y qué bandas emiten,
   con el mismo nombre en las dos. Antes de un cambio que saca a alguien del Wi-Fi, la app dice
   cuántos aparatos se desconectarán. Avisa si la red no tiene contraseña o si el Wi-Fi del

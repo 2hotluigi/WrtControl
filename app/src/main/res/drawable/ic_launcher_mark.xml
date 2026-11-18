@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El logo de WrtControl: un escudo con las ondas del Wi-Fi (la red de casa, protegida). Sirve de
+     primer plano del icono y de icono monocromo (Android 13+). Lienzo de 108 dp; todo cabe en los
+     66 dp centrales, la zona que no recorta ninguna forma de icono. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="55"
+        android:scaleX="1.15"
+        android:scaleY="1.15">
+        <path
+            android:pathData="M54,30 L73,37 V53 C73,66 65,75 54,80 C43,75 35,66 35,53 V37 Z"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="4"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M43.39,53.39 A15,15 0 0 1 64.61,53.39 M48.34,58.34 A8,8 0 0 1 59.66,58.34"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="4"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M54,63.5 m-2.8,0 a2.8,2.8 0 1 0 5.6,0 a2.8,2.8 0 1 0 -5.6,0"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>
