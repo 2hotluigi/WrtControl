@@ -105,4 +105,19 @@
     <string name="wifi_signal_good">Señal buena</string>
     <string name="wifi_signal_fair">Señal justa</string>
     <string name="wifi_signal_weak">Señal débil</string>
+    <string name="wifi_schedule_title">Horario</string>
+    <string name="wifi_schedule_help">Apaga todo el Wi-Fi del router, también el de invitados, a las horas que elijas, y lo vuelve a encender solo. Si se va la luz o reinicias el router, vuelve a encenderse aunque toque apagado.</string>
+    <string name="wifi_schedule_add">Añadir horario</string>
+    <string name="wifi_schedule_remove">Quitar horario</string>
+    <string name="wifi_schedule_new_title">Nuevo horario sin Wi-Fi</string>
+    <string name="wifi_schedule_next">Se apagará %1$s.</string>
+    <string name="wifi_schedule_off_now_title">Wi-Fi apagado por el horario</string>
+    <string name="wifi_schedule_off_now_body">Vuelve a encenderse %1$s.</string>
+    <string name="wifi_schedule_turn_on">Encender ahora</string>
+    <string name="wifi_schedule_busy">Guardando el horario…</string>
+    <string name="wifi_schedule_turning_on">Encendiendo el Wi-Fi…</string>
+    <string name="wifi_schedule_denied">El router no deja leer sus tareas programadas, así que no se puede poner horario.</string>
+    <string name="wifi_schedule_not_saved">El router no guardó el horario. Prueba otra vez.</string>
+    <string name="wifi_schedule_cron_failed">El horario está guardado, pero el servicio de tareas programadas (cron) no arrancó: el Wi-Fi no se apagará solo.</string>
+    <string name="wifi_schedule_always_off">Con ese horario el Wi-Fi no se encendería nunca. Si no lo quieres, apaga las bandas arriba.</string>
 </resources>

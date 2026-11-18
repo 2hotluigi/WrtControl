@@ -45,10 +45,12 @@ import dev.angel.wrtcontrol.openwrt.WifiCountry
 import dev.angel.wrtcontrol.openwrt.WifiEdit
 import dev.angel.wrtcontrol.openwrt.WifiPower
 import dev.angel.wrtcontrol.openwrt.WifiRadio
+import dev.angel.wrtcontrol.openwrt.WifiSchedule
 import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.remembered
 import dev.angel.wrtcontrol.openwrt.wifiProblem
+import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ApplyingBanner
@@ -108,6 +110,7 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
         private set
 
     init {
+        loadSchedule()
         viewModelScope.launch {
             countries = try {
                 router.use { it.wifi.countries() }
@@ -137,6 +140,44 @@ class WifiViewModel(private val router: RouterAccess, private val monitor: Route
     fun setPower(radio: String, power: WifiPower, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
         changes.run(txt(R.string.wifi_power_busy), onFinished = { monitor.wifi.refresh() }) {
             router.use { it.wifi.setPower(radio, power, phoneOnIt) }
+        }
+    }
+
+    /** El horario del Wi-Fi: null mientras se lee o si el router no deja ([scheduleUnavailable]). */
+    var schedule by mutableStateOf<WifiSchedule?>(null)
+        private set
+
+    var scheduleUnavailable by mutableStateOf(false)
+        private set
+
+    private fun loadSchedule() {
+        viewModelScope.launch {
+            val read = try {
+                router.use { it.wifiSchedule.read() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            schedule = read
+            scheduleUnavailable = read == null
+        }
+    }
+
+    /** Guarda el horario [schedules] (vacío: sin horario). */
+    fun setSchedule(schedules: List<Schedule>) {
+        changes.run(txt(R.string.wifi_schedule_busy), onFinished = {
+            loadSchedule()
+            monitor.wifi.refresh()
+        }) {
+            router.use { it.wifiSchedule.save(schedules) }
+        }
+    }
+
+    /** Enciende el Wi-Fi que apagó el horario, hasta la próxima hora de apagar. */
+    fun turnOnNow() {
+        changes.run(txt(R.string.wifi_schedule_turning_on), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.wifiSchedule.turnOnNow() }
         }
     }
 
@@ -203,6 +244,10 @@ fun WifiScreen(address: String) {
             onPower = { radio, power ->
                 vm.setPower(radio.name, power, phoneOnRadio(wifi, radio.name, phoneMacs), powerPreview(wifi, radio, power, phoneMacs))
             },
+            schedule = vm.schedule,
+            scheduleUnavailable = vm.scheduleUnavailable,
+            onSchedule = vm::setSchedule,
+            onTurnOn = vm::turnOnNow,
             channelSearches = vm.channelSearches,
             onFindChannel = vm::findChannel,
             onChannel = { radio, channel ->
@@ -232,6 +277,10 @@ fun WifiContent(
     onChannel: (WifiRadio, Int) -> Unit = { _, _ -> },
     names: Map<String, String> = emptyMap(),
     onPower: (WifiRadio, WifiPower) -> Unit = { _, _ -> },
+    schedule: WifiSchedule? = null,
+    scheduleUnavailable: Boolean = false,
+    onSchedule: (List<Schedule>) -> Unit = {},
+    onTurnOn: () -> Unit = {},
 ) {
     val current = currentWifi(state)
     // Con cada lectura nueva del router (otro teléfono, LuCI), el formulario vuelve a lo que hay.
@@ -266,6 +315,8 @@ fun WifiContent(
         HorizontalDivider()
         Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
         ClientsSection(state, names)
+        HorizontalDivider()
+        ScheduleSection(state, schedule, scheduleUnavailable, enabled = !busy, onChange = onSchedule, onTurnOn = onTurnOn)
         HorizontalDivider()
         CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
         WidthSection(state, enabled = !busy, onPick = onWidth)

@@ -105,6 +105,12 @@ data class WifiState(val radios: List<WifiRadio>, val networks: List<WifiNetwork
     /** Las bandas tienen nombres o seguridad distintos: al guardar quedarán iguales. */
     val homeDiffers: Boolean get() = home.map { Triple(it.ssid, it.encryption, it.key) }.distinct().size > 1
 
+    /**
+     * Alguna radio encendida en la configuración no está emitiendo: lo que deja `wifi down` (el
+     * horario del Wi-Fi). Las radios sin redes encendidas siguen "levantadas", así que no cuentan.
+     */
+    val someRadioDown: Boolean get() = radios.any { it.enabled && !it.up }
+
     /** El país del Wi-Fi si todas las radios tienen el mismo; null si falta en alguna o no coinciden. */
     val country: String? get() = radios.map { it.country }.distinct().singleOrNull()
 }

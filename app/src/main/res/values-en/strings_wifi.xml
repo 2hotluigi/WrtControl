@@ -103,4 +103,19 @@
     <string name="wifi_signal_good">Good signal</string>
     <string name="wifi_signal_fair">Fair signal</string>
     <string name="wifi_signal_weak">Weak signal</string>
+    <string name="wifi_schedule_title">Schedule</string>
+    <string name="wifi_schedule_help">Turns off all of the router\'s Wi-Fi, guest network included, at the times you choose, and turns it back on by itself. After a power cut or a router restart it comes back on, even during off hours.</string>
+    <string name="wifi_schedule_add">Add schedule</string>
+    <string name="wifi_schedule_remove">Remove schedule</string>
+    <string name="wifi_schedule_new_title">New Wi-Fi off schedule</string>
+    <string name="wifi_schedule_next">It will turn off %1$s.</string>
+    <string name="wifi_schedule_off_now_title">Wi-Fi off by schedule</string>
+    <string name="wifi_schedule_off_now_body">It comes back on %1$s.</string>
+    <string name="wifi_schedule_turn_on">Turn on now</string>
+    <string name="wifi_schedule_busy">Saving the schedule…</string>
+    <string name="wifi_schedule_turning_on">Turning the Wi-Fi on…</string>
+    <string name="wifi_schedule_denied">The router doesn\'t allow reading its scheduled tasks, so a schedule can\'t be set.</string>
+    <string name="wifi_schedule_not_saved">The router didn\'t save the schedule. Try again.</string>
+    <string name="wifi_schedule_cron_failed">The schedule is saved, but the scheduled tasks service (cron) didn\'t start: the Wi-Fi won\'t turn off by itself.</string>
+    <string name="wifi_schedule_always_off">With that schedule the Wi-Fi would never be on. If you don\'t want it, turn the bands off above.</string>
 </resources>
