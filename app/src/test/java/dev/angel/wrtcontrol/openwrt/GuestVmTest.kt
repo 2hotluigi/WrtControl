@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -66,6 +67,19 @@ class GuestVmTest {
         return out.endsWith("LLEGA")
     }
 
+    /** Quita el cliente de pruebas y, si la prueba falló antes de borrarlo, todo lo de invitados. */
+    private fun cleanUp() {
+        ssh("$IP_FULL link del wrtcg0 2>/dev/null; $IP_FULL netns del $NS 2>/dev/null; true")
+        // Por si la prueba falló antes de borrarlo.
+        if (ssh("uci show | grep -c $GUEST_PREFIX; true").lines().last() != "0") ssh(
+            "for c in network dhcp firewall wireless; do " +
+                "for s in \$(uci show \$c | sed -n \"s/^\$c\\.\\($GUEST_PREFIX[a-z0-9_]*\\)=.*/\\1/p\"); do uci delete \$c.\$s; done; uci commit \$c; done; " +
+                "/etc/init.d/network reload; /etc/init.d/firewall reload; /etc/init.d/dnsmasq restart; wifi reload; sleep 3",
+        )
+        // La interfaz tarda un momento en desaparecer después de recargar la red.
+        ssh("for i in 1 2 3 4 5 6 7 8 9 10; do ip -br link | grep -q wrtcguest || break; sleep 1; done")
+    }
+
     @Test
     fun `los invitados tienen internet pero no entran al router ni a la casa, y al borrarlo no queda nada`(): Unit = runBlocking {
         assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
@@ -120,13 +134,13 @@ class GuestVmTest {
             api.save(edit.copy(on = false), phoneOnIt = false)
             assertEquals("0", ssh("iwinfo | grep -c 'ESSID: \"${edit.ssid}\"'; true").lines().last())
             assertEquals(GuestWifi(edit.ssid, edit.key, on = false, clients = emptyList()), guestWifi(wifi.state()))
-        } finally {
+
+            // Borrado desde la app: no queda nada suyo.
             ssh("$IP_FULL link del wrtcg0 2>/dev/null; $IP_FULL netns del $NS 2>/dev/null; true")
-            ssh(
-                "for c in network dhcp firewall wireless; do " +
-                    "for s in \$(uci show \$c | sed -n \"s/^\$c\\.\\($GUEST_PREFIX[a-z0-9_]*\\)=.*/\\1/p\"); do uci delete \$c.\$s; done; uci commit \$c; done; " +
-                    "/etc/init.d/network reload; /etc/init.d/firewall reload; /etc/init.d/dnsmasq restart; wifi reload; sleep 3",
-            )
+            api.remove(phoneOnIt = false)
+            assertNull(guestWifi(wifi.state()))
+        } finally {
+            cleanUp()
         }
         assertEquals("no queda ninguna sección de invitados", "0", ssh("uci show | grep -c $GUEST_PREFIX; true").lines().last())
         assertEquals("la configuración queda como estaba", original, fingerprint())

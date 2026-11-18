@@ -31,6 +31,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   teléfono.
 - Wi-Fi: al cambiar el nombre o la contraseña, "Guardar en este teléfono" guarda la red nueva con
   un toque (Android 11 o más), sin buscarla en Ajustes.
+- Wi-Fi de invitados: "Borrar el Wi-Fi de invitados" lo quita del todo del router (apagarlo
+  conserva el nombre y la contraseña para la próxima vez).
 - Wi-Fi: horario. Apaga el Wi-Fi del router (también el de invitados) a las horas que elijas,
   por ejemplo de 23:00 a 07:00 de domingo a jueves, y lo vuelve a encender solo. Dentro del
   horario, "Encender ahora" lo enciende hasta la próxima hora de apagar. Si se va la luz o

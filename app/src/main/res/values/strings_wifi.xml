@@ -124,4 +124,9 @@
     <string name="wifi_add_title">Guarda «%1$s» en este teléfono</string>
     <string name="wifi_add_body">Así se conecta solo a la red nueva, sin buscarla en Ajustes ni escribir la contraseña.</string>
     <string name="wifi_add_action">Guardar en este teléfono</string>
+    <string name="guest_remove">Borrar el Wi-Fi de invitados</string>
+    <string name="guest_remove_title">Borrar el Wi-Fi de invitados</string>
+    <string name="guest_remove_note">Se borran su nombre, su contraseña, su red y sus reglas. Para volver a tenerlo habrá que crearlo de nuevo, con otro QR.</string>
+    <string name="guest_remove_clients">Los invitados conectados ahora se quedarán sin Wi-Fi.</string>
+    <string name="guest_busy_removing">Borrando el Wi-Fi de invitados…</string>
 </resources>

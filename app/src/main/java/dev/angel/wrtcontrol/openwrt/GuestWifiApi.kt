@@ -35,14 +35,35 @@ class GuestWifiApi(private val ubus: UbusClient, private val writeLock: Mutex = 
         val current = GUEST_CONFIGS.associateWith { tx.uciSections(it) }
         val exists = current.getValue("network").any { it.name == GUEST_INTERFACE }
         val desired = if (edit.on || exists) tx.desired(edit, current) else current.own()
+        tx.applyChanges(current, desired, edit.on, phoneOnIt)
+    }
+
+    /**
+     * Borra el Wi-Fi de invitados del todo: sus redes, su interfaz, su reparto y sus reglas. Como
+     * apagarlo, reinicia las radios ([phoneOnIt]: ver [save]). Sin Wi-Fi de invitados no hace nada.
+     */
+    suspend fun remove(phoneOnIt: Boolean) = writeLock.withLock {
+        val tx = ubus.openSession()
+        tx.ensureNoPendingApply()
+        val current = GUEST_CONFIGS.associateWith { tx.uciSections(it) }
+        tx.applyChanges(current, GUEST_CONFIGS.associateWith { emptyList() }, on = false, phoneOnIt)
+    }
+
+    /** Deja las secciones propias como [desired] (desde [current]) y lo aplica con reversión. */
+    private suspend fun UbusSession.applyChanges(
+        current: Map<String, List<UciSection>>,
+        desired: Map<String, List<UciSection>>,
+        on: Boolean,
+        phoneOnIt: Boolean,
+    ) {
         val diffs = GUEST_CONFIGS.associateWith { guestDiff(current.getValue(it), desired.getValue(it)) }
-        if (diffs.values.all { (deletes, adds) -> deletes.isEmpty() && adds.isEmpty() }) return@withLock
+        if (diffs.values.all { (deletes, adds) -> deletes.isEmpty() && adds.isEmpty() }) return
         for ((config, diff) in diffs) {
-            diff.first.forEach { tx.uciDelete(config, it) }
-            diff.second.forEach { tx.uciAdd(config, it) }
+            diff.first.forEach { uciDelete(config, it) }
+            diff.second.forEach { uciAdd(config, it) }
         }
-        val up = parseWifi(current.getValue("wireless"), tx.wirelessDevices()).radios.filter { it.up }
-        tx.applyGuest(edit.on, before = current.own(), up = up, slow = phoneOnIt || up.any { it.mayWaitForRadar })
+        val up = parseWifi(current.getValue("wireless"), wirelessDevices()).radios.filter { it.up }
+        applyGuest(on, before = current.own(), up = up, slow = phoneOnIt || up.any { it.mayWaitForRadar })
     }
 
     /** Cómo tiene que quedar todo lo de invitados, con las radios encendidas y una red que no choque. */
