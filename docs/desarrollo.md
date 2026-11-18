@@ -84,6 +84,13 @@ WrtControl y en UTC.
 - DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
   le envía el nombre, la IP y el token.
 
+`HomeNetworkVmTest` renombra la red de casa (`lan` → `casa`: interfaz, zona, reglas, DHCP y Wi-Fi)
+y comprueba que la app la encuentra, identifica el mismo router y sigue viendo al cliente de
+pruebas; al final deja `/etc/config` como estaba. Solo corre en una máquina virtual (QEMU o
+VirtualBox, por `/sys/class/dmi/id/sys_vendor`): en un router de casa cortaría la red un momento.
+Las órdenes van por la entrada de `ssh … sh -s`, porque desde Windows `ProcessBuilder` reescribe
+las comillas de los argumentos.
+
 ### Prueba contra un router de verdad
 
 Las mismas pruebas valen para un router físico (probadas en un GL.iNet GL-MT6000 con 25.12.6). El

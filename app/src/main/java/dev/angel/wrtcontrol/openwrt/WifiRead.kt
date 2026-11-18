@@ -25,7 +25,8 @@ internal suspend fun UbusCaller.wirelessDevices(): Map<String, JsonObject> =
 internal suspend fun UbusCaller.readWifi(withClients: Boolean): WifiState = coroutineScope {
     val sections = async { uciSections("wireless") }
     val devices = async { wirelessDevices() }
-    val bare = parseWifi(sections.await(), devices.await())
+    val home = async { homeLayout().home }
+    val bare = parseWifi(sections.await(), devices.await(), home = home.await())
     if (!withClients) return@coroutineScope bare
     val asked = bare.networks.mapNotNull { it.ifname }.map { ifname -> async { assoclist(ifname)?.let { ifname to it } } }
     val htmodes = bare.radios.map { radio -> async { htmodes(radio.name)?.let { radio.name to it } } }
@@ -36,7 +37,7 @@ internal suspend fun UbusCaller.readWifi(withClients: Boolean): WifiState = coro
         maxPower = powers.awaitAll().filterNotNull().toMap(),
     )
     val macs = clients.mapValues { (_, list) -> list.map { it.first } }
-    parseWifi(sections.await(), devices.await(), macs, htmodes.awaitAll().filterNotNull().toMap(), extras)
+    parseWifi(sections.await(), devices.await(), macs, htmodes.awaitAll().filterNotNull().toMap(), extras, home.await())
 }
 
 /** Una pregunta a `iwinfo` sobre [device] (radio o interfaz), o null si el router no deja hacerla. */

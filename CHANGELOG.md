@@ -60,6 +60,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   nombre o dirección guardados siguen en la lista aunque no estén.
 
 ### Cambiado
+- Routers con la red de casa con otro nombre (no `lan`): la app la encuentra por el cortafuegos.
+  Dispositivos, "Tu Wi-Fi" y saber qué router es funcionan igual que con la de serie.
 - Los cambios en el router se ven igual en toda la app: qué se está haciendo y por qué paso va
   (aplicar, comprobar, confirmar). Si un cambio no funciona, la app dice que el router lo está
   deshaciendo en vez de quedarse esperando sin explicar nada.

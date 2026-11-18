@@ -128,10 +128,13 @@ class RouterMonitorTest {
         val before = router.calls.size
 
         assertEquals("GL-MT6000|AA:BB:CC:00:00:01", monitor.identity.fresh(Duration.INFINITE))
-        assertEquals(listOf("network.device.status"), router.calls.drop(before).map { it.name })
+        // Solo lo que faltaba: cuál es la red de casa (el cortafuegos) y su tarjeta. (`uci.changes`
+        // es la comprobación del cliente antes del primer `uci get` de la sesión.)
+        val asked = router.calls.drop(before).map { it.name }
+        assertEquals(listOf("network.device.status", "uci.get"), asked.filter { it != "uci.changes" }.sorted())
         advanceTimeBy(600.seconds)
         monitor.identity.fresh(Duration.INFINITE)
-        assertEquals(before + 1, router.calls.size)
+        assertEquals(before + asked.size, router.calls.size)
 
         // Otra sesión puede ser otro router en la misma dirección.
         lanMac = "AA:BB:CC:00:00:02"

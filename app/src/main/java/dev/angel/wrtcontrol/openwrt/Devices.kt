@@ -59,17 +59,22 @@ internal fun leaseState(expires: JsonPrimitive?): LeaseState = when {
 internal fun parseIpv4(ip: String): Long? = ipv4ToLong(ip.trim())
 
 /**
- * Redes de casa: "lan" y las demás interfaces sin la ruta por defecto (invitados, IoT...).
- * Sin las otras, un equipo con IP fija en el Wi-Fi de invitados no saldría en la lista y,
- * con la cuarentena, no habría forma de aprobarlo.
+ * Redes de casa: las del lado de dentro del cortafuegos ([HomeLayout.inside]: casa, invitados,
+ * IoT...). Sin las otras, un equipo con IP fija en el Wi-Fi de invitados no saldría en la lista y,
+ * con la cuarentena, no habría forma de aprobarlo. Si no se pudo leer el cortafuegos, la red de
+ * casa y las interfaces sin la ruta por defecto que no parecen de internet.
  */
-internal fun lanNetworks(interfaces: List<NetInterface>): List<IpAddress> =
-    interfaces.filter { it.name == "lan" || (!it.hasDefaultRoute && !it.name.startsWith("wan")) }.flatMap { it.ipv4 }
+internal fun lanNetworks(interfaces: List<NetInterface>, layout: HomeLayout = HomeLayout.DEFAULT): List<IpAddress> {
+    val inside = layout.inside
+    return interfaces.filter {
+        if (inside != null) it.name in inside else it.name in layout.home || (!it.hasDefaultRoute && !it.name.startsWith("wan"))
+    }.flatMap { it.ipv4 }
+}
 
 /** ¿Puede [ip] ser la dirección de un aparato de casa? De una red de casa, y ni la del router ni la de la red o la de difusión. */
-fun usableLanAddress(ip: String, interfaces: List<NetInterface>): Boolean {
+fun usableLanAddress(ip: String, interfaces: List<NetInterface>, layout: HomeLayout = HomeLayout.DEFAULT): Boolean {
     val address = ipv4ToLong(ip)
-    val net = lanNetworks(interfaces).firstOrNull { ipv4InSubnet(ip, it) }
+    val net = lanNetworks(interfaces, layout).firstOrNull { ipv4InSubnet(ip, it) }
     val ofRouter = interfaces.any { i -> i.ipv4.any { it.address == ip } }
     if (address == null || net == null || ofRouter) return false
     val hostBits = MAX_MASK - net.mask
@@ -147,9 +152,10 @@ fun buildDeviceList(
     interfaces: List<NetInterface>,
     records: List<DeviceRecord> = emptyList(),
     neighbors: Map<String, Presence>? = null,
+    layout: HomeLayout = HomeLayout.DEFAULT,
 ): List<Device> {
     val routerIps = interfaces.flatMap { i -> i.ipv4.map { it.address } }.toSet()
-    val lanNets = lanNetworks(interfaces)
+    val lanNets = lanNetworks(interfaces, layout)
     fun inLan(ip: String) = ip !in routerIps && lanNets.any { ipv4InSubnet(ip, it) }
 
     val devices = LinkedHashMap<String, DeviceBuilder>()

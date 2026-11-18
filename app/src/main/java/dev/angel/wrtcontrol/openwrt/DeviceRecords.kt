@@ -48,11 +48,17 @@ fun cleanLabel(text: String): String =
 data class DeviceEdit(val mac: String, val label: String?, val fixedIp: String?)
 
 /** Por qué [ip] no vale como dirección fija de [mac], o null si vale. */
-fun fixedIpProblem(ip: String, mac: String, interfaces: List<NetInterface>, records: List<DeviceRecord>): Txt? {
+fun fixedIpProblem(
+    ip: String,
+    mac: String,
+    interfaces: List<NetInterface>,
+    records: List<DeviceRecord>,
+    layout: HomeLayout = HomeLayout.DEFAULT,
+): Txt? {
     val other = records.firstOrNull { it.mac != mac && it.fixedIp == ip }
     return when {
         parseIpv4(ip) == null -> txt(R.string.devices_error_ip_invalid)
-        !usableLanAddress(ip, interfaces) -> txt(R.string.devices_error_ip_outside)
+        !usableLanAddress(ip, interfaces, layout) -> txt(R.string.devices_error_ip_outside)
         other != null -> txt(R.string.devices_error_ip_taken, other.label ?: other.mac)
         else -> null
     }
@@ -109,7 +115,7 @@ class DevicesApi(private val ubus: UbusClient, private val writeLock: Mutex = Mu
         tx.ensureNoPendingApply()
         val hosts = tx.uciSections("dhcp", "host")
         val records = parseDeviceRecords(hosts)
-        ip?.let { fixedIpProblem(it, mac, interfaces, records) }?.let { throw UserFacingException(it) }
+        ip?.let { fixedIpProblem(it, mac, interfaces, records, tx.homeLayout()) }?.let { throw UserFacingException(it) }
 
         val record = records.firstOrNull { it.mac == mac }
         val section = hosts.firstOrNull { it.name == record?.section }

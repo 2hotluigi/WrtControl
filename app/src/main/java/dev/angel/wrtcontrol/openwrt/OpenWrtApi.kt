@@ -50,13 +50,19 @@ class OpenWrtApi(
 
     /**
      * Identifica el aparato (para no mezclar copias de routers distintos en la misma dirección):
-     * el modelo y la MAC de la red de casa, que no cambian al restablecerlo. [board] e [interfaces],
-     * si ya se han leído, ahorran pedirlos otra vez.
+     * el modelo y la MAC de la red de casa, que no cambian al restablecerlo. [board], [interfaces]
+     * y [layout], si ya se han leído, ahorran pedirlos otra vez.
      */
-    suspend fun routerId(board: BoardInfo? = null, interfaces: List<NetInterface>? = null): String = coroutineScope {
+    suspend fun routerId(
+        board: BoardInfo? = null,
+        interfaces: List<NetInterface>? = null,
+        layout: HomeLayout? = null,
+    ): String = coroutineScope {
         val known = async { board ?: board() }
+        val home = async { layout ?: homeLayout() }
         val lanMac = try {
-            val lan = (interfaces ?: interfaces()).firstOrNull { it.name == "lan" }
+            val main = home.await().main
+            val lan = (interfaces ?: interfaces()).firstOrNull { it.name == main }
             val device = lan?.device ?: lan?.l3Device
             device?.let { ubus.callAs<DeviceStatus>("network.device", "status", buildJsonObject { put("name", it) }).macaddr }
         } catch (e: CancellationException) {
@@ -71,6 +77,9 @@ class OpenWrtApi(
     }
 
     suspend fun systemInfo(): SystemInfo = ubus.callAs("system", "info")
+
+    /** Cuál es la red de casa y qué redes hay del lado de dentro (ver HomeNetwork.kt). */
+    suspend fun homeLayout(): HomeLayout = ubus.homeLayout()
 
     suspend fun interfaces(): List<NetInterface> =
         ubus.callAs<InterfaceDump>("network.interface", "dump").interfaces.filter { it.name != "loopback" }
@@ -99,25 +108,15 @@ class OpenWrtApi(
      */
     suspend fun wanLink(interfaces: List<NetInterface>): WanLink? = ubus.readWanLink(interfaces)
 
-    /** Lo que el router puede no tener o no dejar ver: null en vez de error. Si no se llega a él, sí falla. */
-    private suspend fun <T> optional(block: suspend () -> T): T? = try {
-        block()
-    } catch (_: UbusException.AccessDenied) {
-        null
-    } catch (_: UbusException.Status) {
-        null
-    } catch (_: UbusException.Protocol) {
-        null
-    }
-
-    /** Los equipos de casa. [knownInterfaces], si ya se han leído, ahorra pedirlas otra vez. */
-    suspend fun devices(knownInterfaces: List<NetInterface>? = null): List<Device> = coroutineScope {
+    /** Los equipos de casa. [knownInterfaces] y [knownLayout], si ya se han leído, ahorran pedirlos otra vez. */
+    suspend fun devices(knownInterfaces: List<NetInterface>? = null, knownLayout: HomeLayout? = null): List<Device> = coroutineScope {
         val hints = async { ubus.callAs<Map<String, HostHint>>("luci-rpc", "getHostHints") }
         val leases = async { ubus.callAs<DhcpLeases>("luci-rpc", "getDHCPLeases") }
         val ifaces = async { knownInterfaces ?: interfaces() }
+        val layout = async { knownLayout ?: homeLayout() }
         val records = async { optional { parseDeviceRecords(ubus.uciSections("dhcp", "host")) } }
         val neighbors = async { neighbors() }
-        buildDeviceList(hints.await(), leases.await(), ifaces.await(), records.await().orEmpty(), neighbors.await())
+        buildDeviceList(hints.await(), leases.await(), ifaces.await(), records.await().orEmpty(), neighbors.await(), layout.await())
     }
 
     /** Cómo dice llamarse por mDNS el aparato que tiene [ip] (ver Mdns.kt), o null si no lo dice. */
@@ -134,6 +133,17 @@ class OpenWrtApi(
         val outputs = listOfNotNull(v4.await(), v6.await()).filter { it.code == 0 }
         if (outputs.isEmpty()) null else parseNeighbors(outputs.joinToString("\n") { it.stdout })
     }
+}
+
+/** Lo que el router puede no tener o no dejar ver: null en vez de error. Si no se llega a él, sí falla. */
+private suspend fun <T> optional(block: suspend () -> T): T? = try {
+    block()
+} catch (_: UbusException.AccessDenied) {
+    null
+} catch (_: UbusException.Status) {
+    null
+} catch (_: UbusException.Protocol) {
+    null
 }
 
 @Serializable
