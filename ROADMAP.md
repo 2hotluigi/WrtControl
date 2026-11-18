@@ -162,7 +162,10 @@ marcha guiada. Cada uno se apoya en los anteriores.
     zona que solo sale a internet y una red por radio), probado con tráfico real en el GL-MT6000.
     Falta: el acceso rápido desde Inicio, IPv6 para invitados, borrarlo del todo desde la app y
     probarlo con un teléfono de verdad (el QR y la unión por Wi-Fi).
-  - *Horario del Wi-Fi:* pendiente.
+  - ~~*Horario del Wi-Fi.*~~ Hecho: franjas sin Wi-Fi en Más → Wi-Fi, con cron (el ACL de LuCI
+    deja escribir el crontab de root), `wifi down`/`wifi up` y "Encender ahora". Probado contra el
+    GL-MT6000 (`WifiScheduleVmTest`). Falta verlo apagar y encender un Wi-Fi que emita de verdad
+    (el del router de pruebas está apagado) y un acceso desde Inicio.
   - ~~*Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
     defecto; avisar de una red abierta, como la `OpenWrt` sin clave que trae el router de fábrica).
     Un cambio de Wi-Fi puede dejar fuera al teléfono que lo hace: `SafeApply` tiene que esperar a

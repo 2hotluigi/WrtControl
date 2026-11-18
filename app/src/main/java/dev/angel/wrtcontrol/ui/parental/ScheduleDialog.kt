@@ -1,9 +1,11 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -57,7 +59,13 @@ private val PRESETS = listOf(
 )
 
 @Composable
-fun ScheduleDialog(initial: Schedule, isNew: Boolean, onDismiss: () -> Unit, onConfirm: (Schedule) -> Unit) {
+fun ScheduleDialog(
+    initial: Schedule,
+    isNew: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (Schedule) -> Unit,
+    @StringRes newTitle: Int = R.string.parental_schedule_new_title,
+) {
     var days by remember { mutableStateOf(initial.days) }
     var allDay by remember { mutableStateOf(initial.allDay) }
     var start by remember { mutableStateOf(if (initial.allDay) LocalTime.of(21, 0) else initial.start) }
@@ -72,7 +80,7 @@ fun ScheduleDialog(initial: Schedule, isNew: Boolean, onDismiss: () -> Unit, onC
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isNew) R.string.parental_schedule_new_title else R.string.parental_schedule_edit_title)) },
+        title = { Text(stringResource(if (isNew) newTitle else R.string.parental_schedule_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.parental_schedule_start_days), style = MaterialTheme.typography.labelLarge)
@@ -81,7 +89,8 @@ fun ScheduleDialog(initial: Schedule, isNew: Boolean, onDismiss: () -> Unit, onC
                         DayToggle(day, selected = day in days) { days = if (day in days) days - day else days + day }
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                // En una fila si caben; si no (en inglés, "Every day"), pasan a la siguiente.
+                FlowRow(Modifier.fillMaxWidth()) {
                     PRESETS.forEach { (label, preset) -> TextButton(onClick = { days = preset }) { Text(stringResource(label)) } }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -518,6 +518,18 @@ redes (invitados, modo cliente, malla) no se tocan.
 - **Conectados ahora.** Bajo las bandas, quién hay en cada una (con el nombre que usa
   Dispositivos) y cómo lo oye el router: señal muy buena (-55 dBm o más), buena (hasta -67),
   justa (hasta -75) o débil. Sale del mismo `iwinfo assoclist`; los de peor señal, primero.
+- **Horario.** Franjas sin Wi-Fi ("de 23:00 a 07:00, de domingo a jueves"), con el mismo
+  diálogo que los horarios del control parental. Lo hace cron, que trae cualquier OpenWrt: el ACL
+  de LuCI deja escribir `/etc/crontabs/root` y reiniciar cron (su página "Tareas programadas"). La
+  app escribe ahí un bloque propio entre dos comentarios `# wrtcontrol` y respeta las demás
+  líneas: las franjas tal como se eligieron y, sacadas de juntarlas, una línea `wifi down` por
+  cada hora de apagar y una `wifi up` por cada hora de encender (cron usa la hora local del
+  router). `wifi down` apaga todas las radios, también el Wi-Fi de invitados, sin tocar la
+  configuración: aunque se recargue el Wi-Fi sigue apagado, y al reiniciar el router (un corte de
+  luz de noche) vuelve a emitir. Guardar no apaga nada en el momento: empieza en la próxima hora
+  de apagar. Si el horario nuevo dice que ahora toca Wi-Fi y estaba apagado, lo enciende, y
+  dentro de una franja la app ofrece "Encender ahora" (`/sbin/wifi up`, que el ACL de LuCI
+  permite). `WifiScheduleVmTest` lo prueba en las VM de la CI y en el GL-MT6000.
 
 Límites: el país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin
 poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).

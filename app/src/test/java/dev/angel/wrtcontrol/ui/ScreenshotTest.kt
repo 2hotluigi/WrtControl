@@ -34,11 +34,13 @@ import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.WifiNetwork
 import dev.angel.wrtcontrol.openwrt.WifiRadio
+import dev.angel.wrtcontrol.openwrt.WifiSchedule
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.parental.ApplyPhase
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
+import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
 import dev.angel.wrtcontrol.ui.home.Attention
@@ -54,6 +56,7 @@ import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.PowerSection
+import dev.angel.wrtcontrol.ui.home.ScheduleSection
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import dev.angel.wrtcontrol.ui.home.WidthSection
 import dev.angel.wrtcontrol.ui.home.WifiContent
@@ -68,7 +71,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.DayOfWeek
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * Capturas de los componentes y de una pantalla con datos de ejemplo, en claro y en oscuro. Se
@@ -188,6 +193,21 @@ class ScreenshotTest {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ClientsSection(state, names)
             PowerSection(state, enabled = true, onPick = { _, _ -> })
+        }
+    }
+
+    /** El horario del Wi-Fi a medianoche de un lunes: apagado por la franja de noche, con "Encender ahora". */
+    @Test
+    fun wifiHorario() = both("wifi-horario") {
+        val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = false))
+        val nights = setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
+        val schedules = listOf(
+            Schedule("0", nights, LocalTime.of(23, 0), LocalTime.of(7, 0)),
+            Schedule("1", setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY), LocalTime.of(14, 0), LocalTime.of(16, 0)),
+        )
+        val schedule = WifiSchedule(schedules, LocalDateTime.of(2026, 11, 16, 23, 30))
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ScheduleSection(WifiState(radios, emptyList()), schedule, unavailable = false, enabled = true, onChange = {}, onTurnOn = {})
         }
     }
 

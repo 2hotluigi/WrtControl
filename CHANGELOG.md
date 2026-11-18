@@ -24,6 +24,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   el nombre y la contraseña para la próxima vez.
 - Wi-Fi: potencia (toda, media o baja) y "Conectados ahora": quién hay en cada banda y si su
   señal es muy buena, buena, justa o débil.
+- Wi-Fi: horario. Apaga el Wi-Fi del router (también el de invitados) a las horas que elijas,
+  por ejemplo de 23:00 a 07:00 de domingo a jueves, y lo vuelve a encender solo. Dentro del
+  horario, "Encender ahora" lo enciende hasta la próxima hora de apagar. Si se va la luz o
+  reinicias el router, el Wi-Fi vuelve a encenderse.
 - Puesta en marcha: la primera vez que entras en un router, la app te lo presenta en cuatro pasos:
   qué router es, si está protegido con contraseña (y ponerla si no), qué puede hacer y qué va a
   cambiar en él. Se puede saltar, y no se repite.
@@ -52,6 +56,7 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   el suyo o su fabricante ("Aparato Samsung"), en vez de "Sin nombre" o la MAC.
 
 ### Corregido
+- En inglés, el atajo "Every day" del diálogo de horarios ya no se escribe en vertical.
 - UPnP: en OpenWrt 24.10, si miniupnpd se caía nada más arrancar, la app podía darlo por
   activado al preguntar justo cuando el router lo relanzaba. Ahora tiene que seguir en marcha
   unos segundos; si no, el router lo deshace y la app lo dice.
