@@ -344,6 +344,58 @@ marcha guiada. Cada uno se apoya en los anteriores.
     cortas.
   - Pruebas de VM (`*VmTest`): instalar, generar tráfico con el cliente de pruebas y comprobar que
     se lee, también después de reiniciar.
+- **Más paquetes opcionales**, elegidos de las 106 apps de LuCI de 25.12 (101 en 24.10) por lo que
+  acercan la app a Firewalla o Deco. Comprobados a mano en la VM (25.12.6) el 2026-11-18 por
+  JSON-RPC como root, con un cliente de la LAN. Entre los cinco ocupan 12,5 MB de flash
+  (librespeed-cli 9 MB, el resto menos de 150 KB cada uno). Reglas comunes que salieron:
+  - Varios se activan solos al instalarse (https-dns-proxy, watchcat). Instalar, dejarlos parados
+    al momento y activarlos después con `applySafely`.
+  - Un servicio coge los cambios de UCI con `rc init <servicio> restart`, que la app ya puede llamar.
+  - Los que tocan dnsmasq o el DNS de la LAN deben quedarse en la instancia principal y no forzar
+    el DNS (la app ya lo fuerza): sin eso **rompen el control parental**. https-dns-proxy, con su
+    configuración de serie, reescribe los `server` de todas las instancias (`dnsmasq_config_update
+    '*'`), lo que quita el DNS para familias de los perfiles. Además pone su redirección del 53
+    antes que la de cada perfil, así que el dispositivo filtrado se salta su filtro. Probado y
+    arreglado con `force_dns 0` y `dnsmasq_config_update` = la instancia principal. adblock-fast,
+    igual (`force_dns 0`, `dnsmasq_instance`).
+  - Ofrecerlos según el espacio libre y la memoria del router, y ocultar lo que no exista en 24.10.
+  - *Prueba de velocidad desde el router* (`luci-app-librespeed`, **solo 25.12**): **alcanzable,
+    P1.** ubus `librespeed`: `start`, `status`, `result` (bajada, subida, ping, jitter, servidor) e
+    `history`. Programarla es UCI (`schedule`) más `rc init` (el servicio escribe su línea en el
+    crontab a una hora al azar de la franja). El historial va en `/tmp`; `history.archive_path`
+    guarda un resumen diario en la flash. Medido: 118,8/185,9 Mbps, ping 47,6 ms, ~600 MB de
+    tráfico por prueba (avisar si la línea tiene límite de datos). En automático eligió un
+    servidor de otro país: dejar elegir o fijar uno cercano. La respuesta trae la IP pública: no
+    mostrarla ni guardarla. Usa servidores de terceros: lo inicia el usuario y se dice.
+  - *Amenazas bloqueadas* (`luci-app-banip`): **alcanzable, P1.** Viene apagado. Con dos listas
+    (`cinsscore`, `threat`) cargó 14.022 IPs en 1 s, la WAN se detecta sola y el estado sale en
+    `/var/run/banIP/banIP.runtime.json` (ACL de lectura). Arrancar con `/etc/init.d/banip restart`
+    (ACL de escritura). El contador "Bloqueado" de Firewalla necesita `ban_nftcount 1` (viene a
+    0); con él, cada IP cuenta sus paquetes y `banip report json` da el resumen por lista,
+    entrante y saliente. Probado: tres conexiones de un dispositivo a una IP de la lista,
+    bloqueadas y contadas. Falta medir el tráfico entrante en un router con IP pública real.
+  - *Bloquear anuncios en toda la casa* (`luci-app-adblock-fast`): **alcanzable, P1.** Viene apagado
+    y sin listas activas (trae Hagezi, OISD, StevenBlack...). rpcd propio `luci.adblock-fast`:
+    `getInitStatus` (estado, número de dominios, errores) y `setInitAction`. Con Hagezi Pro
+    bloqueó 252.767 dominios y el dnsmasq principal pasó de 1 a 20 MB de RAM: en routers de 128 MB,
+    solo listas pequeñas. Los perfiles sin nivel de filtro pasan por la instancia principal y
+    también quedan sin anuncios; los que tienen DNS para familias van a su servidor y no. La lista
+    está en `/var/run` y se vuelve a descargar al arrancar.
+  - *DNS privado* (`luci-app-https-dns-proxy`): **alcanzable con cuidado, P1.** rpcd propio
+    `luci.https-dns-proxy` (`getInitStatus`, `getProviders` con unos 40 proveedores,
+    `setInitAction`). Se activa solo al instalarse (Cloudflare y Google). **Si el DoH no llega, la
+    LAN se queda sin DNS** y no vuelve sola al DNS normal (probado: 90 s cortando el 443 del router).
+    Va siempre con `applySafely` (resolver por el DoH desde el router antes de confirmar) y un
+    vigilante que lo retira si deja de responder. Antes, lo de dnsmasq de arriba.
+  - *Recuperarse solo sin internet* (`luci-app-watchcat`): **alcanzable, P1.** Solo UCI. Se activa
+    solo al instalarse, en modo "reiniciar el router si no responde 8.8.8.8 en 6 h". Mejor
+    `restart_iface` con la WAN: probado que la reinicia tras el periodo sin ping y lo deja escrito
+    en el registro, que la app puede enseñar como "internet se recuperó solo a las…".
+  - Sin probar todavía, para más adelante: `luci-app-wol` (encender un equipo; rpcd `luci.wol`),
+    `luci-app-apinger` (latencia y pérdidas, ubus `apinger`), `luci-app-wifihistory` (solo 25.12,
+    en RAM), `mwan3` (internet de respaldo) y `pbr` (un dispositivo por VPN). Descartados: AdGuard
+    Home, Tailscale, cloudflared, CrowdSec y NextDNS (binarios de Go de 8 a 30 MB, y repiten lo que
+    ya hace la app), `luci-app-statistics` (solo da PNG), Unbound y SmartDNS (sustituyen el DNS).
 
 ## Hito 3 · Nivel entusiasta (P2)
 
