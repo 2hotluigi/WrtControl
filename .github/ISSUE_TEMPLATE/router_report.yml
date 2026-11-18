@@ -1,0 +1,53 @@
+name: Router report
+description: Tell us how WrtControl works on your router (it helps even if everything worked).
+title: "[Router] "
+labels: ["router report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Reports from routers we don't have are the most useful contribution right now.
+        Please **don't paste** MAC addresses, public IPs, passwords, keys or Wi-Fi names.
+        *Puedes escribir en español.*
+  - type: input
+    id: model
+    attributes:
+      label: Router model
+      placeholder: "GL.iNet GL-MT6000, Linksys E8450, x86 mini PC…"
+    validations:
+      required: true
+  - type: input
+    id: openwrt
+    attributes:
+      label: OpenWrt version
+      description: LuCI → Status → Overview, "Firmware Version".
+      placeholder: "OpenWrt 24.10.4"
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: WrtControl version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: How your network is set up
+      description: WAN type (DHCP, PPPoE…), behind another router or modem, Wi-Fi from this router or other access points, IPv6…
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What worked
+      options:
+        - label: Connecting and the first setup
+        - label: Home, devices and their names
+        - label: Family profiles (pause, schedules, filters)
+        - label: Wi-Fi settings / guest Wi-Fi
+        - label: Router features (remote access, dynamic DNS, SQM, UPnP)
+  - type: textarea
+    id: problems
+    attributes:
+      label: What didn't work or looked wrong
+      description: What you did, what you expected and what happened. Screenshots welcome once private data is hidden.

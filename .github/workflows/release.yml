@@ -1,4 +1,4 @@
-# Publica una versión al subir una etiqueta vX.Y.Z (ver "Publicar una versión" en el README):
+# Publica una versión al subir una etiqueta vX.Y.Z (ver "Publicar una versión" en docs/desarrollo.md):
 # comprueba que la etiqueta, gradle.properties y CHANGELOG.md coinciden, pasa las pruebas, compila
 # la release firmada y crea la release de GitHub con el APK y sus notas.
 #

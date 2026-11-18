@@ -30,6 +30,48 @@ Prioridades: **P0** antes de cualquier beta pública · **P1** núcleo de la vis
    - ~~Servidor WireGuard en el router, un par por teléfono~~
    - ~~Túnel WireGuard dentro de la app (sin VPN de Android), también en casa: autentica al router~~
 
+## Hito G · Generalizar y abrir (presentación P0)
+
+Que se entienda desde fuera qué es WrtControl y que funcione en routers que no son el nuestro.
+Viene del plan de generalización del 2026-11-18; lo que ya cubrían los Hitos 0 y 1 (capacidades,
+cambios seguros, puesta en marcha, errores legibles, español e inglés, credenciales en Keystore)
+no se repite aquí.
+
+**Presentación del repo (P0).** Lo primero que ve quien llega desde GitHub.
+
+| Tarea | Prioridad | Hecho cuando |
+|---|---|---|
+| ~~README en inglés (`README.md`) y en español (`README.es.md`): logo, badges, para qué sirve, capturas, funciones por resultado, "segura por diseño", compatibilidad, instalar, calidad, estado~~ | P0 | Hecho. Lo técnico pasa a `docs/como-funciona.md` y `docs/desarrollo.md` (en español por ahora) |
+| ~~Capturas de la app en el README que no se queden viejas~~ | P0 | Hecho: `ReadmeScreenshots` pinta seis pantallas completas en inglés y en español con datos de ejemplo (`docs/screenshots/`); la CI las compara como las demás |
+| ~~Logo e icono propios (la app no tenía)~~ | P0 | Hecho: escudo con las ondas del Wi-Fi en azul cobalto; icono adaptativo con versión monocroma y `docs/logo.svg` |
+| ~~`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, plantillas de issue (informe de router, fallo) y aviso de uso responsable~~ | P0 | Hecho |
+| ~~`AGENTS.md` / `CLAUDE.md` con las convenciones del proyecto~~ | P0 | Hecho |
+| Activar en GitHub el aviso privado de vulnerabilidades, la descripción y los temas del repo, y una imagen para compartirlo (social preview) | P0 | Lo hace el dueño del repo en Settings; `SECURITY.md` ya enlaza al formulario |
+| Traducir `docs/` al inglés | P2 | Cuando alguien de fuera lo pida o vaya a colaborar |
+| Guía de inicio rápido con una VM de OpenWrt lista (un comando que la levante) | P1 | Un desconocido prueba la app sin router propio en menos de 15 minutos |
+
+**Que funcione en otros routers (P1).**
+
+| Tarea | Prioridad | Hecho cuando |
+|---|---|---|
+| Red de casa sin suponer que se llama `lan`: hoy el Wi-Fi, Dispositivos y la identificación del router buscan la interfaz por ese nombre | P1 | Se descubre por la zona del cortafuegos; una prueba con la LAN renombrada |
+| Etiqueta por función en "Estado": probada en este router, no probada o no soportada (hoy es por versión de OpenWrt) | P1 | Cada función dice en qué está |
+| Informe de dispositivo: exportar desde la app, anonimizado (sin MAC, IP, nombres, claves ni redes), las respuestas de ubus y UCI que lee la app | P1 | Un botón en Más → Router que lo comparte; una prueba garantiza que no sale nada personal |
+| Pruebas de contrato contra esos informes: cada router que alguien aporta amplía la matriz | P1 | Al menos tres informes de routers distintos pasan las pruebas |
+| Más variantes de VM en la CI: PPPoE, DSA con VLAN, sin Wi-Fi, solo punto de acceso, y un "proveedor" con y sin prefijo IPv6 delegado | P2 | Cada variante con sus pruebas en `vm.yml` |
+
+**Apertura gradual (P2).** Criterio de cierre: un router de un tercero funciona sin tocar el código.
+
+1. Alpha privada con 2 o 3 personas con routers distintos (criterio: completan la conexión sin ayuda).
+2. Hilo en el foro de OpenWrt pidiendo informes de router.
+3. IzzyOnDroid y después F-Droid (las releases firmadas de GitHub ya existen desde la 0.2.0).
+4. Play Store al final, con prueba cerrada. El túnel no usa `VpnService`, así que no hace falta esa
+   declaración; revisar los permisos de red local y de cámara, y los requisitos vigentes al publicar.
+
+Señales de que está listo para enseñarse: un router ajeno funciona sin tocar el código, ningún
+cambio deja sin acceso al router, lo no disponible se explica, hay una tabla de routers y
+versiones probados, y el README deja a un desconocido entender y probar el proyecto.
+
 ## Hito 0 · Cimientos (P0)
 
 Corto y antes que nada: que la calidad no dependa de acordarse de lanzar las pruebas.

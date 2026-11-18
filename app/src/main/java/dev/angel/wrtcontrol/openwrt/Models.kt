@@ -132,7 +132,7 @@ data class DhcpLeases(
 
 // ---------- versiones de OpenWrt ----------
 
-/** Qué se sabe de la app con una versión de OpenWrt (ver "Versiones de OpenWrt" en el README). */
+/** Qué se sabe de la app con una versión de OpenWrt (ver "Compatibility" en el README). */
 enum class OpenWrtSupport {
     /** 24.10 en adelante (y las de desarrollo): las pruebas de la CI corren en ella. */
     Tested,
