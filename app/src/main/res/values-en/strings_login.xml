@@ -45,4 +45,6 @@
     <string name="setup_next">Next</string>
     <string name="setup_finish">Get started</string>
     <string name="setup_skip">Skip</string>
+    <string name="setup_country_title">Which country is it in?</string>
+    <string name="setup_country_body">Your router\'s Wi-Fi doesn\'t know where it is yet. Pick the country; you can change it later in More → Wi-Fi.</string>
 </resources>

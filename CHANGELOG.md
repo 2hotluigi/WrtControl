@@ -27,6 +27,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Inicio: dos tarjetas nuevas llevan al Wi-Fi (su nombre y cuántos hay conectados) y al Wi-Fi de
   invitados. Si el router no emite pero tu teléfono está por Wi-Fi en casa, dice que el Wi-Fi lo
   dan otros aparatos (repetidores, Deco) en vez de avisar de que está apagado.
+- Puesta en marcha: si el Wi-Fi del router no tiene país, un paso nuevo lo pide y propone el del
+  teléfono.
 - Wi-Fi: horario. Apaga el Wi-Fi del router (también el de invitados) a las horas que elijas,
   por ejemplo de 23:00 a 07:00 de domingo a jueves, y lo vuelve a encender solo. Dentro del
   horario, "Encender ahora" lo enciende hasta la próxima hora de apagar. Si se va la luz o

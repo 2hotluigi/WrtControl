@@ -177,11 +177,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
     vuelto a dejar como estaba desde la app. Falta probar el caso del teléfono conectado por ese
     Wi-Fi con un teléfono de verdad, y ofrecer añadir la red nueva con un toque
     (`ACTION_WIFI_ADD_NETWORKS`).
-  - *País:* sin `country`, el router emite con los canales y la potencia más restrictivos. Pedirlo
-    en la puesta en marcha (proponer el del teléfono).
-    Primera parte hecha: Más → Wi-Fi avisa si falta, propone el del teléfono y deja elegir entre
-    los que conoce el router; si el Wi-Fi no vuelve a emitir con el país nuevo, se deshace. Falta
-    pedirlo en la puesta en marcha.
+  - ~~*País:* sin `country`, el router emite con los canales y la potencia más restrictivos. Pedirlo
+    en la puesta en marcha (proponer el del teléfono).~~
+    Hecho: Más → Wi-Fi avisa si falta, propone el del teléfono y deja elegir entre los que conoce
+    el router; si el Wi-Fi no vuelve a emitir con el país nuevo, se deshace. La puesta en marcha
+    lo pide en un paso propio, solo si el router tiene Wi-Fi sin país.
   - *Canal y ancho por resultado*, no por número: "más alcance" o "más velocidad" (20/40 MHz en
     2,4 GHz; 80 o 160 MHz en 5 GHz, explicando DFS: el router puede tardar un minuto en emitir y
     cambiar de canal si detecta un radar). Buscar el canal menos ocupado (`iwinfo scan` por ubus).
