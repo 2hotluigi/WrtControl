@@ -312,6 +312,38 @@ marcha guiada. Cada uno se apoya en los anteriores.
     entrada. Probado en la casa el 2026-11-16: desde internet el 53 sigue sin responder.
 - **Claves:** generar la del teléfono en el AAR de Go (curve25519 de wireguard-go) en lugar del
   X25519 propio en Kotlin.
+- **Uso de la red:** cuánto internet se gasta en las últimas 24 h, 7 días y 30 días (recibido,
+  enviado y total) y qué dispositivo gasta más, como en Firewalla. Los paquetes son opcionales: se
+  ofrecen solo si caben en el router (espacio libre y `lowMemory`) y la app funciona igual sin
+  ellos. Comprobado a mano en la VM (25.12.6) el 2026-11-18, por JSON-RPC como root, con tráfico
+  de un cliente de la LAN; los ACL de los dos paquetes son idénticos en 24.10, 25.12 y master.
+  Unos 3 MB de RAM y 2,4 MB de flash entre los dos (sobre todo sqlite, libgd y libjpeg). Tres PR:
+  - *Sin instalar nada:* bytes recibidos y enviados desde que arrancó el router
+    (`network.device status` de la WAN) y la gráfica propia (24 h, 7 días, 30 días; totales debajo),
+    con capturas de Roborazzi en claro y oscuro.
+  - *vnStat 2* (`luci-app-vnstat2`), instalado desde la app como SQM: la gráfica de la WAN. Guarda
+    48 h en tramos de 5 min, 4 días por horas, 62 por días y 25 meses. El ACL de lectura solo deja
+    `vnstat --json f 1`, pero el de escritura deja `/usr/bin/vnstat` con cualquier argumento
+    (`vnstat --json h 24`, `d 30`). Viene sin interfaz: poner la de la WAN en `vnstat.interface`
+    (UCI) leyéndola del router; falta probar PPPoE (`pppoe-wan`). La base va en `/var/lib`, que es
+    RAM: se pierde al reiniciar. `/etc/vnstat.conf` no se puede leer ni escribir con el ACL, así
+    que una línea del crontab (`# wrtc_vnstat`, idempotente) pone `DatabaseDir /etc/wrtc_vnstat`
+    y `SaveInterval 60` (una escritura por hora en la flash) y reinicia vnStat. Probado: se aplica
+    en menos de un minuto y los datos sobreviven al reinicio. Hacerlo al instalar, con la base
+    vacía. El usuario limitado del agente (Hito 3) necesitará el grupo de escritura del paquete.
+  - *nlbwmon* (`luci-app-nlbwmon`): consumo por dispositivo del periodo (el mes) con
+    `nlbwmon-action download -g mac,ip` y `periods` para los anteriores; los nombres, de
+    `getHostHints`. En su ficha y en una lista "quién gastó más". Solo da totales por periodo, no
+    la curva. Tarda hasta ~2 min en contar (`refresh_interval`). Quitar la entrada de MAC
+    `00:00:00:00:00:00`. Guardar en la flash con `database_directory` (UCI) al instalar: si se
+    cambia después empieza vacío. Guarda al apagar y cada 24 h; probado que sobrevive al reinicio.
+  - *Descarga de flujos:* por software cuenta bien en los dos (fw4 crea la flowtable con
+    `counter`; probado). Por hardware los paquetes no pasan por la CPU y es probable que cuenten de
+    menos: comprobarlo en un Filogic. Con SQM no pasa (SQM ya obliga a no usarla, ver *Descarga de
+    flujos* arriba); sin SQM y con `flow_offloading_hw`, avisar de que las cifras pueden quedarse
+    cortas.
+  - Pruebas de VM (`*VmTest`): instalar, generar tráfico con el cliente de pruebas y comprobar que
+    se lee, también después de reiniciar.
 
 ## Hito 3 · Nivel entusiasta (P2)
 
@@ -319,7 +351,7 @@ marcha guiada. Cada uno se apoya en los anteriores.
   crea el usuario de la app (uno por teléfono, revocable) para no guardar la contraseña de root, y
   ese usuario solo llama a métodos del agente que validan cada valor: sin `ip_script`, includes de
   script ni `dhcpscript`, no puede hacerse root. La app sigue funcionando sin él; con él desbloquea historial de dispositivos, historial de caídas de internet,
-  consumo por dispositivo (nlbwmon) y **notificaciones** (dispositivo nuevo, internet caído) por
+  avisos de consumo (el consumo en sí va en el Hito 2, *Uso de la red*) y **notificaciones** (dispositivo nuevo, internet caído) por
   ntfy, UnifiedPush o FCM. Con el agente, el aviso de dispositivos nuevos deja de depender de abrir
   la app.
 - **Actualizar el firmware** desde la app (Attended SysUpgrade) conservando los paquetes, y volver a
