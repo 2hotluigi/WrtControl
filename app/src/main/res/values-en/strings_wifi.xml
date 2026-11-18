@@ -122,4 +122,9 @@
     <string name="wifi_add_title">Save “%1$s” on this phone</string>
     <string name="wifi_add_body">So it joins the new network by itself, without looking for it in Settings or typing the password.</string>
     <string name="wifi_add_action">Save on this phone</string>
+    <string name="guest_remove">Delete guest Wi-Fi</string>
+    <string name="guest_remove_title">Delete guest Wi-Fi</string>
+    <string name="guest_remove_note">Its name, password, network and rules are deleted. To have it again you\'ll need to create it anew, with a new QR code.</string>
+    <string name="guest_remove_clients">Guests connected now will lose Wi-Fi.</string>
+    <string name="guest_busy_removing">Deleting guest Wi-Fi…</string>
 </resources>

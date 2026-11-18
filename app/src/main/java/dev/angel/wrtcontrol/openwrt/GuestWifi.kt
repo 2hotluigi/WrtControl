@@ -17,8 +17,8 @@ import dev.angel.wrtcontrol.addons.ipv4Range
  *   tampoco se ven entre sí). Siempre con contraseña (WPA2/WPA3).
  *
  * Apagarlo deja de emitir (`disabled` en sus redes) pero conserva lo demás, con su nombre y su
- * contraseña, para la próxima visita. No se usa una radio apagada: encenderla pondría a emitir
- * también las otras redes que tuviera.
+ * contraseña, para la próxima visita. Borrarlo quita todas las secciones `wrtcguest…`. No se usa
+ * una radio apagada: encenderla pondría a emitir también las otras redes que tuviera.
  */
 
 const val GUEST_PREFIX = "wrtcguest"

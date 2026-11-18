@@ -161,8 +161,14 @@ marcha guiada. Cada uno se apoya en los anteriores.
   Por partes:
   - ~~*Invitados:* red aparte, aislada, con QR.~~ Hecho: Más → Wi-Fi de invitados (red, reparto,
     zona que solo sale a internet y una red por radio), probado con tráfico real en el GL-MT6000.
-    Falta: IPv6 para invitados, borrarlo del todo desde la app y
-    probarlo con un teléfono de verdad (el QR y la unión por Wi-Fi).
+    Borrarlo del todo desde la app, hecho (`GuestVmTest` lo comprueba con la huella de la
+    configuración). Falta probarlo con un teléfono de verdad (el QR y la unión por Wi-Fi) e IPv6
+    para invitados: lo normal en OpenWrt es `ip6assign 64` en su interfaz, con `ra`/`dhcpv6`
+    `server` y reglas para ICMPv6 y DHCPv6, pero solo da IPv6 con internet si el proveedor delega
+    un prefijo. Probado el 2026-11-18 en el GL-MT6000 (Megacable no delega; IPv6 en relay): netifd
+    no asigna nada a la red de invitados, ni siquiera de la ULA del router, y las VM de la CI
+    tampoco tienen prefijo delegado. Se hará cuando haya dónde probarlo (una VM con un servidor
+    DHCPv6-PD delante).
   - ~~*Horario del Wi-Fi.*~~ Hecho: franjas sin Wi-Fi en Más → Wi-Fi, con cron (el ACL de LuCI
     deja escribir el crontab de root), `wifi down`/`wifi up` y "Encender ahora". Probado contra el
     GL-MT6000 (`WifiScheduleVmTest`). Falta verlo apagar y encender un Wi-Fi que emita de verdad

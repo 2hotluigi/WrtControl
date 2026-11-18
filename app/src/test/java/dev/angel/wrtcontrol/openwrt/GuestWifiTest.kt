@@ -125,6 +125,16 @@ class GuestWifiTest {
         assertEquals("1", fake.option("wrtcguest_radio0", "disabled"))
         assertEquals("lo demás sigue", "192.168.99.1", fake.option(GUEST_INTERFACE, "ipaddr"))
         assertEquals(GuestWifi("Casa invitados", "abcd2345ef", on = false, clients = emptyList()), guestWifi(wifi.state()))
+
+        // Borrarlo no deja nada de la app, y lo de casa sigue como estaba.
+        guest.remove(phoneOnIt = false)
+        assertTrue(fake.committed.keys.none { it.startsWith(GUEST_PREFIX) })
+        assertNull(guestWifi(wifi.state()))
+        assertEquals("Casa", fake.option("default_radio0", "ssid"))
+        // Sin nada que borrar, no cambia nada (ni confirma ningún cambio).
+        val calls = fake.calls.size
+        guest.remove(phoneOnIt = false)
+        assertTrue(fake.calls.drop(calls).none { it == "uci.delete" || it == "uci.confirm" })
     }
 
     @Test

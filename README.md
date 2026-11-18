@@ -574,10 +574,13 @@ allí se salta). En el GL-MT6000, un cliente enganchado al puente recibió direc
 nombres y salió a internet, y no pudo abrir la web del router (por ninguna de sus direcciones)
 ni la del módem que tiene delante.
 
-Límites: sin IPv6 para los invitados; no usa una radio apagada (encenderla pondría a emitir
-también las otras redes que tuviera); no hay botón para borrarlo del todo (apagado no emite, y
-se quita borrando las secciones `wrtcguest…` de network, dhcp, firewall y wireless); el Wi-Fi
-de casa todavía no tiene su QR.
+"Borrar el Wi-Fi de invitados" quita todas las secciones `wrtcguest…` de network, dhcp,
+firewall y wireless de una vez, con la misma reversión que crearlo; después se recalculan los
+servidores DNS de los perfiles, como al guardarlo.
+
+Límites: sin IPv6 para los invitados (ver el ROADMAP: hace falta un prefijo delegado para
+probarlo); no usa una radio apagada (encenderla pondría a emitir también las otras redes que
+tuviera); el Wi-Fi de casa todavía no tiene su QR.
 
 ## Dispositivos: qué hace en el router
 

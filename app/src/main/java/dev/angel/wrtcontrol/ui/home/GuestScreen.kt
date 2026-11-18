@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,14 @@ class GuestViewModel(private val router: RouterAccess, private val monitor: Rout
 
     val error: Txt? get() = changes.error
 
+    /** Borra el Wi-Fi de invitados del todo, tras enseñar [preview]. */
+    fun remove(phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
+        changes.run(txt(R.string.guest_busy_removing), onFinished = { monitor.wifi.refresh() }) {
+            router.use { it.guestWifi.remove(phoneOnIt) }
+            router.use { it.parental.update { config, _ -> config } }
+        }
+    }
+
     /** Guarda [edit]; antes enseña [preview] si reinicia un Wi-Fi que está emitiendo. */
     fun save(edit: GuestEdit, phoneOnIt: Boolean, preview: ChangePreview) = changes.propose(preview) {
         changes.run(txt(R.string.guest_busy), onFinished = { monitor.wifi.refresh() }) {
@@ -95,6 +104,18 @@ class GuestViewModel(private val router: RouterAccess, private val monitor: Rout
             router.use { it.parental.update { config, _ -> config } }
         }
     }
+}
+
+/** Lo que supone borrar el Wi-Fi de invitados: se va todo, y si algo emite, el Wi-Fi se corta un momento. */
+fun guestRemovePreview(state: WifiState, guest: GuestWifi, phoneMacs: Set<String>): ChangePreview {
+    val emitting = state.networks.any { it.ifname != null }
+    val notes = buildList {
+        add(txt(R.string.guest_remove_note))
+        if (guest.clients.isNotEmpty()) add(txt(R.string.guest_remove_clients))
+        if (emitting) add(txt(R.string.guest_preview_restart))
+        if (emitting && phoneOnWifi(state, phoneMacs)) add(txt(R.string.wifi_country_preview_phone))
+    }
+    return ChangePreview(txt(R.string.guest_remove_title), emptyList(), notes)
 }
 
 /**
@@ -135,6 +156,7 @@ fun GuestScreen(address: String) {
             error = vm.error?.text(),
             enabled = !locked,
             onSave = { current, edit -> vm.save(edit, phoneOnWifi(wifi, phoneMacs), guestPreview(wifi, current, edit, phoneMacs)) },
+            onRemove = { guest -> vm.remove(phoneOnWifi(wifi, phoneMacs), guestRemovePreview(wifi, guest, phoneMacs)) },
         )
     }
     ChangePreviewHost(vm.proposals)
@@ -154,6 +176,7 @@ fun GuestContent(
     enabled: Boolean = true,
     newKey: String = rememberSaveable { newGuestKey() },
     onSave: (current: GuestEdit, edit: GuestEdit) -> Unit = { _, _ -> },
+    onRemove: (GuestWifi) -> Unit = {},
 ) {
     val guest = guestWifi(state)
     val home = currentWifi(state).ssid
@@ -185,6 +208,12 @@ fun GuestContent(
             modifier = Modifier.align(Alignment.End).testTag("guest-save"),
         ) { Text(stringResource(R.string.wifi_save)) }
         if (guest?.on == true) GuestAccess(guest)
+        if (guest != null) {
+            HorizontalDivider()
+            TextButton(onClick = { onRemove(guest) }, enabled = !busy, modifier = Modifier.testTag("guest-remove")) {
+                Text(stringResource(R.string.guest_remove), color = MaterialTheme.colorScheme.error)
+            }
+        }
     }
 }
 
