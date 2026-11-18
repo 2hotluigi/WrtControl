@@ -23,6 +23,7 @@ import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.GuestWifi
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.LinkProblem
@@ -52,6 +53,7 @@ import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.GuestContent
+import dev.angel.wrtcontrol.ui.home.HomeWifi
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
@@ -255,6 +257,8 @@ class ScreenshotTest {
                 linkAdvice = linkAdvice(listOf(LinkProblem.Flapping(13, 10), LinkProblem.Slow(100, 1000))),
                 attention = listOf(Attention.Cable, Attention.NewDevices),
             ),
+            wifi = HomeWifi.On("Casa", 12),
+            guest = GuestWifi("Casa invitados", "hk7m2pqx4n", on = true, clients = listOf("AA:00:00:00:00:01")),
         )
     }
 

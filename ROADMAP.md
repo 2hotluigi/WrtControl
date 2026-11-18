@@ -65,7 +65,8 @@ marcha guiada. Cada uno se apoya en los anteriores.
 - ~~**Inicio = salud de la red:** internet sí/no y desde cuándo, dispositivos conectados, avisos
   (dispositivos nuevos en cuarentena, router sin contraseña, reglas no activas) y accesos rápidos
   ("Pausar a…", "Wi-Fi de invitados").~~
-  Hecho, salvo los accesos rápidos: "Pausar a…" lleva a Familia; el acceso a "Wi-Fi de invitados" llegará con el Wi-Fi (Hito 2).
+  Hecho: "Pausar a…" lleva a Familia, y dos tarjetas llevan al Wi-Fi (su nombre y cuántos hay
+  conectados, o si está apagado por el horario o lo dan otros aparatos) y al Wi-Fi de invitados.
 - ~~**Salud del cable de internet**~~ (hecho: `WanLink`. El enlace, la velocidad y las caídas salen
   de `luci-rpc.getNetworkDevices`; lo que anuncia cada lado, de `network.device.status`; la hora de
   cada caída, del registro (`log.read`), y un ping desde el router dice si de verdad hay internet.
@@ -160,12 +161,12 @@ marcha guiada. Cada uno se apoya en los anteriores.
   Por partes:
   - ~~*Invitados:* red aparte, aislada, con QR.~~ Hecho: Más → Wi-Fi de invitados (red, reparto,
     zona que solo sale a internet y una red por radio), probado con tráfico real en el GL-MT6000.
-    Falta: el acceso rápido desde Inicio, IPv6 para invitados, borrarlo del todo desde la app y
+    Falta: IPv6 para invitados, borrarlo del todo desde la app y
     probarlo con un teléfono de verdad (el QR y la unión por Wi-Fi).
   - ~~*Horario del Wi-Fi.*~~ Hecho: franjas sin Wi-Fi en Más → Wi-Fi, con cron (el ACL de LuCI
     deja escribir el crontab de root), `wifi down`/`wifi up` y "Encender ahora". Probado contra el
     GL-MT6000 (`WifiScheduleVmTest`). Falta verlo apagar y encender un Wi-Fi que emita de verdad
-    (el del router de pruebas está apagado) y un acceso desde Inicio.
+    (el del router de pruebas está apagado).
   - ~~*Lo básico:* encender o apagar cada banda, nombre, clave y seguridad (WPA2/WPA3 mixto por
     defecto; avisar de una red abierta, como la `OpenWrt` sin clave que trae el router de fábrica).
     Un cambio de Wi-Fi puede dejar fuera al teléfono que lo hace: `SafeApply` tiene que esperar a
@@ -191,8 +192,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
     Hecho: potencia en tres niveles (toda, media, baja) y "Conectados ahora" con la señal en
     palabras. La lista con señal no se ha visto con aparatos de verdad (el Wi-Fi del router de
     pruebas está apagado).
-  - *Wi-Fi apagado a propósito:* si lo dan otros puntos de acceso (en la casa de pruebas, dos Deco
-    en modo AP), decirlo en vez de avisar de "Wi-Fi apagado".
+  - ~~*Wi-Fi apagado a propósito:* si lo dan otros puntos de acceso (en la casa de pruebas, dos Deco
+    en modo AP), decirlo en vez de avisar de "Wi-Fi apagado".~~ Hecho: si el router no emite y
+    este teléfono está por Wi-Fi en la red de casa (su puerta de enlace es el router), ese Wi-Fi
+    lo da otro aparato; Inicio y Más → Wi-Fi lo dicen así. Falta verlo en un teléfono de verdad en
+    la casa (el emulador no está en ese Wi-Fi).
   - *Roaming* (802.11r/k/v) queda en el Hito 3, con varios puntos de acceso.
 - **Rendimiento ("Que el router dé todo lo que puede"):** una pantalla que mira qué hay y propone,
   en vez de una lista de interruptores. Contrastado el 2026-11-16 con las recomendaciones de la

@@ -6,11 +6,17 @@ import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Route
 import dev.angel.wrtcontrol.openwrt.WanLink
+import dev.angel.wrtcontrol.openwrt.WifiBand
+import dev.angel.wrtcontrol.openwrt.WifiNetwork
+import dev.angel.wrtcontrol.openwrt.WifiRadio
+import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.parental.ParentalSettings
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.ui.home.Attention
+import dev.angel.wrtcontrol.ui.home.HomeWifi
+import dev.angel.wrtcontrol.ui.home.homeWifi
 import dev.angel.wrtcontrol.ui.home.overview
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -117,5 +123,35 @@ class OverviewTest {
         val devices = listOf(device("AA:00:00:00:00:01"))
         val o = overview(listOf(wan), devices, snapshot(settings = ParentalSettings(quarantine = true)), emptyPassword = true)
         assertEquals(listOf(Attention.NoPassword, Attention.NewDevices), o.attention)
+    }
+
+    private val radio = WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true)
+
+    private fun home(ifname: String?, enabled: Boolean = true, clients: Int = 0) = WifiNetwork(
+        section = "default_radio0", radio = "radio0", ssid = "Casa", encryption = "sae-mixed", key = "clave-de-casa",
+        enabled = enabled, networks = listOf("lan"), ifname = ifname, clients = List(clients) { "AA:00:00:00:00:%02X".format(it) },
+    )
+
+    @Test
+    fun `el Wi-Fi que emite dice su nombre y cuantos hay`() {
+        assertEquals(HomeWifi.On("Casa", 3), homeWifi(WifiState(listOf(radio), listOf(home("phy0-ap0", clients = 3))), phoneOnHomeWifi = true))
+    }
+
+    @Test
+    fun `encendido pero sin emitir es el horario`() {
+        val state = WifiState(listOf(radio.copy(up = false)), listOf(home(null)))
+        assertEquals(HomeWifi.Paused, homeWifi(state, phoneOnHomeWifi = false))
+    }
+
+    @Test
+    fun `apagado con el telefono por Wi-Fi en casa lo dan otros aparatos`() {
+        val state = WifiState(listOf(radio), listOf(home(null, enabled = false)))
+        assertEquals(HomeWifi.OtherAccessPoints, homeWifi(state, phoneOnHomeWifi = true))
+        assertEquals(HomeWifi.Off, homeWifi(state, phoneOnHomeWifi = false))
+    }
+
+    @Test
+    fun `sin radios no hay tarjeta de Wi-Fi`() {
+        assertNull(homeWifi(WifiState(emptyList(), emptyList()), phoneOnHomeWifi = true))
     }
 }

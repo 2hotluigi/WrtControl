@@ -137,4 +137,23 @@
     <string name="devices_error_ip_outside">Esa dirección no es de la red de casa, o es la del propio router.</string>
     <string name="devices_error_ip_taken">Esa dirección ya está reservada para «%1$s».</string>
     <string name="devices_error_not_applied">El router dejó de resolver nombres con el cambio, así que se dejó como estaba.</string>
+    <string name="overview_wifi_paused">Wi-Fi apagado</string>
+    <string name="overview_wifi_paused_label">por el horario</string>
+    <string name="overview_wifi_others">Wi-Fi</string>
+    <string name="overview_wifi_others_label">lo dan otros aparatos</string>
+    <string name="overview_wifi_off">Wi-Fi apagado</string>
+    <string name="overview_wifi_off_label">toca para encenderlo</string>
+    <plurals name="overview_wifi_clients">
+        <item quantity="one">%1$d conectado al router</item>
+        <item quantity="other">%1$d conectados al router</item>
+        <item quantity="many">%1$d conectados al router</item>
+    </plurals>
+    <string name="overview_guest_title">Invitados</string>
+    <string name="overview_guest_none">crea una red para las visitas</string>
+    <string name="overview_guest_off">apagado</string>
+    <plurals name="overview_guest_on">
+        <item quantity="one">encendido · %1$d conectado</item>
+        <item quantity="other">encendido · %1$d conectados</item>
+        <item quantity="many">encendido · %1$d conectados</item>
+    </plurals>
 </resources>

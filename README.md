@@ -530,6 +530,10 @@ redes (invitados, modo cliente, malla) no se tocan.
   de apagar. Si el horario nuevo dice que ahora toca Wi-Fi y estaba apagado, lo enciende, y
   dentro de una franja la app ofrece "Encender ahora" (`/sbin/wifi up`, que el ACL de LuCI
   permite). `WifiScheduleVmTest` lo prueba en las VM de la CI y en el GL-MT6000.
+- **Wi-Fi que dan otros aparatos.** Si el router no emite y el teléfono está por Wi-Fi en una red
+  cuya puerta de enlace es el router (lo dice Android sin pedir permisos), ese Wi-Fi lo da otro
+  aparato de la casa (repetidores, mesh en modo punto de acceso). Entonces la app no avisa de
+  "Wi-Fi apagado": lo explica, en Más → Wi-Fi y en la tarjeta del Wi-Fi de Inicio.
 
 Límites: el país aún no se pide en la puesta en marcha, solo en Más → Wi-Fi. Con el país sin
 poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).

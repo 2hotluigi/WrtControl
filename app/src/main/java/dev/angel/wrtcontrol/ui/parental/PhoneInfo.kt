@@ -21,13 +21,22 @@ fun phoneAddresses(context: Context): Set<String> {
  * siempre, el router. null con datos móviles o una VPN, donde la puerta de enlace no es ningún
  * router de casa.
  */
-fun homeGateway(context: Context): String? {
+fun homeGateway(context: Context): String? = homeLink(context)?.second
+
+/** ¿Está el teléfono en el Wi-Fi de la red cuya puerta de enlace es [router]? */
+fun onWifiBehind(context: Context, router: String): Boolean {
+    val (wifi, gateway) = homeLink(context) ?: return false
+    return wifi && gateway == router
+}
+
+/** Si el teléfono está en una red de casa: si es por Wi-Fi, y su puerta de enlace. */
+private fun homeLink(context: Context): Pair<Boolean, String>? {
     val cm = context.getSystemService(ConnectivityManager::class.java)
     val network = cm?.activeNetwork
     val capabilities = network?.let(cm::getNetworkCapabilities)
     val home = capabilities != null && !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
         (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
-    if (!home) return null
-    val routes = cm.getLinkProperties(network)?.routes.orEmpty()
-    return routes.firstOrNull { it.isDefaultRoute && it.gateway is Inet4Address }?.gateway?.hostAddress
+    val routes = if (home) cm.getLinkProperties(network)?.routes.orEmpty() else emptyList()
+    val gateway = routes.firstOrNull { it.isDefaultRoute && it.gateway is Inet4Address }?.gateway?.hostAddress
+    return gateway?.let { (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) to it }
 }

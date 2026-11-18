@@ -24,6 +24,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   el nombre y la contraseña para la próxima vez.
 - Wi-Fi: potencia (toda, media o baja) y "Conectados ahora": quién hay en cada banda y si su
   señal es muy buena, buena, justa o débil.
+- Inicio: dos tarjetas nuevas llevan al Wi-Fi (su nombre y cuántos hay conectados) y al Wi-Fi de
+  invitados. Si el router no emite pero tu teléfono está por Wi-Fi en casa, dice que el Wi-Fi lo
+  dan otros aparatos (repetidores, Deco) en vez de avisar de que está apagado.
 - Wi-Fi: horario. Apaga el Wi-Fi del router (también el de invitados) a las horas que elijas,
   por ejemplo de 23:00 a 07:00 de domingo a jueves, y lo vuelve a encender solo. Dentro del
   horario, "Encender ahora" lo enciende hasta la próxima hora de apagar. Si se va la luz o
