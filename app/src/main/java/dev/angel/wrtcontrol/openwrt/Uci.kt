@@ -150,7 +150,7 @@ suspend fun UbusCaller.fileWrite(path: String, data: String, mode: Int? = null) 
 }
 
 /** Códigos de estado de ubus: no existe, y sin permiso. */
-private const val UBUS_NOT_FOUND = 4
+internal const val UBUS_NOT_FOUND = 4
 private const val UBUS_PERMISSION_DENIED = 6
 
 /** El contenido de [path]: vacío si no existe, null si el ACL no deja leerlo. */

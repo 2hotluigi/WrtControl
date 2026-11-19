@@ -78,6 +78,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   el suyo o su fabricante ("Aparato Samsung"), en vez de "Sin nombre" o la MAC.
 
 ### Corregido
+- En un router sin Wi-Fi (un PC con OpenWrt, el router de prueba), "Tu Wi-Fi" y el Wi-Fi de
+  invitados dicen que no tiene, en vez de un error que se repetía sin parar.
 - En inglés, el atajo "Every day" del diálogo de horarios ya no se escribe en vertical.
 - UPnP: en OpenWrt 24.10, si miniupnpd se caía nada más arrancar, la app podía darlo por
   activado al preguntar justo cuando el router lo relanzaba. Ahora tiene que seguir en marcha

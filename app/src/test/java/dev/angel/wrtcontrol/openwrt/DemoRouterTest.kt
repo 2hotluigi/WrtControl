@@ -41,5 +41,10 @@ class DemoRouterTest {
         assertTrue("sin salida a internet: $interfaces", interfaces.any { it.up && it.hasDefaultRoute })
         assertTrue("sin la MAC de la red de casa", !api.routerId(board, interfaces).endsWith("|"))
         api.devices(interfaces)
+
+        // Sin radios no hay /etc/config/wireless: la pantalla Wi-Fi dice que no tiene, no da error.
+        val wifi = api.wifi.state()
+        assertTrue("radios: ${wifi.radios}", wifi.radios.isEmpty())
+        assertTrue(api.wifi.countries().isEmpty())
     }
 }

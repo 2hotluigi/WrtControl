@@ -87,9 +87,9 @@ class GuestVmTest {
         val client = UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password))
         val wifi = WifiApi(client)
         val api = GuestWifiApi(client)
-        val before = runCatching { wifi.state() }.getOrNull()
-        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
-        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        val before = wifi.state()
+        assumeTrue("El router no tiene Wi-Fi", before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before.networks.all { it.clients.isEmpty() })
         assumeTrue("El router ya tiene Wi-Fi de invitados: la prueba lo borraría", guestWifi(before) == null)
         assumeTrue("Hace falta ip-full y kmod-veth para el cliente de pruebas", ssh("[ -x $IP_FULL ] && echo si").endsWith("si"))
 
