@@ -13,7 +13,7 @@ zxing = "3.5.4"
 junit = "4.13.2"
 biometric = "1.1.0"
 # biometric trae fragment 1.2.5, que no admite los lanzadores de resultados de Compose (permisos).
-fragment = "1.8.9"
+fragment = "1.9.1"
 detekt = "2.0.0-alpha.6"
 kover = "0.9.11"
 roborazzi = "1.79.0"
