@@ -8,6 +8,10 @@
     <string name="capability_sqm">Games and video calls without stutter</string>
     <string name="capability_upnp">Open ports for consoles and games</string>
     <string name="capability_ready">available</string>
+    <string name="capability_verified">works here</string>
+    <string name="capability_not_verified">not tried here</string>
+    <string name="capability_not_verified_tested">Not seen working on this router yet. The app is tested with OpenWrt %1$s.</string>
+    <string name="capability_not_verified_untested">Not seen working on this router yet, and the app isn\'t tested with OpenWrt %1$s.</string>
     <string name="capability_installable">will be installed</string>
     <string name="capability_unsupported">not supported</string>
     <string name="capability_installable_detail">When you turn it on, the app installs %1$s on the router.</string>

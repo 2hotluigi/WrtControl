@@ -462,12 +462,16 @@ class AddonsVmTest {
             log("tc: $tc")
             assertTrue("cake en la salida de eth1", tc.contains("cake") && tc.contains("9Mbit"))
             assertEquals("1", ssh("uci get sqm.${queue.section}.enabled"))
+            // Estado lo da por "funciona aquí" (ver InUse.kt).
+            assertTrue("SQM se ve en marcha", Feature.Sqm in api.state().inUse())
         } finally {
             api.saveSqm(SqmEdit(queue.section, queue.enabled, queue.device, queue.downloadKbit, queue.uploadKbit))
         }
         Thread.sleep(2000)
         assertFalse("sin cake al desactivarlo", ssh("tc qdisc show dev eth1").contains("cake"))
-        assertEquals(queue, api.state().sqm!!.first())
+        val after = api.state()
+        assertEquals(queue, after.sqm!!.first())
+        assertEquals(queue.enabled, Feature.Sqm in after.inUse())
     }
 }
 

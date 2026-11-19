@@ -17,16 +17,24 @@ import dev.angel.wrtcontrol.openwrt.Availability
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.availability
+import dev.angel.wrtcontrol.openwrt.notVerifiedDetail
 import dev.angel.wrtcontrol.openwrt.wifiSummary
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.StatusPill
 
-/** Cada función de la app: si este router puede con ella, si hay que instalar algo o por qué no. */
+/**
+ * Cada función de la app: si este router puede con ella, si hay que instalar algo o por qué no.
+ * [verified]: las que se han visto funcionando aquí ("funciona aquí": la app las activó y comprobó,
+ * o las vio en marcha; ver RouterRepository.markVerified). Las demás que puede, "sin probar aquí",
+ * con si la versión de OpenWrt está probada. null: no se dice (en la puesta en marcha).
+ */
 @Composable
-fun CapabilitiesCard(capabilities: Capabilities) {
+fun CapabilitiesCard(capabilities: Capabilities, verified: Set<Feature>? = null) {
     InfoCard(stringResource(R.string.capability_title)) {
-        Feature.entries.forEach { FeatureRow(it, capabilities.availability(it)) }
+        Feature.entries.forEach { feature ->
+            FeatureRow(feature, capabilities.availability(feature), verified?.let { feature in it }, capabilities.version)
+        }
         Text(
             wifiSummary(capabilities.radios).text(),
             style = MaterialTheme.typography.bodySmall,
@@ -42,15 +50,20 @@ fun CapabilitiesCard(capabilities: Capabilities) {
     }
 }
 
+/** [verified]: si ya funciona en este router (null: no se sabe). [version]: la de OpenWrt del router. */
 @Composable
-private fun FeatureRow(feature: Feature, availability: Availability) {
+private fun FeatureRow(feature: Feature, availability: Availability, verified: Boolean?, version: String) {
     val (label, ok) = when (availability) {
-        Availability.Ready -> stringResource(R.string.capability_ready) to true
+        Availability.Ready -> when (verified) {
+            null -> stringResource(R.string.capability_ready) to true
+            true -> stringResource(R.string.capability_verified) to true
+            false -> stringResource(R.string.capability_not_verified) to null
+        }
         is Availability.Installable -> stringResource(R.string.capability_installable) to null
         is Availability.Unsupported -> stringResource(R.string.capability_unsupported) to false
     }
     val detail = when (availability) {
-        Availability.Ready -> null
+        Availability.Ready -> if (verified == false) notVerifiedDetail(version).text() else null
         is Availability.Installable -> stringResource(R.string.capability_installable_detail, availability.packages.joinToString())
         is Availability.Unsupported -> availability.reason.text()
     }

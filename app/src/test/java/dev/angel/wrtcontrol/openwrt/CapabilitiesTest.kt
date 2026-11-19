@@ -188,4 +188,13 @@ class CapabilitiesTest {
         Feature.entries.forEach { assertTrue(it.title.es.isNotBlank()) }
         assertEquals("Entrar desde fuera de casa", Feature.RemoteAccess.title.es)
     }
+
+    @Test
+    fun `sin probar aqui dice si la version de OpenWrt esta probada`() {
+        assertEquals("Aún no se ha visto funcionando en este router. La app está probada con OpenWrt 25.12.6.", notVerifiedDetail("25.12.6").es)
+        assertEquals(
+            "Aún no se ha visto funcionando en este router, y la app no está probada con OpenWrt 23.05.5.",
+            notVerifiedDetail("23.05.5").es,
+        )
+    }
 }

@@ -8,6 +8,10 @@
     <string name="capability_sqm">Juegos y videollamadas sin cortes</string>
     <string name="capability_upnp">Abrir puertos a consolas y juegos</string>
     <string name="capability_ready">disponible</string>
+    <string name="capability_verified">funciona aquí</string>
+    <string name="capability_not_verified">sin probar aquí</string>
+    <string name="capability_not_verified_tested">Aún no se ha visto funcionando en este router. La app está probada con OpenWrt %1$s.</string>
+    <string name="capability_not_verified_untested">Aún no se ha visto funcionando en este router, y la app no está probada con OpenWrt %1$s.</string>
     <string name="capability_installable">se instalará</string>
     <string name="capability_unsupported">no compatible</string>
     <string name="capability_installable_detail">Al activarlo, la app instala %1$s en el router.</string>

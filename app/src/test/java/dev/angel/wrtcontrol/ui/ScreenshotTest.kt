@@ -23,6 +23,7 @@ import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.GuestWifi
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.LeaseState
@@ -326,9 +327,10 @@ class ScreenshotTest {
         PairScreen("192.168.8.1", "root")
     }
 
+    /** Con funciones que ya funcionan en este router y otras sin probar aquí. */
     @Test
     fun estado() = both("estado") {
-        StatusContent(Loadable(status), capabilities)
+        StatusContent(Loadable(status), capabilities, verified = setOf(Feature.Parental))
     }
 
     private val status = StatusData(

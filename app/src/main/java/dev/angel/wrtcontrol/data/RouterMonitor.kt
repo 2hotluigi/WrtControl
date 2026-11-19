@@ -2,11 +2,13 @@ package dev.angel.wrtcontrol.data
 
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.addons.AddonsState
+import dev.angel.wrtcontrol.addons.inUse
 import dev.angel.wrtcontrol.addons.publicAddresses
 import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.HomeLayout
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
@@ -15,6 +17,7 @@ import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.WanLink
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
+import dev.angel.wrtcontrol.parental.inUse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -190,7 +193,8 @@ class RouterMonitor(
 
 /**
  * Lo que la app apunta del router según lo va leyendo: cuál es (para usar su acceso remoto y no el
- * de otro que esté en la misma dirección) y por dónde se llega a él desde fuera. Va aparte de las
+ * de otro que esté en la misma dirección), por dónde se llega a él desde fuera y qué funciones se
+ * ven funcionando en él ("funciona aquí" en Estado). Va aparte de las
  * lecturas: reacciona a lo que traen, las haya pedido la pantalla que las haya pedido. Antes de
  * apuntar direcciones se sabe de qué router son.
  */
@@ -198,6 +202,7 @@ internal fun CoroutineScope.followRouter(
     monitor: RouterMonitor,
     onIdentified: suspend (routerId: String) -> Unit,
     onAddresses: suspend (endpoints: List<String>, hostname: String?, hostnameKnown: Boolean) -> Unit,
+    onInUse: suspend (features: Set<Feature>) -> Unit = {},
 ): Job = launch {
     suspend fun identify(): Boolean {
         val id = try {
@@ -220,7 +225,13 @@ internal fun CoroutineScope.followRouter(
         monitor.addons.state.mapNotNull { it.data }.collect { state ->
             if (identify() && monitor.addons.state.value.data === state) {
                 onAddresses(state.publicAddresses, state.ddnsDomain, state.ddns != null)
+                onInUse(state.inUse())
             }
+        }
+    }
+    launch {
+        monitor.parental.state.mapNotNull { it.data }.collect { snapshot ->
+            if (identify() && monitor.parental.state.value.data === snapshot) onInUse(snapshot.inUse())
         }
     }
 }

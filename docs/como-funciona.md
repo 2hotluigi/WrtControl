@@ -52,6 +52,22 @@ No usa el listado de paquetes, que pesa cientos de KB. Lo que el router no deja 
 por malo. Hoy se enseña en "Estado"; la puesta en marcha guiada y las pantallas nuevas lo usarán
 para no ofrecer lo que no va a funcionar.
 
+En "Estado", cada función que el router puede usar dice además si **funciona aquí** o está **sin
+probar aquí** (y entonces, si la app está probada con su versión de OpenWrt). "Funciona aquí" se
+apunta en el teléfono, por router (dirección e identidad, como la copia de los perfiles), en dos
+casos:
+
+- Un cambio que la activa termina bien: el router lo aplicó, la app comprobó que funcionaba y lo
+  confirmó (`RouterRepository.markVerified`, desde Familia y Funciones del router).
+- Una lectura la ve en marcha, aunque la activara otro teléfono, LuCI o una versión anterior
+  (`followRouter`): el acceso remoto, con su túnel levantado y algún teléfono que haya conectado;
+  SQM, con una cola activa en la salida a internet; UPnP, activado y en marcha; el nombre fijo, el
+  de la app al día y sin errores; el control parental, con sus reglas cargadas en fw4, y el
+  filtro, además con los DNS de los perfiles en marcha. "Estado" lee los paquetes y el control
+  parental cada pocos minutos para eso.
+
+No se borra al desactivar una función: dice que en este router ha funcionado.
+
 ### Cuál es la red de casa
 
 La app no supone que la red de casa se llama `lan`: la saca del cortafuegos (`HomeNetwork.kt`),
