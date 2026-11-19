@@ -1,0 +1,41 @@
+# Actualizaciones de versión: Dependabot abre un PR por grupo cada semana.
+# Las alertas de seguridad se activan en los ajustes de GitHub y no dependen de este fichero.
+version: 2
+updates:
+  # App y plugins del build (gradle/libs.versions.toml). AGP, Kotlin y Kover traen librerías
+  # vulnerables en el classpath del build: solo se arreglan subiendo el plugin.
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "Gradle"
+    groups:
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "org.jetbrains.kotlinx*"]
+      androidx:
+        patterns: ["androidx.*", "com.android.*"]
+      pruebas:
+        patterns: ["junit*", "org.robolectric*", "io.github.takahirom.roborazzi*"]
+
+  # Túnel WireGuard (tunnel/go.mod). Tras subirlo hay que recompilar app/libs/wrtcvpn.aar.
+  - package-ecosystem: gomod
+    directory: /tunnel
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "Túnel"
+    groups:
+      go:
+        patterns: ["*"]
+
+  # Acciones de los workflows de la CI.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "CI"
+    groups:
+      acciones:
+        patterns: ["*"]
