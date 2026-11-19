@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo único que la app comparte como archivo: el informe del router, en la caché. -->
+<paths>
+    <cache-path name="reports" path="reports/" />
+</paths>
