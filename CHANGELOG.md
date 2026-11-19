@@ -7,6 +7,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ## [Sin publicar]
 
 ### Añadido
+- Router (en Más): "Compartir informe" prepara un archivo con cómo es el router y cómo está
+  configurado, para que la app se pruebe en más routers. Antes de salir del teléfono se quitan
+  las MAC, las IP públicas, los nombres, las claves y las redes, y no lleva los aparatos de casa.
 - Icono propio de la app: un escudo con las ondas del Wi-Fi, también en versión monocroma para los
   iconos temáticos de Android 13 o más.
 - Wi-Fi (en Más): nombre, contraseña, seguridad (WPA2/WPA3 por defecto) y qué bandas emiten,

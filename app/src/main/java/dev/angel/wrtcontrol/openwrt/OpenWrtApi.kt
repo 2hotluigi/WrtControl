@@ -44,6 +44,9 @@ class OpenWrtApi(
     /** El Wi-Fi de invitados: una red aparte, aislada de la casa (escribe en network, dhcp, firewall y wireless). */
     val guestWifi = GuestWifiApi(ubus, writeLock)
 
+    /** El informe anonimizado del router, para compartirlo (solo lee). */
+    val report = DeviceReportApi(ubus)
+
     suspend fun board(): BoardInfo = ubus.callAs("system", "board")
 
     suspend fun setPassword(username: String, password: String) = ubus.setPassword(username, password)

@@ -11,7 +11,10 @@ falta saber; el detalle técnico está en [docs/desarrollo.md](docs/desarrollo.m
 WrtControl is tested nightly against OpenWrt in virtual machines and every day on one physical
 router. Every other router is new territory. If you run OpenWrt 24.10 or newer, please
 [open a router report](https://github.com/2hotluigi/WrtControl/issues/new?template=router_report.yml):
-model, OpenWrt version, and what worked or didn't. Even "everything worked" helps.
+model, OpenWrt version, and what worked or didn't. Even "everything worked" helps. If you can,
+attach the app's router report (More → Router → Share report): it describes the router and its
+setup with MAC addresses, public IPs, names, passwords and networks already replaced, and without
+your devices.
 
 Please **don't paste** MAC addresses, public IP addresses, passwords, keys or Wi-Fi names in
 issues. Screenshots are welcome once those are hidden.

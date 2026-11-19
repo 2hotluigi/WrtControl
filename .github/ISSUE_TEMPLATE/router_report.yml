@@ -32,6 +32,15 @@ body:
     validations:
       required: true
   - type: textarea
+    id: report
+    attributes:
+      label: Router report from the app (optional, very useful)
+      description: >
+        In the app: More → Router → Share report. Drag the file here (or paste its contents).
+        It says what the router is and how it's set up; MAC addresses, public IPs, names, passwords
+        and networks are replaced before it leaves your phone, and your devices aren't included.
+        You can open it and check before attaching it.
+  - type: textarea
     id: setup
     attributes:
       label: How your network is set up

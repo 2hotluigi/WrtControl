@@ -13,4 +13,10 @@
     <string name="router_service_failed">El router no pudo cambiar el servicio %1$s. Vuelve a intentarlo; si se repite, reinicia el router.</string>
     <string name="router_openwrt_may_work">La app se prueba con OpenWrt 24.10 o superior. Con %1$s puede funcionar, pero si algo falla, actualiza el router.</string>
     <string name="router_openwrt_too_old">OpenWrt %1$s es demasiado antiguo: el control parental necesita el firewall de 22.03 o superior (fw4). Lo demás puede funcionar; actualiza el router para usarlo todo.</string>
+    <string name="report_title">Informe del router</string>
+    <string name="report_body">Para que la app funcione en más routers: un archivo con cómo es este router y cómo está configurado. Antes de salir del teléfono se quitan las MAC, las IP públicas, los nombres, las claves y las redes, y no lleva tus aparatos. Tú eliges con quién compartirlo.</string>
+    <string name="report_share">Compartir informe</string>
+    <string name="report_busy">Preparando el informe…</string>
+    <string name="report_share_subject">Informe de router de WrtControl</string>
+    <string name="report_error_leak">No se pudo quitar todo lo personal del informe, así que no se comparte. Avisa del problema sin adjuntarlo.</string>
 </resources>

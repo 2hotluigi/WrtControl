@@ -84,12 +84,19 @@ WrtControl y en UTC.
 - DNS dinámico con un "proveedor" de prueba en el PC (la VM llega por `10.0.3.2`): ddns-scripts
   le envía el nombre, la IP y el token.
 
+`DeviceReportVmTest` hace el informe del router (solo lee) y comprueba que no lleva sus MAC ni sus
+direcciones de la WAN; lo deja en `app/build/device-report-vm.json` para mirarlo.
+
 `HomeNetworkVmTest` renombra la red de casa (`lan` → `casa`: interfaz, zona, reglas, DHCP y Wi-Fi)
 y comprueba que la app la encuentra, identifica el mismo router y sigue viendo al cliente de
 pruebas; al final deja `/etc/config` como estaba. Solo corre en una máquina virtual (QEMU o
 VirtualBox, por `/sys/class/dmi/id/sys_vendor`): en un router de casa cortaría la red un momento.
 Las órdenes van por la entrada de `ssh … sh -s`, porque desde Windows `ProcessBuilder` reescribe
 las comillas de los argumentos.
+
+En Android las expresiones regulares las compila ICU, no la JVM de las pruebas: ICU lee `[:` como
+el principio de una clase POSIX y la app se cierra al cargar la clase. `IcuRegexTest` revisa que
+ninguna `Regex("…")` lo lleve (se escribe `[-:]`, no `[:-]`).
 
 ### Prueba contra un router de verdad
 

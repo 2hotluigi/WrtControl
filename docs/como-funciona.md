@@ -84,6 +84,42 @@ Leer no tiene efectos. Lo que la app apunta a partir de lo leído (qué router e
 direcciones se llega a él desde fuera, para el acceso remoto) va aparte, en `followRouter`, que
 reacciona a las lecturas las haya pedido la pantalla que las haya pedido.
 
+## Informe del router
+
+Más → Router → "Compartir informe" prepara un archivo JSON con lo que la app lee del router para
+saber cómo es (`DeviceReport.kt`), para que quien tenga un router que no es el nuestro lo comparta
+(en un informe de router de GitHub) y la app se pruebe contra él. Solo lee; no cambia nada.
+
+- **Qué lleva:** `system board` e `info`, `luci.getFeatures`, los objetos de ubus, los permisos de
+  la sesión, `network.interface dump`, `network.device status`, `luci-rpc getNetworkDevices` y
+  `getWirelessDevices`, de cada radio `iwinfo info`, `freqlist` y `txpowerlist`, el estado de
+  WireGuard y UPnP, `rc list`, y las configuraciones `network`, `wireless`, `firewall`, `dhcp`,
+  `system`, `uhttpd`, `dropbear`, `sqm`, `upnpd` y `ddns`. Lo que el router no deja leer va como
+  error ("access denied", "status 4") sin más texto. Lleva la versión del formato
+  (`REPORT_FORMAT`) y la de la app.
+- **Qué no lleva:** los aparatos de la casa (concesiones DHCP, pistas de host, quién está en el
+  Wi-Fi), el registro del sistema ni las redes de los vecinos (`iwinfo scan`).
+- **Anonimizado** (`ReportAnonymizer.kt`, `ReportAddresses.kt`), con seudónimos coherentes para
+  que el informe siga sirviendo para probar la app: lo mismo recibe siempre el mismo.
+  - MAC (también en `host_<mac>`) → `02:00:00:00:xx:xx`.
+  - IPv4 públicas → `203.0.113.x`. Las privadas, de bucle, máscaras… se quedan: son la estructura
+    de la red.
+  - IPv6: el prefijo de sitio → `2001:db8:N` o `fd00:0:N` (ULA); la subred se queda y el
+    identificador de interfaz, si no es corto como `::1`, → `::a:0:0:N` (suele llevar la MAC).
+  - Claves (de WireGuard y cualquier opción `*key`, `*password`, `*duid`), tokens, usuarios →
+    `secreto-N`. Las rutas de fichero (`/etc/uhttpd.key`) se quedan.
+  - SSID, nombre del router, de perfiles, aparatos y teléfonos, nombres de reglas que no son de
+    serie (llevan el del perfil), dominios, correos y URL (menos las de openwrt.org) → `nombre-N`.
+- **Revisión final** (`ReportAnonymizer.leaks`): antes de compartir se vuelve a mirar el texto y,
+  si queda una MAC, una IPv4 pública, una IPv6 sin seudónimo, una clave de WireGuard o un secreto
+  tal cual, no se comparte. `DeviceReportTest` lo prueba con datos de ejemplo llenos de lo que no
+  debe salir, y `DeviceReportVmTest` con un router de verdad (sin sus MAC ni sus direcciones de la
+  WAN). Probado también contra el GL-MT6000 de la casa: ninguna de sus MAC, IPv6, claves, ni de
+  lo del DNS dinámico apareció.
+
+El archivo se guarda en la caché de la app y se comparte con el menú de Android (FileProvider,
+`res/xml/shared_files.xml`, solo la carpeta `reports/`).
+
 ## Control parental: qué hace en el router
 
 Cada perfil tiene un nombre, sus dispositivos (por MAC), una pausa opcional (con o sin fin),

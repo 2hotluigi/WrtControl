@@ -62,6 +62,8 @@ import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
 import dev.angel.wrtcontrol.ui.home.PowerSection
+import dev.angel.wrtcontrol.ui.home.ReportCard
+import dev.angel.wrtcontrol.ui.home.ReportUi
 import dev.angel.wrtcontrol.ui.home.ScheduleSection
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import dev.angel.wrtcontrol.ui.home.WidthSection
@@ -325,6 +327,12 @@ class ScreenshotTest {
     @Test
     fun `anadir otro telefono`() = both("anadir-telefono") {
         PairScreen("192.168.8.1", "root")
+    }
+
+    /** La tarjeta para compartir el informe del router, al final de Más → Router. */
+    @Test
+    fun `informe del router`() = both("informe-router") {
+        ReportCard(ReportUi(onShare = {}))
     }
 
     /** Con funciones que ya funcionan en este router y otras sin probar aquí. */

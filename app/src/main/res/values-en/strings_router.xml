@@ -13,4 +13,10 @@
     <string name="router_service_failed">The router couldn\'t change the %1$s service. Try again; if it keeps happening, restart the router.</string>
     <string name="router_openwrt_may_work">The app is tested with OpenWrt 24.10 or later. It may work with %1$s, but if something fails, update the router.</string>
     <string name="router_openwrt_too_old">OpenWrt %1$s is too old: parental controls need the firewall from 22.03 or later (fw4). The rest may work; update the router to use everything.</string>
+    <string name="report_title">Router report</string>
+    <string name="report_body">To make the app work on more routers: a file with what this router is and how it\'s set up. Before it leaves the phone, MAC addresses, public IPs, names, passwords and networks are removed, and it doesn\'t include your devices. You choose who to share it with.</string>
+    <string name="report_share">Share report</string>
+    <string name="report_busy">Preparing the report…</string>
+    <string name="report_share_subject">WrtControl router report</string>
+    <string name="report_error_leak">Not everything personal could be removed from the report, so it won\'t be shared. Report the problem without attaching it.</string>
 </resources>
