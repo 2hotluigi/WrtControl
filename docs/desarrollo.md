@@ -140,6 +140,17 @@ sh tools/vm/openwrt-qemu.sh build 25.12 vm ~/.ssh/id_ed25519.pub
 sh tools/vm/openwrt-qemu.sh up vm/openwrt.img      # LAN por tap (sudo): el router queda en 192.168.56.2
 ```
 
+### El router de prueba del README
+
+`tools/vm/demo.sh` y `tools/vm/demo.ps1` (la guía "Probarla sin router" del README) son para quien
+llega sin router, no para las pruebas: la imagen oficial sin tocar (sin clave SSH ni paquetes de
+más), red de usuario de QEMU (sin sudo ni tap) y la web del router en el puerto 8080 del PC. La
+primera vez arranca solo para el PC (`127.0.0.1`), pone a `root` una contraseña aleatoria con
+`luci setPassword` y apaga; desde entonces escucha en toda la red del PC, para el teléfono.
+Guarda la imagen y la contraseña en `~/.cache/wrtcontrol-demo` (`%LOCALAPPDATA%\wrtcontrol-demo`
+en Windows). El trabajo `demo` de `vm.yml` arranca `demo.sh`, lo apaga, lo vuelve a arrancar y pasa
+`DemoRouterTest` (la app entra y lee lo de la primera pantalla).
+
 Si en la VM está el `nft` de OpenWrt 22.03 en `/tmp/nft102` (paquetes `nftables-json`,
 `libnftnl11`, `libmnl0` y `jansson4` de 22.03.7 para x86_64), la prueba pasa también el fichero
 de reglas por su analizador. Esa copia se cuelga al hablar con el kernel de 25.12, pero analiza

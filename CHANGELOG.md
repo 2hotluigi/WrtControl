@@ -7,6 +7,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ## [Sin publicar]
 
 ### Añadido
+- Probar la app sin router: `tools/vm/demo.sh` (Linux, macOS) y `tools/vm/demo.ps1` (Windows)
+  arrancan un OpenWrt de prueba en el ordenador con un comando (ver "Probarla sin router" en el
+  README).
 - Router (en Más): "Compartir informe" prepara un archivo con cómo es el router y cómo está
   configurado, para que la app se pruebe en más routers. Antes de salir del teléfono se quitan
   las MAC, las IP públicas, los nombres, las claves y las redes, y no lleva los aparatos de casa.
