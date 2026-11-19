@@ -3,6 +3,7 @@ package dev.angel.wrtcontrol.data
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.describeError
+import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ubus.Credentials
@@ -10,10 +11,14 @@ import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
+import kotlin.time.Duration
 
 sealed interface Connection {
     data object Loading : Connection
@@ -86,7 +91,12 @@ class RouterRepository(
 
     init {
         // Aparte de las lecturas: qué router es y por dónde se llega a él desde fuera.
-        scope.followRouter(monitor, onIdentified = ::rememberRouterId, onAddresses = ::refreshTunnelAddresses)
+        scope.followRouter(
+            monitor,
+            onIdentified = ::rememberRouterId,
+            onAddresses = ::refreshTunnelAddresses,
+            onInUse = { features -> features.forEach { markVerified(it) } },
+        )
     }
 
     /** Al arrancar la app: si hay un router guardado con contraseña, se entra directamente. */
@@ -227,6 +237,32 @@ class RouterRepository(
         routerId = id
         store.saveRouterId(id)
         useTunnel(tunnelFor(signed.address, id))
+    }
+
+    /**
+     * Las funciones que se han visto funcionando en el router [router] (el de `monitor.identity`)
+     * desde este teléfono: "funciona aquí" en Estado (ver [markVerified]).
+     */
+    fun verifiedFeatures(router: String): Flow<Set<Feature>> {
+        val signed = _state.value as? Connection.SignedIn ?: return flowOf(emptySet())
+        return store.verified(signed.address + "|" + router).map { names -> Feature.entries.filter { it.name in names }.toSet() }
+    }
+
+    /**
+     * Apunta que [feature] funciona en el router conectado. Se llama cuando un cambio que la activa
+     * terminó bien (el router lo aplicó, la app comprobó que funcionaba y lo confirmó) y cuando una
+     * lectura la ve en marcha (ver addons/InUse.kt y parental/Verified.kt). Si no se sabe qué
+     * router es, no se apunta (no es parte del cambio: nunca falla).
+     */
+    suspend fun markVerified(feature: Feature) {
+        val signed = _state.value as? Connection.SignedIn ?: return
+        try {
+            store.addVerified(signed.address + "|" + monitor.identity.fresh(Duration.INFINITE), feature.name)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") _: Exception) {
+            // Sin saber qué router es, mejor no apuntar nada que apuntarlo en otro.
+        }
     }
 
     /** Acceso remoto de este teléfono al router conectado (ver [TunnelConfig]), si se sabe cuál es. */

@@ -60,6 +60,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   nombre o dirección guardados siguen en la lista aunque no estén.
 
 ### Cambiado
+- Router (en Más): cada función dice si funciona en este router (la app la activó y la comprobó,
+  o la ve en marcha) o si está sin probar aquí, y entonces si la app está probada con su versión
+  de OpenWrt.
 - Routers con la red de casa con otro nombre (no `lan`): la app la encuentra por el cortafuegos.
   Dispositivos, "Tu Wi-Fi" y saber qué router es funcionan igual que con la de serie.
 - Los cambios en el router se ven igual en toda la app: qué se está haciendo y por qué paso va

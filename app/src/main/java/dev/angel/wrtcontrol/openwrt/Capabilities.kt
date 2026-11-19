@@ -180,6 +180,15 @@ private fun Capabilities.configurable(addon: Addon): Boolean = acl.hasGroup(addo
     Addon.Upnp -> acl.canWrite("upnpd")
 }
 
+/**
+ * Lo que se dice de una función que este router puede usar pero que la app aún no ha puesto en
+ * marcha aquí: si la app está probada con su versión de OpenWrt (ver [openWrtSupport]).
+ */
+fun notVerifiedDetail(version: String): Txt = when (openWrtSupport(version)) {
+    OpenWrtSupport.Tested -> txt(R.string.capability_not_verified_tested, version)
+    else -> txt(R.string.capability_not_verified_untested, version)
+}
+
 /** "Wi-Fi: 2,4 GHz + 5 GHz · Wi-Fi 6", o que no tiene. */
 fun wifiSummary(radios: List<Radio>): Txt {
     if (radios.isEmpty()) return txt(R.string.capability_wifi_none)

@@ -4,8 +4,12 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private val Context.routerDataStore by preferencesDataStore(name = "router")
 
@@ -51,6 +55,17 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         context.routerDataStore.edit { prefs -> if (pending) prefs[pendingKey(key)] = true else prefs.remove(pendingKey(key)) }
     }
 
+    /**
+     * Las funciones que la app ya puso en marcha y comprobó en el router de [key] (nombres de
+     * `openwrt.Feature`; ver RouterRepository.markVerified).
+     */
+    fun verified(key: String): Flow<Set<String>> =
+        context.routerDataStore.data.map { it[verifiedKey(key)].orEmpty() }.distinctUntilChanged()
+
+    suspend fun addVerified(key: String, feature: String) {
+        context.routerDataStore.edit { prefs -> prefs[verifiedKey(key)] = prefs[verifiedKey(key)].orEmpty() + feature }
+    }
+
     /** ¿Ya se hizo en este teléfono la puesta en marcha del router de [address]? */
     suspend fun setupDone(address: String): Boolean = context.routerDataStore.data.first()[setupKey(address)] == true
 
@@ -86,6 +101,7 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         fun backupKey(key: String) = stringPreferencesKey("parental_backup:" + key.trim().lowercase())
         fun pendingKey(key: String) = booleanPreferencesKey("parental_backup_pending:" + key.trim().lowercase())
         fun tunnelKey(address: String, routerId: String) = stringPreferencesKey("tunnel:" + address.trim().lowercase() + "|" + routerId)
+        fun verifiedKey(key: String) = stringSetPreferencesKey("verified:" + key.trim().lowercase())
         fun setupKey(address: String) = booleanPreferencesKey("setup_done:" + address.trim().lowercase())
         val ROUTER_ID = stringPreferencesKey("router_id")
         val ADDRESS = stringPreferencesKey("address")

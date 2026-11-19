@@ -3,6 +3,7 @@ package dev.angel.wrtcontrol.openwrt
 import dev.angel.wrtcontrol.data.RouterAddress
 import dev.angel.wrtcontrol.parental.ParentalApi
 import dev.angel.wrtcontrol.parental.Pause
+import dev.angel.wrtcontrol.parental.inUse
 import dev.angel.wrtcontrol.ubus.Credentials
 import dev.angel.wrtcontrol.ubus.UbusClient
 import kotlinx.coroutines.runBlocking
@@ -81,6 +82,8 @@ class DevicesVmTest {
             val paused = parental.load()
             assertEquals(setOf(mac), paused.settings.devicePauses.keys - before.settings.devicePauses.keys)
             assertEquals(true, paused.rulesLoaded)
+            // Estado lo da por "funciona aquí" (ver parental/Verified.kt).
+            assertTrue(Feature.Parental in paused.inUse())
 
             // Bloqueado: la misma regla, sin fin.
             parental.update { config, _ ->

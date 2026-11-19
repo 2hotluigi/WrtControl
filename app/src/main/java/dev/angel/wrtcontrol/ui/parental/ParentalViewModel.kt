@@ -18,6 +18,7 @@ import dev.angel.wrtcontrol.parental.backupJson
 import dev.angel.wrtcontrol.parental.blockedIntervals
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.parental.parseBackup
+import dev.angel.wrtcontrol.parental.verifiedFeatures
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ChangeProgress
 import dev.angel.wrtcontrol.ui.ChangeRunner
@@ -323,6 +324,7 @@ class ParentalViewModel(private val repo: RouterRepository) : ViewModel() {
     private fun run(label: Txt, onSuccess: () -> Unit = {}, block: suspend (OpenWrtApi) -> ParentalConfig?) {
         changes.run(label, onSuccess, onFinished = { monitor.parental.refresh() }) {
             val result = repo.use { block(it) }
+            result?.verifiedFeatures()?.forEach { repo.markVerified(it) }
             val key = routerKey
             // Con una copia pendiente de restaurar, no se toca hasta que el usuario decida.
             if (result != null && key != null && !repo.backupPending(key)) {

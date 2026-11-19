@@ -7,7 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -16,6 +18,7 @@ import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
+import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.IpAddress
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.SystemInfo
@@ -33,6 +36,7 @@ import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.formatLoad
 import dev.angel.wrtcontrol.ui.fraction
 import dev.angel.wrtcontrol.ui.watchAsState
+import kotlinx.coroutines.flow.flowOf
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,14 +48,24 @@ private val CAPABILITIES_REFRESH = 5.minutes
 
 @Composable
 fun StatusScreen() {
-    val monitor = LocalRepository.current.monitor
+    val repository = LocalRepository.current
+    val monitor = repository.monitor
     val state by monitor.status.watchAsState(STATUS_REFRESH)
     val capabilities by monitor.capabilities.watchAsState(CAPABILITIES_REFRESH)
-    StatusContent(state, capabilities.data)
+    // Qué router es: se averigua una vez por sesión, así que se mira poco.
+    val identity by monitor.identity.watchAsState(CAPABILITIES_REFRESH)
+    val router = identity.data
+    val verified by remember(router) { router?.let(repository::verifiedFeatures) ?: flowOf(null) }.collectAsState(null)
+    // Lo que ya está en marcha en el router también "funciona aquí": lo apunta followRouter al leer
+    // los paquetes y el control parental. Se leen aquí sin prisa por si no se ha abierto su pantalla.
+    monitor.addons.watchAsState(CAPABILITIES_REFRESH)
+    monitor.parental.watchAsState(CAPABILITIES_REFRESH)
+    StatusContent(state, capabilities.data, verified)
 }
 
+/** [verified]: las funciones que ya funcionan en este router (ver CapabilitiesCard); null si no se sabe. */
 @Composable
-fun StatusContent(state: Loadable<StatusData>, capabilities: Capabilities? = null) {
+fun StatusContent(state: Loadable<StatusData>, capabilities: Capabilities? = null, verified: Set<Feature>? = null) {
     LoadableContent(state) { data, error ->
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
@@ -64,7 +78,7 @@ fun StatusContent(state: Loadable<StatusData>, capabilities: Capabilities? = nul
             item { SystemCard(data.board, data.info) }
             item { ResourcesCard(data.info) }
             // Si no se pudo averiguar, no se enseña: lo demás de la pantalla no depende de ello.
-            if (capabilities != null) item { CapabilitiesCard(capabilities) }
+            if (capabilities != null) item { CapabilitiesCard(capabilities, verified) }
             items(data.interfaces, key = { it.name }) { InterfaceCard(it) }
         }
     }

@@ -18,6 +18,7 @@ import dev.angel.wrtcontrol.addons.X25519
 import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.RouterRepository
 import dev.angel.wrtcontrol.data.TunnelConfig
+import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.PackageTool
@@ -94,10 +95,13 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     fun finishWireGuard() = run(txt(R.string.addons_busy_restarting_network)) { it.addons.finishWireGuard() }
 
     fun saveSqm(edit: SqmEdit, onDone: () -> Unit = {}) =
-        run(txt(R.string.addons_busy_sqm), onSuccess = onDone) { it.addons.saveSqm(edit) }
+        run(txt(R.string.addons_busy_sqm), onSuccess = onDone, verifies = Feature.Sqm.takeIf { edit.enabled }) { it.addons.saveSqm(edit) }
 
     fun setUpnp(enabled: Boolean) =
-        run(txt(if (enabled) R.string.addons_busy_upnp_on else R.string.addons_busy_upnp_off)) { it.addons.setUpnp(enabled = enabled) }
+        run(
+            txt(if (enabled) R.string.addons_busy_upnp_on else R.string.addons_busy_upnp_off),
+            verifies = Feature.Upnp.takeIf { enabled },
+        ) { it.addons.setUpnp(enabled = enabled) }
 
     fun setUpnpSecure(on: Boolean) = run(txt(R.string.addons_busy_upnp_secure)) { it.addons.setUpnp(secureMode = on) }
 
@@ -105,7 +109,7 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
      * Da acceso remoto a este teléfono ([phoneName]). La clave se crea aquí y se guarda antes de
      * tocar el router: si la app se cierra a mitad, al repetir se usa la misma.
      */
-    fun enableRemoteAccess(phoneName: String) = run(txt(R.string.addons_busy_remote_on)) { api ->
+    fun enableRemoteAccess(phoneName: String) = run(txt(R.string.addons_busy_remote_on), verifies = Feature.RemoteAccess) { api ->
         val id = monitor.identity.fresh(Duration.INFINITE).also { repo.rememberRouterId(it) }
         val old = repo.loadTunnel()?.takeIf { it.routerId == id }
         val config = old ?: TunnelConfig(
@@ -157,17 +161,19 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
     }
 
     fun saveDdns(edit: DdnsEdit, onDone: () -> Unit = {}) =
-        run(txt(R.string.addons_busy_ddns_on), onSuccess = onDone) { notice = it.addons.saveDdns(edit) }
+        run(txt(R.string.addons_busy_ddns_on), onSuccess = onDone, verifies = Feature.DynamicDns) { notice = it.addons.saveDdns(edit) }
 
     fun removeDdns() = run(txt(R.string.addons_busy_ddns_off)) { it.addons.removeDdns() }
 
     fun closeMapping(mapping: UpnpMapping) =
         run(txt(R.string.addons_busy_closing_port, mapping.externalPort)) { it.addons.closeUpnpMapping(mapping) }
 
+    /** [verifies]: la función que queda en marcha si sale bien (ver RouterRepository.markVerified). */
     private fun run(
         label: Txt,
         packagesChanged: Boolean = false,
         onSuccess: () -> Unit = {},
+        verifies: Feature? = null,
         block: suspend (OpenWrtApi) -> Unit,
     ) {
         val refresh = {
@@ -178,7 +184,10 @@ class AddonsViewModel(private val repo: RouterRepository) : ViewModel() {
             }
             monitor.addons.refresh()
         }
-        val started = changes.run(label, onSuccess, onFinished = refresh) { repo.use { block(it) } }
+        val started = changes.run(label, onSuccess, onFinished = refresh) {
+            repo.use { block(it) }
+            verifies?.let { repo.markVerified(it) }
+        }
         if (started) notice = null
     }
 }
