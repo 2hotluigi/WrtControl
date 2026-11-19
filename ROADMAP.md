@@ -48,7 +48,7 @@ no se repite aquí.
 | ~~`AGENTS.md` / `CLAUDE.md` con las convenciones del proyecto~~ | P0 | Hecho |
 | Activar en GitHub el aviso privado de vulnerabilidades, la descripción y los temas del repo, y una imagen para compartirlo (social preview) | P0 | Lo hace el dueño del repo en Settings; `SECURITY.md` ya enlaza al formulario |
 | Traducir `docs/` al inglés | P2 | Cuando alguien de fuera lo pida o vaya a colaborar |
-| Guía de inicio rápido con una VM de OpenWrt lista (un comando que la levante) | P1 | Un desconocido prueba la app sin router propio en menos de 15 minutos |
+| ~~Guía de inicio rápido con una VM de OpenWrt lista (un comando que la levante)~~ | P1 | Hecho: "Probarla sin router" en el README. `tools/vm/demo.sh` (Linux, macOS) y `tools/vm/demo.ps1` (Windows) bajan la imagen oficial x86-64 de la última estable (comprobada con su sha256) y la arrancan en QEMU sin sudo, con la web en el puerto 8080 del PC y una contraseña aleatoria puesta antes de dejarse ver desde la red. El trabajo `demo` de la CI arranca, apaga y vuelve a arrancar `demo.sh` y pasa `DemoRouterTest`. En Windows, con QEMU 11.1 recién instalado: descarga y primer arranque en unos 2 minutos, y el APK publicado (0.3.0) en el emulador entra por `10.0.2.2:8080`, crea un perfil y pausa internet. Falta que lo pruebe alguien de fuera para medir los 15 minutos |
 
 **Que funcione en otros routers (P1).**
 
