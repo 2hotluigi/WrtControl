@@ -18,6 +18,16 @@ detekt = "2.0.0-alpha.6"
 kover = "0.9.11"
 roborazzi = "1.79.0"
 robolectric = "4.18"
+# Librerías que AGP, Kover y lint traen al build con versiones vulnerables (alertas de Dependabot).
+# Solo se usan al compilar y ninguna va en el APK. Se fuerzan hacia arriba en build.gradle.kts y
+# app/build.gradle.kts; quitarlas cuando el plugin que las trae ya pida una versión igual o mayor.
+buildGuava = "33.8.0-jre"
+buildFreemarker = "2.3.35"
+buildBouncycastle = "1.87"
+buildJose4j = "0.9.7"
+buildJdom2 = "2.0.6.1"
+buildCommonsLang3 = "3.22.0"
+buildHttpclient = "4.5.14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +54,18 @@ roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 detekt-ktlint = { group = "dev.detekt", name = "detekt-rules-ktlint-wrapper", version.ref = "detekt" }
+build-guava = { group = "com.google.guava", name = "guava", version.ref = "buildGuava" }
+build-freemarker = { group = "org.freemarker", name = "freemarker", version.ref = "buildFreemarker" }
+build-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "buildBouncycastle" }
+build-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "buildBouncycastle" }
+build-bcutil = { group = "org.bouncycastle", name = "bcutil-jdk18on", version.ref = "buildBouncycastle" }
+build-jose4j = { group = "org.bitbucket.b_c", name = "jose4j", version.ref = "buildJose4j" }
+build-jdom2 = { group = "org.jdom", name = "jdom2", version.ref = "buildJdom2" }
+build-commons-lang3 = { group = "org.apache.commons", name = "commons-lang3", version.ref = "buildCommonsLang3" }
+build-httpclient = { group = "org.apache.httpcomponents", name = "httpclient", version.ref = "buildHttpclient" }
+
+[bundles]
+build-seguras = ["build-guava", "build-freemarker", "build-bcprov", "build-bcpkix", "build-bcutil", "build-jose4j", "build-jdom2", "build-commons-lang3", "build-httpclient"]
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

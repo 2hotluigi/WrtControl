@@ -141,4 +141,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     detektPlugins(libs.detekt.ktlint)
+    // Lint corre con su propio classpath (`androidLintTool`), aparte del de los plugins.
+    libs.bundles.build.seguras.get().forEach { constraints.add("androidLintTool", it) }
 }
