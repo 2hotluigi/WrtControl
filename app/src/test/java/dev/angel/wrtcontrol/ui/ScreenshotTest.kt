@@ -188,6 +188,12 @@ class ScreenshotTest {
         GuestContent(WifiState(radios, listOf(guest)))
     }
 
+    /** Un router sin radios (un PC con OpenWrt, el router de prueba): ni interruptor ni campos. */
+    @Test
+    fun invitadosSinWifi() = both("invitados-sin-wifi") {
+        GuestContent(WifiState(emptyList(), emptyList()))
+    }
+
     /** Quién hay conectado, con su señal (el de peor señal, primero), y la potencia de una banda. */
     @Test
     fun wifiPotencia() = both("wifi-potencia") {

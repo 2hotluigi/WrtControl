@@ -46,9 +46,9 @@ class WifiVmTest {
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
         val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
         // Sin /etc/config/wireless (una VM) ni siquiera se puede leer.
-        val before = runCatching { api.state() }.getOrNull()
-        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
-        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        val before = api.state()
+        assumeTrue("El router no tiene Wi-Fi", before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before.networks.all { it.clients.isEmpty() })
 
         val countries = api.countries()
         log("${countries.size} países; ahora: ${before.country ?: "sin poner"}; radios: ${before.radios.map { "${it.name} ${it.band} canal ${it.channel} up=${it.up}" }}")
@@ -83,9 +83,9 @@ class WifiVmTest {
         assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
         val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
-        val before = runCatching { api.state() }.getOrNull()
-        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
-        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        val before = api.state()
+        assumeTrue("El router no tiene Wi-Fi", before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before.networks.all { it.clients.isEmpty() })
         log("anchos: ${before.radios.map { "${it.name} ${it.htmode} de ${it.htmodes}" }}")
         assertTrue("el router dice qué anchos admite cada radio", before.radios.all { it.htmodes.isNotEmpty() && it.width != null })
 
@@ -113,9 +113,9 @@ class WifiVmTest {
         assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
         val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
-        val before = runCatching { api.state() }.getOrNull()
-        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
-        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        val before = api.state()
+        assumeTrue("El router no tiene Wi-Fi", before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before.networks.all { it.clients.isEmpty() })
 
         val advice = before.radios.associate { radio ->
             val t0 = System.currentTimeMillis()
@@ -145,9 +145,9 @@ class WifiVmTest {
         assumeTrue("Define WRTCONTROL_VM para probar contra un router", vm != null)
         val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
         val api = WifiApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
-        val before = runCatching { api.state() }.getOrNull()
-        assumeTrue("El router no tiene Wi-Fi", before != null && before.radios.isNotEmpty())
-        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before!!.networks.all { it.clients.isEmpty() })
+        val before = api.state()
+        assumeTrue("El router no tiene Wi-Fi", before.radios.isNotEmpty())
+        assumeTrue("Hay aparatos en el Wi-Fi del router: se les cortaría", before.networks.all { it.clients.isEmpty() })
         log("potencia: ${before.radios.map { "${it.name} txpower=${it.txpower} tope=${it.maxPower}" }}")
         assertTrue("el router dice el tope de cada radio", before.radios.all { it.maxPower != null })
 

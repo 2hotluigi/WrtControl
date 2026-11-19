@@ -17,13 +17,27 @@ import kotlinx.serialization.json.put
 
 /* Lo que se le pregunta al router sobre el Wi-Fi (ver Wireless.kt). Todo con el ACL de LuCI. */
 
+/*
+ * Un router sin radios (un PC con OpenWrt, la VM) no tiene /etc/config/wireless, y tanto `uci get`
+ * como `luci-rpc getWirelessDevices` contestan "no existe": es que no tiene Wi-Fi, no un error.
+ */
+private suspend fun <T> noWifiIfMissing(empty: T, read: suspend () -> T): T = try {
+    read()
+} catch (e: UbusException.Status) {
+    if (e.code == UBUS_NOT_FOUND) empty else throw e
+}
+
 /** `luci-rpc getWirelessDevices`: radio → su estado. */
-internal suspend fun UbusCaller.wirelessDevices(): Map<String, JsonObject> =
+internal suspend fun UbusCaller.wirelessDevices(): Map<String, JsonObject> = noWifiIfMissing(emptyMap()) {
     callAs<JsonObject>("luci-rpc", "getWirelessDevices").mapNotNull { (k, v) -> (v as? JsonObject)?.let { k to it } }.toMap()
+}
+
+/** Las secciones de `/etc/config/wireless`. */
+internal suspend fun UbusCaller.wirelessSections(): List<UciSection> = noWifiIfMissing(emptyList()) { uciSections("wireless") }
 
 /** Lee el Wi-Fi. Con [withClients], también quién está conectado a cada red (si el router deja verlo). */
 internal suspend fun UbusCaller.readWifi(withClients: Boolean): WifiState = coroutineScope {
-    val sections = async { uciSections("wireless") }
+    val sections = async { wirelessSections() }
     val devices = async { wirelessDevices() }
     val home = async { homeLayout().home }
     val bare = parseWifi(sections.await(), devices.await(), home = home.await())

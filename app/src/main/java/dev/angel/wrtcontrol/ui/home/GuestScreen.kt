@@ -174,6 +174,27 @@ fun GuestContent(
     progress: ChangeProgress? = null,
     error: String? = null,
     enabled: Boolean = true,
+    onSave: (current: GuestEdit, edit: GuestEdit) -> Unit = { _, _ -> },
+    onRemove: (GuestWifi) -> Unit = {},
+) {
+    // Sin radios no hay dónde emitirlo (un PC con OpenWrt, la VM): lo mismo que dice "Tu Wi-Fi".
+    if (state.radios.isNotEmpty()) {
+        GuestForm(state, loadError, progress, error, enabled, onSave = onSave, onRemove = onRemove)
+        return
+    }
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (loadError != null) ErrorBanner(stringResource(R.string.common_stale_data, loadError))
+        Text(stringResource(R.string.wifi_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun GuestForm(
+    state: WifiState,
+    loadError: String? = null,
+    progress: ChangeProgress? = null,
+    error: String? = null,
+    enabled: Boolean = true,
     newKey: String = rememberSaveable { newGuestKey() },
     onSave: (current: GuestEdit, edit: GuestEdit) -> Unit = { _, _ -> },
     onRemove: (GuestWifi) -> Unit = {},

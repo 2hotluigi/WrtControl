@@ -53,7 +53,7 @@ class WifiApi(private val ubus: UbusClient, private val writeLock: Mutex = Mutex
 
     /** Los países que conoce el router (vacío si no tiene Wi-Fi o no deja leerlos). */
     suspend fun countries(): List<WifiCountry> {
-        val radio = ubus.uciSections("wireless").firstOrNull { it.type == "wifi-device" } ?: return emptyList()
+        val radio = ubus.wirelessSections().firstOrNull { it.type == "wifi-device" } ?: return emptyList()
         return try {
             parseCountries(ubus.callAs<JsonObject>("iwinfo", "countrylist", buildJsonObject { put("device", radio.name) }))
         } catch (_: UbusException.AccessDenied) {
