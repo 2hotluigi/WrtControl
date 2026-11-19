@@ -111,6 +111,32 @@ Hace falta **Android 8.0 o superior** y **OpenWrt con LuCI** (las imágenes est�
 La primera vez, una puesta en marcha corta enseña qué router es, si está protegido, qué puede
 hacer la app con él y qué va a cambiar en él (nada, hasta que actives algo).
 
+## Probarla sin router
+
+Un OpenWrt de prueba en tu ordenador, con un comando. Necesita [QEMU](https://www.qemu.org/download/)
+(`apt install qemu-system-x86`, `brew install qemu` o `winget install SoftwareFreedomConservancy.QEMU`).
+
+```sh
+# Linux y macOS
+curl -fsSLO https://raw.githubusercontent.com/2hotluigi/WrtControl/master/tools/vm/demo.sh
+sh demo.sh
+```
+
+```powershell
+# Windows
+Invoke-WebRequest https://raw.githubusercontent.com/2hotluigi/WrtControl/master/tools/vm/demo.ps1 -OutFile demo.ps1
+powershell -ExecutionPolicy Bypass -File demo.ps1
+```
+
+Descarga una vez la imagen oficial x86-64 de la última OpenWrt estable (unos 12 MB, comprobada con
+su sha256), le pone a `root` una contraseña aleatoria y la arranca. Después escribe lo que hay que
+poner en la app: `10.0.2.2:8080` desde el emulador de Android de ese ordenador, o la IP del
+ordenador con `:8080` desde un teléfono en la misma red. El router no toca tu red: su internet
+pasa por el ordenador. Ctrl+C lo apaga y `reset` (`-Reset` en Windows) lo deja como nuevo.
+
+No tiene Wi-Fi ni más equipos que el ordenador, y el acceso remoto no llega hasta él; lo demás
+(control parental, paquetes, cambios con vuelta atrás) funciona como en un router de verdad.
+
 ## Hecha para confiar en ella
 
 - **Cada PR** pasa pruebas unitarias, Android lint, detekt (con ktlint), pruebas de capturas en
