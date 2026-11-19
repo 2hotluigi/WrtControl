@@ -44,7 +44,7 @@ jobs:
       # "Una conexión nueva funciona": un servidor HTTP en el PC (paso "Servidor HTTP en el PC").
       WRTCONTROL_HTTP_TARGET: http://10.0.3.2:8080/
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: KVM y dependencias
         run: |
@@ -62,7 +62,7 @@ jobs:
           echo "sha=$(echo "$info" | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
 
       # El Image Builder pesa cientos de MB y downloads.openwrt.org a veces corta: se guarda por su sha256.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vm-cache
           key: openwrt-ib-${{ steps.ib.outputs.sha }}
@@ -104,12 +104,12 @@ jobs:
           ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM "cat > /tmp/netns-client.sh && PING_TARGET=$WRTCONTROL_PING_TARGET sh /tmp/netns-client.sh up" < tools/vm/netns-client.sh
           ssh $WRTCONTROL_SSH_OPTS root@$WRTCONTROL_VM '/usr/libexec/ip-full netns list' | grep -q wrtc_client
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: VmIntegrationTest, AddonsVmTest y DevicesVmTest
         run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*VmTest*' --rerun
@@ -123,7 +123,7 @@ jobs:
 
       - name: Informes
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openwrt-${{ matrix.openwrt }}
           path: |
@@ -145,7 +145,7 @@ jobs:
       WRTC_DEMO_DIR: ${{ github.workspace }}/demo
       WRTCONTROL_DEMO: 127.0.0.1:8080
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: KVM y QEMU
         run: |
@@ -175,12 +175,12 @@ jobs:
           start
           ! grep -q 'Primer arranque' demo.log
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: DemoRouterTest
         run: ./gradlew :app:testDebugUnitTest --tests '*DemoRouterTest*' --rerun
@@ -192,7 +192,7 @@ jobs:
           cp demo.log demo/console.log app/build/ 2>/dev/null || true
 
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: demo
           path: |
