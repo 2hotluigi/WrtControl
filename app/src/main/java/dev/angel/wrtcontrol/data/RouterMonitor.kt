@@ -14,7 +14,9 @@ import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.UsageHistory
 import dev.angel.wrtcontrol.openwrt.WanLink
+import dev.angel.wrtcontrol.openwrt.WanUsage
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.inUse
@@ -40,6 +42,12 @@ data class StatusData(val board: BoardInfo, val info: SystemInfo, val interfaces
 
 /** [link] null: la salida a internet no va por una tarjeta de red con enlace que mirar. */
 data class WanLinkState(val link: WanLink?)
+
+/**
+ * [sinceBoot] null: no hay salida a internet que mirar o el router no deja ver sus contadores.
+ * [history] null: el router no guarda lo gastado por horas y días (hace falta vnStat).
+ */
+data class UsageState(val sinceBoot: WanUsage?, val history: UsageHistory? = null)
 
 /** [installed] null: el router no deja listar ni instalar paquetes desde la app. */
 data class PackageListing(val installed: InstalledPackages?)
@@ -135,6 +143,16 @@ class RouterMonitor(
     val wanLink: Feed<WanLinkState> = feed {
         val known = interfaces.fresh(SHARED_MAX_AGE)
         router.use { WanLinkState(it.wanLink(known)) }
+    }
+
+    /** Cuánto internet se ha gastado (ver Usage.kt). */
+    val usage: Feed<UsageState> = feed {
+        val (known, info) = coroutineScope {
+            val networks = async { interfaces.fresh(SHARED_MAX_AGE) }
+            val about = async { system.fresh(SHARED_MAX_AGE) }
+            networks.await() to about.await()
+        }
+        router.use { UsageState(it.usage.sinceBoot(known, info.uptime)) }
     }
 
     /** Qué router es (modelo y MAC de la red de casa). Se averigua una vez por sesión. */

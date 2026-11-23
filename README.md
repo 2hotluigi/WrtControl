@@ -65,6 +65,8 @@ anything on the router.
 - **Wi-Fi.** One name and password for every band, WPA2/WPA3, country, range or speed instead of
   channel widths, the least crowded channel, transmit power, who is connected and how good their
   signal is, and a schedule to turn the Wi-Fi off at night.
+- **Internet usage.** How much has been downloaded and uploaded since the router was turned on, and
+  the daily average, read from the router's own counters with nothing to install.
 - **Guest Wi-Fi.** A separate network with a QR code: guests get internet, but can't see your
   devices or reach the router.
 - **Features by outcome.** "Reach home from outside" (WireGuard, with the tunnel built into the

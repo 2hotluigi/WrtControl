@@ -16,7 +16,7 @@ import dev.angel.wrtcontrol.parental.Pause
 enum class OverviewLink { Devices, Family, Security, Wifi, Guest }
 
 /** Las páginas de Más. Inicio abre algunas directamente (el Wi-Fi). */
-enum class MorePage { Menu, Wifi, Guest, Features, Router, Pair }
+enum class MorePage { Menu, Wifi, Guest, Usage, Features, Router, Pair }
 
 /** Cómo está el Wi-Fi de casa, para Inicio. */
 sealed interface HomeWifi {

@@ -33,6 +33,18 @@ paquetes) es una lectura compartida, un `Feed` de `RouterMonitor`:
 - **Al cambiar de sesión** (se sale, o se entra en otro router) se olvida todo (`reset`) y lo que
   viniera de la sesión anterior no se publica.
 
+### Uso de internet
+
+Sin instalar nada, el router solo cuenta los bytes que han pasado por la tarjeta de la salida a
+internet desde que se encendió: los `stats` de esa tarjeta en `luci-rpc getNetworkDevices` (los
+mismos contadores que `/sys/class/net/<tarjeta>/statistics`). `network.device status` también los
+da, pero el ACL de LuCI no deja llamarlo hasta 25.12. Se mira la tarjeta física
+(`device` de la interfaz con la ruta por defecto) y no `pppoe-wan`, que se rehace en cada
+reconexión y empieza de cero. Al reiniciar el router los contadores vuelven a cero.
+
+Para ver las últimas 24 horas, 7 días o 30 días hace falta que el router lo vaya guardando: la
+gráfica (`UsageChart`) ya está hecha y la alimentará vnStat cuando se instale desde la app.
+
 ### Qué puede hacer el router
 
 `Capabilities` (paquete `openwrt`) dice, sin probar a hacerlo, si el router puede con cada función

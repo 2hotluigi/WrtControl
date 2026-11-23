@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="more_usage_title">Internet usage</string>
+    <string name="more_usage_detail">How much has been downloaded and uploaded</string>
+    <string name="usage_received">Downloaded</string>
+    <string name="usage_sent">Uploaded</string>
+    <string name="usage_total">Total</string>
+    <string name="usage_since_boot_title">Since the router was turned on</string>
+    <string name="usage_since_boot_on_for">On for</string>
+    <string name="usage_per_day">Per day, on average</string>
+    <string name="usage_since_boot_note">The router counts from when it was turned on: it starts again from zero when it restarts.</string>
+    <string name="usage_unavailable_title">Usage can\'t be shown</string>
+    <string name="usage_unavailable_body">The router has no internet connection right now, or it doesn\'t let the app see how much goes through it.</string>
+    <string name="usage_history_title">Usage</string>
+    <string name="usage_period_day">24 h</string>
+    <string name="usage_period_week">7 days</string>
+    <string name="usage_period_month">30 days</string>
+    <string name="usage_chart_hint_hour">Tap a bar to see that hour.</string>
+    <string name="usage_chart_hint_day">Tap a bar to see that day.</string>
+    <string name="usage_chart_selected">%1$s: %2$s downloaded, %3$s uploaded</string>
+    <string name="usage_chart_hour_range">%1$02d:00 to %2$02d:00</string>
+    <string name="usage_chart_hour_label">%1$d:00</string>
+    <string name="usage_chart_description">Usage chart for %1$s: %2$s downloaded and %3$s uploaded</string>
+</resources>

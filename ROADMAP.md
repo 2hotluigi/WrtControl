@@ -319,9 +319,18 @@ marcha guiada. Cada uno se apoya en los anteriores.
   ellos. Comprobado a mano en la VM (25.12.6) el 2026-11-18, por JSON-RPC como root, con tráfico
   de un cliente de la LAN; los ACL de los dos paquetes son idénticos en 24.10, 25.12 y master.
   Unos 3 MB de RAM y 2,4 MB de flash entre los dos (sobre todo sqlite, libgd y libjpeg). Tres PR:
-  - *Sin instalar nada:* bytes recibidos y enviados desde que arrancó el router
+  - ~~*Sin instalar nada:* bytes recibidos y enviados desde que arrancó el router
     (`network.device status` de la WAN) y la gráfica propia (24 h, 7 días, 30 días; totales debajo),
-    con capturas de Roborazzi en claro y oscuro.
+    con capturas de Roborazzi en claro y oscuro.~~ Hecho: Más → Uso de internet con recibido,
+    enviado, total y media al día desde el arranque (`stats` de la tarjeta física de la WAN en
+    `luci-rpc getNetworkDevices`, no `pppoe-wan`; `network.device status` no entra en el ACL de LuCI
+    de 24.10), y
+    `UsageChart` (barras por hora o día, recibido abajo y enviado encima, tocar una barra la
+    detalla, colores comprobados para daltonismo en claro y oscuro), que se verá cuando haya
+    historial (vnStat). `UsageTest`, capturas `uso-de-internet*` y `UsageVmTest` (en la CI con 24.10,
+    25.12 y snapshot, y en la VM 25.12.6:
+    cifras iguales a las del kernel y suben con tráfico de prueba por la WAN). En el emulador contra
+    el GL-MT6000: 186/73,7 GiB en 7 días, lo mismo que `/sys/class/net/eth1/statistics`.
   - *vnStat 2* (`luci-app-vnstat2`), instalado desde la app como SQM: la gráfica de la WAN. Guarda
     48 h en tramos de 5 min, 4 días por horas, 62 por días y 25 meses. El ACL de lectura solo deja
     `vnstat --json f 1`, pero el de escritura deja `/usr/bin/vnstat` con cualquier argumento

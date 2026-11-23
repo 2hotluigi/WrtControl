@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="more_usage_title">Uso de internet</string>
+    <string name="more_usage_detail">Cuánto se ha descargado y subido</string>
+    <string name="usage_received">Recibido</string>
+    <string name="usage_sent">Enviado</string>
+    <string name="usage_total">Total</string>
+    <string name="usage_since_boot_title">Desde que se encendió el router</string>
+    <string name="usage_since_boot_on_for">Encendido desde hace</string>
+    <string name="usage_per_day">Al día, de media</string>
+    <string name="usage_since_boot_note">El router lo cuenta desde que se encendió: al reiniciarse empieza de cero.</string>
+    <string name="usage_unavailable_title">No se puede ver el consumo</string>
+    <string name="usage_unavailable_body">El router no tiene salida a internet ahora mismo o no deja ver cuánto pasa por ella.</string>
+    <string name="usage_history_title">Consumo</string>
+    <string name="usage_period_day">24 h</string>
+    <string name="usage_period_week">7 días</string>
+    <string name="usage_period_month">30 días</string>
+    <string name="usage_chart_hint_hour">Toca una barra para ver lo de esa hora.</string>
+    <string name="usage_chart_hint_day">Toca una barra para ver lo de ese día.</string>
+    <string name="usage_chart_selected">%1$s: %2$s recibido, %3$s enviado</string>
+    <string name="usage_chart_hour_range">De %1$02d:00 a %2$02d:00</string>
+    <string name="usage_chart_hour_label">%1$d h</string>
+    <string name="usage_chart_description">Gráfica de consumo de %1$s: %2$s recibido y %3$s enviado</string>
+</resources>

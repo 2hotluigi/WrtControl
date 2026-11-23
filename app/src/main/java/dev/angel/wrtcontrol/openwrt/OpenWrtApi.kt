@@ -44,6 +44,9 @@ class OpenWrtApi(
     /** El Wi-Fi de invitados: una red aparte, aislada de la casa (escribe en network, dhcp, firewall y wireless). */
     val guestWifi = GuestWifiApi(ubus, writeLock)
 
+    /** Cuánto internet se gasta (solo lee). */
+    val usage = UsageApi(ubus)
+
     /** El informe anonimizado del router, para compartirlo (solo lee). */
     val report = DeviceReportApi(ubus)
 

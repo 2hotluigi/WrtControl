@@ -16,6 +16,27 @@ fun formatBytes(bytes: Long): String {
     return String.format(Locale.ROOT, pattern, value, UNITS[unit])
 }
 
+/** Los topes "redondos" de una escala, en cada unidad de [formatBytes]: ni muy holgados ni con decimales raros a la mitad. */
+private val NICE_STEPS = listOf(
+    1L, 2L, 3L, 4L, 5L, 6L, 8L, 10L, 15L, 20L, 25L, 30L, 40L, 50L, 60L, 80L,
+    100L, 150L, 200L, 250L, 300L, 400L, 500L, 600L, 800L, 1024L,
+)
+
+/**
+ * El tope de la escala de una gráfica: lo primero redondo (1, 2, 3, 4, 5, 6, 8, 10, 15…) en la unidad de
+ * [bytes] que no se queda por debajo. Así las marcas del eje se leen "500 MiB", no "487,3 MiB".
+ */
+fun niceCeilBytes(bytes: Long): Long {
+    if (bytes <= 0) return 1
+    var unit = 1L
+    while (bytes / unit >= 1024 && unit < Long.MAX_VALUE / 1024 / 1024) unit *= 1024
+    val value = bytes.toDouble() / unit
+    return NICE_STEPS.first { it >= value } * unit
+}
+
+/** Como [formatBytes], sin el ".0" de las cifras redondas: las marcas del eje de una gráfica ("20 GiB"). */
+fun formatScale(bytes: Long): String = formatBytes(bytes).replace(".0 ", " ")
+
 /** 93784 → "1 d 2 h 3 min" */
 fun formatDuration(totalSeconds: Long): String {
     if (totalSeconds < 0) return "—"

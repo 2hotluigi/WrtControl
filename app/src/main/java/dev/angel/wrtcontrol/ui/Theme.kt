@@ -111,6 +111,19 @@ private val DarkStatus =
 
 val LocalStatusColors = staticCompositionLocalOf { LightStatus }
 
+/**
+ * Las series de las gráficas: lo que baja de internet y lo que sube. Ni verde, ni ámbar, ni rojo
+ * (son de [StatusColors]). Comprobadas sobre las tarjetas en claro y en oscuro: se distinguen
+ * también con daltonismo y contrastan con el fondo al menos 3:1.
+ */
+@Immutable
+data class ChartColors(val received: Color, val sent: Color)
+
+private val LightChart = ChartColors(received = Color(0xFF2346D6), sent = Color(0xFF0F9AA8))
+private val DarkChart = ChartColors(received = Color(0xFF4F6FEA), sent = Color(0xFF1AA0A0))
+
+val LocalChartColors = staticCompositionLocalOf { LightChart }
+
 @OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 private fun manrope(weight: Int) =
     Font(R.font.manrope, FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
@@ -152,7 +165,10 @@ private val WrtShapes = Shapes(
 
 @Composable
 fun WrtTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalStatusColors provides if (dark) DarkStatus else LightStatus) {
+    CompositionLocalProvider(
+        LocalStatusColors provides if (dark) DarkStatus else LightStatus,
+        LocalChartColors provides if (dark) DarkChart else LightChart,
+    ) {
         MaterialTheme(
             colorScheme = if (dark) DarkColors else LightColors,
             typography = WrtTypography,
