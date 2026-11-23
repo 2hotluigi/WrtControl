@@ -19,6 +19,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.angel.wrtcontrol.WrtApp
 import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.StatusData
+import dev.angel.wrtcontrol.data.UsageState
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.ChannelAdvice
@@ -33,6 +34,10 @@ import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.Radio
 import dev.angel.wrtcontrol.openwrt.SystemInfo
+import dev.angel.wrtcontrol.openwrt.UsageBucket
+import dev.angel.wrtcontrol.openwrt.UsageHistory
+import dev.angel.wrtcontrol.openwrt.UsagePeriod
+import dev.angel.wrtcontrol.openwrt.WanUsage
 import dev.angel.wrtcontrol.openwrt.WifiBand
 import dev.angel.wrtcontrol.openwrt.WifiEdit
 import dev.angel.wrtcontrol.openwrt.WifiNetwork
@@ -66,6 +71,7 @@ import dev.angel.wrtcontrol.ui.home.ReportCard
 import dev.angel.wrtcontrol.ui.home.ReportUi
 import dev.angel.wrtcontrol.ui.home.ScheduleSection
 import dev.angel.wrtcontrol.ui.home.StatusContent
+import dev.angel.wrtcontrol.ui.home.UsageContent
 import dev.angel.wrtcontrol.ui.home.WidthSection
 import dev.angel.wrtcontrol.ui.home.WifiContent
 import dev.angel.wrtcontrol.ui.home.blockPreview
@@ -341,6 +347,44 @@ class ScreenshotTest {
         ReportCard(ReportUi(onShare = {}))
     }
 
+    /** El consumo de las últimas 24 horas (con más por la noche, la tele) y lo contado desde el arranque. */
+    @Test
+    fun `uso de internet`() = both("uso-de-internet") {
+        UsageContent(Loadable(UsageState(sinceBoot, usageHistory)), UsagePeriod.Day, onPeriod = {})
+    }
+
+    /** Los últimos 30 días. */
+    @Test
+    fun `uso de internet en un mes`() = both("uso-de-internet-mes") {
+        UsageContent(Loadable(UsageState(sinceBoot, usageHistory)), UsagePeriod.Month, onPeriod = {})
+    }
+
+    /** Sin historial guardado en el router: solo lo que cuenta desde que se encendió. */
+    @Test
+    fun `uso de internet sin historial`() = both("uso-de-internet-sin-historial") {
+        UsageContent(Loadable(UsageState(sinceBoot)), UsagePeriod.Day, onPeriod = {})
+    }
+
+    private val sinceBoot = WanUsage("wan", receivedBytes = 183L * GIB, sentBytes = 21L * GIB, sinceSeconds = 9 * DAY_SECONDS + 4 * 3600)
+
+    private val usageHistory: UsageHistory = run {
+        val now = LocalDateTime.of(2026, 11, 23, 14, 0)
+        // Poco de madrugada, algo de día y lo más por la noche.
+        val evening = listOf(2, 1, 1, 1, 1, 1, 3, 6, 5, 4, 4, 5, 6, 5, 4, 5, 7, 10, 14, 18, 20, 17, 11, 5)
+        val hours = (0 until 24).map { i ->
+            val start = now.minusHours(23L - i)
+            val received = evening[start.hour] * 90L * MIB
+            UsageBucket(start, received, received / 9)
+        }
+        val days = (0 until 30).map { i ->
+            val start = now.toLocalDate().atStartOfDay().minusDays(29L - i)
+            val weekend = start.dayOfWeek == DayOfWeek.SATURDAY || start.dayOfWeek == DayOfWeek.SUNDAY
+            val received = ((if (weekend) 26L else 17L) + (i * 7 % 5)) * GIB
+            UsageBucket(start, received, received / 8)
+        }
+        UsageHistory(hours, days)
+    }
+
     /** Con funciones que ya funcionan en este router y otras sin probar aquí. */
     @Test
     fun estado() = both("estado") {
@@ -380,4 +424,10 @@ class ScreenshotTest {
             Radio("radio1", WifiBand.Band5, setOf("ac", "ax"), enabled = true, networks = 1),
         ),
     )
+
+    private companion object {
+        const val MIB = 1024L * 1024
+        const val GIB = 1024L * MIB
+        const val DAY_SECONDS = 86_400L
+    }
 }

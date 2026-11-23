@@ -6,6 +6,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Añadido
+- Uso de internet (en Más): cuánto se ha descargado y subido desde que se encendió el router, el
+  total y la media al día. Sale de los contadores del router: no hace falta instalar nada.
+
 ## [0.4.0]
 
 ### Añadido
