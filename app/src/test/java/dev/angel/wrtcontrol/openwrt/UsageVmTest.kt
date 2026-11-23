@@ -13,8 +13,8 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * El consumo sin instalar nada, contra un OpenWrt de verdad (ver Usage.kt): con el ACL de LuCI la
- * app lee los contadores de la salida a internet, son los mismos que da el kernel y suben al salir
+ * El consumo sin instalar nada, contra un OpenWrt de verdad (ver Usage.kt): con el ACL de LuCI (el
+ * de 24.10 también) la app lee los contadores de la salida a internet, son los mismos que da el kernel y suben al salir
  * tráfico por ella. Solo lee y manda unos pings: vale también para un router de casa.
  *
  *   set WRTCONTROL_VM=192.168.56.2

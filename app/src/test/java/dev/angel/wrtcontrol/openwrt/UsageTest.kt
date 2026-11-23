@@ -11,15 +11,16 @@ import java.time.LocalDateTime
 class UsageTest {
 
     @Test
-    fun `contadores de la salida a internet - lo que da network device status`() {
-        // Recortado de un OpenWrt 25.12 (la tarjeta de la WAN de un router con DSA).
-        val json = UbusJson.decodeFromString<DeviceStatsJson>(
-            """{"external":false,"present":true,"type":"Network device","up":true,"carrier":true,"mtu":1500,"macaddr":"02:00:00:00:00:01",
-              |"statistics":{"collisions":0,"rx_frame_errors":0,"tx_compressed":0,"multicast":12,"rx_bytes":53687091200,"tx_bytes":5368709120,
-              |"rx_packets":41000000,"tx_packets":9000000,"rx_errors":0,"tx_errors":0}}
+    fun `contadores de la salida a internet - lo que da getNetworkDevices`() {
+        // Recortado de un OpenWrt 24.10 (la tarjeta de la WAN de un router con DSA).
+        val devices = UbusJson.decodeFromString<Map<String, DeviceStatsJson>>(
+            """{"wan":{"name":"wan","up":true,"mtu":1500,"mac":"02:00:00:00:00:01","type":1,"devtype":"dsa",
+              |"stats":{"rx_bytes":53687091200,"tx_bytes":5368709120,"tx_errors":0,"rx_errors":0,"tx_packets":9000000,"rx_packets":41000000,
+              |"multicast":12,"collisions":0},"link":{"speed":1000,"duplex":"full","carrier":true}},
+              |"br-lan":{"name":"br-lan","up":true,"stats":{"rx_bytes":1,"tx_bytes":2}}}
             """.trimMargin(),
         )
-        val usage = wanUsage("wan", json, uptimeSeconds = 5 * DAY)!!
+        val usage = wanUsage("wan", devices.getValue("wan"), uptimeSeconds = 5 * DAY)!!
         assertEquals(WanUsage("wan", 50L * GIB, 5L * GIB, 5 * DAY), usage)
         assertEquals(55L * GIB, usage.totalBytes)
         assertEquals(11L * GIB, usage.perDayBytes)
@@ -28,7 +29,7 @@ class UsageTest {
     @Test
     fun `sin contadores no hay consumo que enseñar`() {
         assertNull(wanUsage("wan", UbusJson.decodeFromString<DeviceStatsJson>("""{"up":true}"""), 100))
-        assertNull(wanUsage("wan", UbusJson.decodeFromString<DeviceStatsJson>("""{"statistics":{"rx_bytes":10}}"""), 100))
+        assertNull(wanUsage("wan", UbusJson.decodeFromString<DeviceStatsJson>("""{"stats":{"rx_bytes":10}}"""), 100))
     }
 
     @Test

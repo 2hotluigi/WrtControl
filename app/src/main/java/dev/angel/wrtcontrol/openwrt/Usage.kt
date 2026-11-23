@@ -5,14 +5,13 @@ import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.callAs
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.time.LocalDateTime
 
 /*
  * Cuánto internet se gasta. Sin instalar nada, el router solo cuenta los bytes que han pasado por
- * la tarjeta de la salida a internet desde que se encendió (`network.device.status`, el mismo
- * contador que enseña LuCI). Se cuenta en la tarjeta física y no en la de PPPoE (`pppoe-wan`):
+ * la tarjeta de la salida a internet desde que se encendió: `luci-rpc.getNetworkDevices`, los
+ * mismos contadores que enseña LuCI. (`network.device.status` también los da, pero el ACL de LuCI
+ * no deja llamarlo hasta 25.12.) Se cuenta en la tarjeta física y no en la de PPPoE (`pppoe-wan`):
  * esa se rehace en cada reconexión y empieza de cero.
  *
  * Por horas y por días ([UsageHistory]) hace falta que el router lo vaya guardando: vnStat, que se
@@ -66,9 +65,9 @@ data class UsageTotals(val receivedBytes: Long, val sentBytes: Long) {
 
 fun List<UsageBucket>.totals(): UsageTotals = UsageTotals(sumOf { it.receivedBytes }, sumOf { it.sentBytes })
 
-/** Lo que sale de `network.device.status`; aquí solo importan los contadores. */
+/** Una tarjeta en `luci-rpc.getNetworkDevices`; aquí solo importan los contadores. */
 @Serializable
-internal data class DeviceStatsJson(val statistics: Stats? = null) {
+internal data class DeviceStatsJson(val stats: Stats? = null) {
     @Serializable
     data class Stats(
         @SerialName("rx_bytes") val rxBytes: Long? = null,
@@ -77,8 +76,8 @@ internal data class DeviceStatsJson(val statistics: Stats? = null) {
 }
 
 internal fun wanUsage(device: String, json: DeviceStatsJson, uptimeSeconds: Long): WanUsage? {
-    val received = json.statistics?.rxBytes
-    val sent = json.statistics?.txBytes
+    val received = json.stats?.rxBytes
+    val sent = json.stats?.txBytes
     return if (received == null || sent == null) null else WanUsage(device, received, sent, uptimeSeconds)
 }
 
@@ -91,7 +90,7 @@ class UsageApi internal constructor(private val ubus: UbusCaller) {
     suspend fun sinceBoot(interfaces: List<NetInterface>, uptimeSeconds: Long): WanUsage? {
         val device = wanDevice(interfaces) ?: return null
         val json = try {
-            ubus.callAs<DeviceStatsJson>("network.device", "status", buildJsonObject { put("name", device) })
+            ubus.callAs<Map<String, DeviceStatsJson>>("luci-rpc", "getNetworkDevices")[device]
         } catch (_: UbusException.AccessDenied) {
             null
         } catch (_: UbusException.Status) {

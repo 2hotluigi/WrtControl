@@ -36,8 +36,9 @@ paquetes) es una lectura compartida, un `Feed` de `RouterMonitor`:
 ### Uso de internet
 
 Sin instalar nada, el router solo cuenta los bytes que han pasado por la tarjeta de la salida a
-internet desde que se encendió: `network.device status` de esa tarjeta, que el ACL de LuCI deja
-leer (los mismos contadores que `/sys/class/net/<tarjeta>/statistics`). Se mira la tarjeta física
+internet desde que se encendió: los `stats` de esa tarjeta en `luci-rpc getNetworkDevices` (los
+mismos contadores que `/sys/class/net/<tarjeta>/statistics`). `network.device status` también los
+da, pero el ACL de LuCI no deja llamarlo hasta 25.12. Se mira la tarjeta física
 (`device` de la interfaz con la ruta por defecto) y no `pppoe-wan`, que se rehace en cada
 reconexión y empieza de cero. Al reiniciar el router los contadores vuelven a cero.
 
