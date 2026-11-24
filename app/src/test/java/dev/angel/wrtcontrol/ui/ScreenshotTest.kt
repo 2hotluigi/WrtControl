@@ -280,6 +280,7 @@ class ScreenshotTest {
                 online = true,
                 onlineSeconds = 23_160,
                 devices = 16,
+                onlineDevices = 13,
                 profiles = 3,
                 paused = 1,
                 newDevices = 2,
@@ -289,6 +290,7 @@ class ScreenshotTest {
             ),
             wifi = HomeWifi.On("Casa", 12),
             guest = GuestWifi("Casa invitados", "hk7m2pqx4n", on = true, clients = listOf("AA:00:00:00:00:01")),
+            lastDay = usageHistory.buckets(UsagePeriod.Day),
         )
     }
 

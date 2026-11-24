@@ -5,9 +5,7 @@
     <string name="home_tab_family">Family</string>
     <string name="home_tab_security">Security</string>
     <string name="common_back">Back</string>
-    <string name="overview_online">Connected to the internet</string>
     <string name="overview_online_since">No drops for %1$s</string>
-    <string name="overview_offline">No internet connection</string>
     <string name="overview_offline_detail">The router has no way out to the internet right now. Check the cable to the modem and that the modem is on.</string>
     <string name="overview_cable_speed">cable at %1$d Mbps</string>
     <string name="overview_cable_title">Check the internet cable</string>
@@ -20,18 +18,11 @@
     <string name="link_slow">It runs at %1$d Mbps, although the router and the modem support %2$d.</string>
     <string name="link_replace_cable">It\'s usually the cable: replace the one between the modem and the router.</string>
     <string name="link_no_internet">The router is connected to the modem but can\'t reach the internet. Restart the modem; if nothing changes, it\'s your provider.</string>
-    <string name="overview_devices_label">on your home network</string>
-    <plurals name="overview_devices">
-        <item quantity="one">%1$d device</item>
-        <item quantity="other">%1$d devices</item>
-    </plurals>
     <plurals name="overview_profiles">
         <item quantity="one">%1$d profile</item>
         <item quantity="other">%1$d profiles</item>
     </plurals>
-    <string name="overview_profiles_none">No profiles</string>
     <string name="overview_profiles_none_label">create one per person</string>
-    <string name="overview_profiles_active">none paused</string>
     <plurals name="overview_profiles_paused">
         <item quantity="one">%1$d paused</item>
         <item quantity="other">%1$d paused</item>
@@ -41,14 +32,10 @@
         <item quantity="other">%1$d new devices</item>
     </plurals>
     <string name="overview_new_devices_body">They won\'t have internet until you approve them.</string>
-    <string name="overview_new_devices_action">Review</string>
     <string name="overview_no_password_title">The router has no password</string>
     <string name="overview_no_password_body">Anyone who joins your network can change its settings.</string>
-    <string name="overview_no_password_action">Set a password</string>
     <string name="overview_rules_inactive_title">The rules aren\'t active</string>
     <string name="overview_rules_inactive_body">Pauses and schedules aren\'t being applied right now.</string>
-    <string name="overview_rules_inactive_action">See what\'s wrong</string>
-    <string name="overview_pause_action">Pause someone…</string>
     <string name="more_features_title">Router features</string>
     <string name="more_router_title">Router</string>
     <string name="more_router_detail">Technical details: system, memory, networks and what it can do</string>
@@ -129,26 +116,26 @@
     <string name="devices_error_ip_outside">That address is not on the home network, or it is the router\'s own.</string>
     <string name="devices_error_ip_taken">That address is already reserved for “%1$s”.</string>
     <string name="devices_error_not_applied">The router stopped resolving names with the change, so it was left as it was.</string>
-    <string name="overview_wifi_paused">Wi-Fi off</string>
-    <string name="overview_wifi_paused_label">by schedule</string>
-    <string name="overview_wifi_others">Wi-Fi</string>
-    <string name="overview_wifi_others_label">provided by other devices</string>
-    <string name="overview_wifi_off">Wi-Fi off</string>
-    <string name="overview_wifi_off_label">tap to turn it on</string>
-    <plurals name="overview_wifi_clients">
-        <item quantity="one">%1$d connected to the router</item>
-        <item quantity="other">%1$d connected to the router</item>
-    </plurals>
-    <string name="overview_guest_title">Guests</string>
-    <string name="overview_guest_none">create a network for visitors</string>
-    <string name="overview_guest_off">off</string>
-    <plurals name="overview_guest_on">
-        <item quantity="one">on · %1$d connected</item>
-        <item quantity="other">on · %1$d connected</item>
-    </plurals>
     <string name="settings_title">Settings</string>
     <string name="overview_grid_wifi">Wi-Fi</string>
     <string name="overview_grid_guest">Guests</string>
     <string name="overview_grid_usage">Usage</string>
     <string name="overview_grid_features">Features</string>
+    <string name="overview_internet">Internet</string>
+    <string name="overview_connected">Connected</string>
+    <string name="overview_disconnected">Offline</string>
+    <string name="overview_stat_devices">Devices</string>
+    <string name="overview_stat_online">Online</string>
+    <string name="overview_stat_new">New</string>
+    <string name="overview_usage_title">Last 24 hours</string>
+    <string name="overview_usage_split">↓ %1$s · ↑ %2$s</string>
+    <plurals name="overview_tile_clients">
+        <item quantity="one">%1$d connected</item>
+        <item quantity="other">%1$d connected</item>
+    </plurals>
+    <string name="overview_tile_on">On</string>
+    <string name="overview_tile_off">Off</string>
+    <string name="overview_tile_paused">Paused</string>
+    <string name="overview_tile_others">Another device</string>
+    <string name="overview_tile_none">Not set up</string>
 </resources>

@@ -5,9 +5,7 @@
     <string name="home_tab_family">Familia</string>
     <string name="home_tab_security">Seguridad</string>
     <string name="common_back">Volver</string>
-    <string name="overview_online">Conectado a internet</string>
     <string name="overview_online_since">Sin cortes desde hace %1$s</string>
-    <string name="overview_offline">Sin conexión a internet</string>
     <string name="overview_offline_detail">El router no tiene salida a internet ahora mismo. Revisa el cable que va al módem y que el módem esté encendido.</string>
     <string name="overview_cable_speed">cable a %1$d Mbps</string>
     <string name="overview_cable_title">Revisa el cable de internet</string>
@@ -21,20 +19,12 @@
     <string name="link_slow">Va a %1$d Mbps, aunque el router y el módem admiten %2$d.</string>
     <string name="link_replace_cable">Suele ser el cable: cambia el que va del módem al router.</string>
     <string name="link_no_internet">El router está conectado al módem, pero no llega a internet. Reinicia el módem; si sigue igual, es cosa de tu proveedor.</string>
-    <string name="overview_devices_label">en la red de casa</string>
-    <plurals name="overview_devices">
-        <item quantity="one">%1$d dispositivo</item>
-        <item quantity="other">%1$d dispositivos</item>
-        <item quantity="many">%1$d dispositivos</item>
-    </plurals>
     <plurals name="overview_profiles">
         <item quantity="one">%1$d perfil</item>
         <item quantity="other">%1$d perfiles</item>
         <item quantity="many">%1$d perfiles</item>
     </plurals>
-    <string name="overview_profiles_none">Sin perfiles</string>
     <string name="overview_profiles_none_label">crea uno por persona</string>
-    <string name="overview_profiles_active">ninguno en pausa</string>
     <plurals name="overview_profiles_paused">
         <item quantity="one">%1$d en pausa</item>
         <item quantity="other">%1$d en pausa</item>
@@ -46,14 +36,10 @@
         <item quantity="many">%1$d dispositivos nuevos</item>
     </plurals>
     <string name="overview_new_devices_body">No tendrán internet hasta que los apruebes.</string>
-    <string name="overview_new_devices_action">Revisar</string>
     <string name="overview_no_password_title">El router no tiene contraseña</string>
     <string name="overview_no_password_body">Cualquiera que se conecte a tu red puede cambiar su configuración.</string>
-    <string name="overview_no_password_action">Poner contraseña</string>
     <string name="overview_rules_inactive_title">Las reglas no están activas</string>
     <string name="overview_rules_inactive_body">Las pausas y los horarios no se están aplicando ahora mismo.</string>
-    <string name="overview_rules_inactive_action">Ver qué pasa</string>
-    <string name="overview_pause_action">Pausar a…</string>
     <string name="more_features_title">Funciones del router</string>
     <string name="more_router_title">Router</string>
     <string name="more_router_detail">Detalles técnicos: sistema, memoria, redes y qué puede hacer</string>
@@ -135,28 +121,27 @@
     <string name="devices_error_ip_outside">Esa dirección no es de la red de casa, o es la del propio router.</string>
     <string name="devices_error_ip_taken">Esa dirección ya está reservada para «%1$s».</string>
     <string name="devices_error_not_applied">El router dejó de resolver nombres con el cambio, así que se dejó como estaba.</string>
-    <string name="overview_wifi_paused">Wi-Fi apagado</string>
-    <string name="overview_wifi_paused_label">por el horario</string>
-    <string name="overview_wifi_others">Wi-Fi</string>
-    <string name="overview_wifi_others_label">lo dan otros aparatos</string>
-    <string name="overview_wifi_off">Wi-Fi apagado</string>
-    <string name="overview_wifi_off_label">toca para encenderlo</string>
-    <plurals name="overview_wifi_clients">
-        <item quantity="one">%1$d conectado al router</item>
-        <item quantity="other">%1$d conectados al router</item>
-        <item quantity="many">%1$d conectados al router</item>
-    </plurals>
-    <string name="overview_guest_title">Invitados</string>
-    <string name="overview_guest_none">crea una red para las visitas</string>
-    <string name="overview_guest_off">apagado</string>
-    <plurals name="overview_guest_on">
-        <item quantity="one">encendido · %1$d conectado</item>
-        <item quantity="other">encendido · %1$d conectados</item>
-        <item quantity="many">encendido · %1$d conectados</item>
-    </plurals>
     <string name="settings_title">Ajustes</string>
     <string name="overview_grid_wifi">Wi-Fi</string>
     <string name="overview_grid_guest">Invitados</string>
     <string name="overview_grid_usage">Consumo</string>
     <string name="overview_grid_features">Funciones</string>
+    <string name="overview_internet">Internet</string>
+    <string name="overview_connected">Conectado</string>
+    <string name="overview_disconnected">Sin conexión</string>
+    <string name="overview_stat_devices">Dispositivos</string>
+    <string name="overview_stat_online">En línea</string>
+    <string name="overview_stat_new">Nuevos</string>
+    <string name="overview_usage_title">Últimas 24 horas</string>
+    <string name="overview_usage_split">↓ %1$s · ↑ %2$s</string>
+    <plurals name="overview_tile_clients">
+        <item quantity="one">%1$d conectado</item>
+        <item quantity="other">%1$d conectados</item>
+        <item quantity="many">%1$d conectados</item>
+    </plurals>
+    <string name="overview_tile_on">Encendido</string>
+    <string name="overview_tile_off">Apagado</string>
+    <string name="overview_tile_paused">En pausa</string>
+    <string name="overview_tile_others">Otro aparato</string>
+    <string name="overview_tile_none">Sin crear</string>
 </resources>

@@ -139,7 +139,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
       flotante con Inicio, Dispositivos y Familia, más Seguridad en el botón redondo. Wi-Fi,
       Invitados, Consumo y Funciones, en una cuadrícula al final de Inicio. Las capturas del README
       usan el mismo marco.
-    - Inicio.
+    - ~~Inicio~~: hecho. Internet en grande con la curva de las últimas horas (si hay vnStat),
+      dispositivos / en línea / nuevos en una tira de cifras, lo que pide atención en filas, las
+      últimas 24 horas con su gráfica, Familia en una fila y la cuadrícula de funciones con su
+      estado debajo. Probado en el emulador contra el GL-MT6000; por el camino, la barra de arriba y
+      la píldora respetan ahora la barra de estado y la de gestos.
     - Dispositivos y la ficha de un dispositivo (pantalla en vez de diálogo).
     - Familia y Seguridad.
     - Uso de internet, Wi-Fi, Invitados, Funciones del router y Router.

@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** Dos o tres cifras grandes en una tarjeta, separadas por líneas verticales. */
@@ -37,10 +38,10 @@ fun StatStrip(stats: List<Stat>, modifier: Modifier = Modifier) {
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 14.dp)) {
             stats.forEachIndexed { i, stat ->
                 if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(palette.separator))
-                Column(Modifier.weight(1f).padding(horizontal = RowPadding), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        stat.dot?.let { Box(Modifier.size(8.dp).clip(CircleShape).background(it)) }
-                        Text(stat.label, style = MaterialTheme.typography.bodyMedium, color = palette.secondary, maxLines = 1)
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        stat.dot?.let { Box(Modifier.size(7.dp).clip(CircleShape).background(it)) }
+                        Text(stat.label, style = MaterialTheme.typography.bodySmall, color = palette.secondary, maxLines = 1)
                     }
                     Text(stat.value, style = BigNumber, color = palette.label, maxLines = 1)
                 }
@@ -104,14 +105,24 @@ fun CircleAction(
 
 /** Una función en la cuadrícula: el icono de color y su nombre debajo. */
 @Composable
-fun FeatureTile(icon: Int, label: String, tint: Color, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+fun FeatureTile(icon: Int, label: String, tint: Color, modifier: Modifier = Modifier, caption: String? = null, onClick: () -> Unit = {}) {
     val palette = LocalPalette.current
     Column(
-        modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 14.dp),
+        modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 14.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(30.dp))
+        Spacer(Modifier.height(8.dp))
         Text(label, style = MaterialTheme.typography.bodyMedium, color = palette.label, maxLines = 1, textAlign = TextAlign.Center)
+        caption?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = palette.secondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
