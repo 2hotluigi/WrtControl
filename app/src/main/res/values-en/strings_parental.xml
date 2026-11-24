@@ -25,8 +25,6 @@
     <string name="parental_flow_offloading_body">With flow offloading, connections that were already open may keep going until they close, even if you pause, block a service, remove an approval or block encrypted DNS. New ones are blocked.</string>
     <string name="parental_mark_conflicts_title">Other rules use the same mark</string>
     <string name="parental_mark_conflicts_body">These firewall rules change the 0x08000000 mark that WrtControl uses and could interfere with pauses and schedules: %1$s.</string>
-    <string name="parental_title">Parental control</string>
-    <string name="parental_profiles">Profiles</string>
     <string name="parental_empty_hint">Create a profile for each person and assign their devices. Then you can pause their internet or schedule offline times, like bedtime.</string>
     <string name="parental_lock_enable">Turn on the WrtControl lock</string>
     <string name="parental_lock_disable">Remove the WrtControl lock</string>
@@ -46,8 +44,6 @@
     <string name="parental_schedule_disabled">%1$s (off)</string>
     <string name="parental_resume">Resume</string>
     <string name="parental_extra_time">Extra time</string>
-    <string name="parental_pause_internet">Pause internet</string>
-    <string name="parental_clear_extra_time">Remove extra time</string>
     <string name="parental_edit">Edit</string>
     <string name="parental_close">Close</string>
     <string name="parental_cancel">Cancel</string>
@@ -175,4 +171,7 @@
     <string name="parental_busy_reapplying">Reapplying the rules…</string>
     <string name="parental_busy_timezone">Changing the router\'s time zone…</string>
     <string name="parental_busy_password">Changing the router\'s password…</string>
+    <string name="parental_people">People</string>
+    <string name="parental_pause_short">Pause</string>
+    <string name="parental_clear_extra_short">End extra</string>
 </resources>

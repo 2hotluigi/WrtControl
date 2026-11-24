@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,11 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -25,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -38,12 +41,20 @@ import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.normalizeMac
 import dev.angel.wrtcontrol.text
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.RowIcon
+import dev.angel.wrtcontrol.ui.design.SectionHeader
+import dev.angel.wrtcontrol.ui.design.SwitchRow
 import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.rememberVendors
 
-/** Interruptor con título y explicación, como los de ajustes. */
+/** Interruptor con título y explicación (el de antes del diseño nuevo; se va con Funciones y el editor). */
 @Composable
-internal fun SwitchRow(
+internal fun HelpSwitch(
     title: String,
     help: String?,
     checked: Boolean,
@@ -74,69 +85,117 @@ internal fun QuarantineCard(
     onAssign: (Device) -> Unit,
     onShowApproved: () -> Unit,
 ) {
+    val palette = LocalPalette.current
     val settings = data.snapshot.settings
     val vendors = rememberVendors()
-    Card(Modifier.fillMaxWidth().testTag("quarantine-card")) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SwitchRow(
-                title = stringResource(R.string.protection_quarantine_title),
-                help = stringResource(R.string.protection_quarantine_help),
-                checked = settings.quarantine,
-                enabled = !busy,
-                onChange = onToggle,
-                modifier = Modifier.testTag("quarantine-switch"),
-            )
-            if (settings.quarantine) {
-                val pending = data.pending
-                HorizontalDivider()
+    val pending = data.pending
+    Column(verticalArrangement = Arrangement.spacedBy(CardGap), modifier = Modifier.testTag("quarantine-card")) {
+        Column {
+            SectionHeader(stringResource(R.string.protection_section_new))
+            GroupCard {
+                SwitchRow(
+                    stringResource(R.string.protection_quarantine_title),
+                    checked = settings.quarantine,
+                    onChange = onToggle,
+                    enabled = !busy,
+                    leading = { RowIcon(R.drawable.ic_shield, palette.accent) },
+                    divider = settings.quarantine,
+                    modifier = Modifier.testTag("quarantine-switch"),
+                )
+                if (settings.quarantine) {
+                    val extra = (settings.approved + settings.admins).distinct()
+                        .count { mac -> data.snapshot.profiles.none { mac in it.macs } }
+                    GroupRow(
+                        stringResource(R.string.protection_approved_row),
+                        leading = { RowIcon(R.drawable.ic_devices, palette.accent) },
+                        value = extra.toString(),
+                        chevron = true,
+                        divider = false,
+                        onClick = { if (!busy) onShowApproved() },
+                    )
+                }
+            }
+            GroupFooter(stringResource(R.string.protection_quarantine_help), Modifier.padding(top = 6.dp))
+        }
+        if (settings.quarantine) {
+            Column {
+                SectionHeader(
+                    if (pending.isEmpty()) {
+                        stringResource(R.string.protection_pending_header)
+                    } else {
+                        pluralStringResource(R.plurals.protection_pending_count, pending.size, pending.size)
+                    },
+                )
                 if (pending.isEmpty()) {
-                    Text(
-                        stringResource(R.string.protection_no_pending),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    GroupCard { GroupRow(stringResource(R.string.protection_no_pending), divider = false) }
                 } else {
-                    Text(
-                        pluralStringResource(R.plurals.protection_pending_count, pending.size, pending.size),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    pending.forEach { d ->
-                        Column(Modifier.fillMaxWidth().testTag("pending-${d.mac}")) {
-                            Text(deviceTitle(d, vendors), style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                listOfNotNull(d.ipv4.firstOrNull(), d.mac).joinToString(" · "),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
+                    GroupCard {
+                        pending.forEachIndexed { i, d ->
+                            PendingDevice(
+                                d,
+                                deviceTitle(d, vendors),
+                                thisPhone = d.ipv4.any { it in phoneIps },
+                                canAssign = data.snapshot.profiles.isNotEmpty(),
+                                last = i == pending.lastIndex,
+                                onApprove = { if (!busy) onApprove(d) },
+                                onAssign = { if (!busy) onAssign(d) },
                             )
-                            if (d.ipv4.any { it in phoneIps }) {
-                                Text(
-                                    stringResource(R.string.protection_this_phone),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                )
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilledTonalButton(
-                                    onClick = { onApprove(d) },
-                                    enabled = !busy,
-                                ) { Text(stringResource(R.string.protection_approve)) }
-                                if (data.snapshot.profiles.isNotEmpty()) {
-                                    TextButton(
-                                        onClick = { onAssign(d) },
-                                        enabled = !busy,
-                                    ) { Text(stringResource(R.string.protection_assign_to_profile)) }
-                                }
-                            }
                         }
                     }
-                }
-                val extra = (settings.approved + settings.admins).distinct().count { mac -> data.snapshot.profiles.none { mac in it.macs } }
-                TextButton(onClick = onShowApproved, enabled = !busy) {
-                    Text(pluralStringResource(R.plurals.protection_approved_without_profile_count, extra, extra))
                 }
             }
         }
     }
+}
+
+/** Un aparato esperando: su nombre y dirección, y aprobarlo o dárselo a alguien. */
+@Composable
+private fun PendingDevice(
+    device: Device,
+    title: String,
+    thisPhone: Boolean,
+    canAssign: Boolean,
+    last: Boolean,
+    onApprove: () -> Unit,
+    onAssign: () -> Unit,
+) {
+    val palette = LocalPalette.current
+    Column(Modifier.fillMaxWidth().testTag("pending-${device.mac}")) {
+        GroupRow(
+            title,
+            supporting = listOfNotNull(
+                device.ipv4.firstOrNull(),
+                device.mac,
+                stringResource(R.string.protection_this_phone).takeIf { thisPhone },
+            ).joinToString(" · "),
+            leading = { RowIcon(R.drawable.ic_devices, palette.warning, badge = palette.warning) },
+            divider = false,
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(start = 68.dp, end = 16.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PillButton(stringResource(R.string.protection_approve), primary = true, onClick = onApprove)
+            if (canAssign) PillButton(stringResource(R.string.protection_assign_to_profile), primary = false, onClick = onAssign)
+        }
+        if (!last) HorizontalDivider(Modifier.padding(start = 68.dp), color = palette.separator, thickness = 0.5.dp)
+    }
+}
+
+/** Botón en píldora: azul relleno, o gris. */
+@Composable
+private fun PillButton(text: String, primary: Boolean, onClick: () -> Unit) {
+    val palette = LocalPalette.current
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = if (primary) Color.White else palette.accent,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (primary) palette.accent else palette.raised)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    )
 }
 
 /** [known]: dispositivos que se aprobarán ahora (la primera vez), o null al volver a activarla. */
@@ -337,28 +396,35 @@ internal fun AdminsDialog(
     )
 }
 
-/** Protección del propio control: bloqueo de la app con huella o PIN. */
+/** Protección del propio control: bloqueo de la app con huella o PIN, y quién puede tocar el router. */
 @Composable
 internal fun AppLockCard(enabled: Boolean, available: Boolean, admins: Int, onToggle: (Boolean) -> Unit, onShowAdmins: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+    val palette = LocalPalette.current
+    Column {
+        SectionHeader(stringResource(R.string.protection_section_app))
+        GroupCard {
             SwitchRow(
-                title = stringResource(R.string.protection_app_lock_title),
-                help = if (available) {
-                    stringResource(R.string.protection_app_lock_help)
-                } else {
-                    stringResource(R.string.protection_app_lock_unavailable)
-                },
+                stringResource(R.string.protection_app_lock_title),
                 checked = enabled,
-                enabled = available || enabled,
                 onChange = onToggle,
+                enabled = available || enabled,
+                leading = { RowIcon(R.drawable.ic_lock, palette.accent) },
                 modifier = Modifier.testTag("app-lock-switch"),
             )
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            TextButton(onClick = onShowAdmins, modifier = Modifier.testTag("show-admins")) {
-                Text(pluralStringResource(R.plurals.protection_admins_count, admins, admins))
-            }
+            GroupRow(
+                stringResource(R.string.protection_admins_row),
+                value = admins.toString(),
+                leading = { RowIcon(R.drawable.ic_person, palette.accent) },
+                chevron = true,
+                divider = false,
+                onClick = onShowAdmins,
+                modifier = Modifier.testTag("show-admins"),
+            )
         }
+        GroupFooter(
+            stringResource(if (available) R.string.protection_app_lock_help else R.string.protection_app_lock_unavailable),
+            Modifier.padding(top = 6.dp),
+        )
     }
 }
 

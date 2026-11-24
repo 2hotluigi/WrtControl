@@ -30,6 +30,7 @@ import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.ui.design.CardGap
 import dev.angel.wrtcontrol.ui.home.AppFrame
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
@@ -145,7 +146,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
             flowOffloading = false, markConflicts = emptyList(),
         )
         val data = ParentalData(snapshot, devices)
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(CardGap)) {
             profiles.forEach { ProfileCard(it, data, busy = false, onEdit = {}, onPause = {}, onResume = {}, onExtraTime = {}, onClearExtraTime = {}) }
         }
     }

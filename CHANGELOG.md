@@ -17,6 +17,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Dispositivos rehecho: cuántos hay y cuántos están en línea, y la lista por estado, por persona o
   por tipo. Cada aparato abre su ficha en una pantalla propia, con lo que ha gastado este mes,
   botones para pausar o bloquear su internet y sus datos.
+- Familia y Seguridad rehechas: cada persona en una tarjeta con cómo está su internet y botones
+  para pausarlo, darle más tiempo o editarla; Seguridad agrupa los aparatos nuevos y el bloqueo de
+  la app, y su botón avisa con un punto si algo espera.
 
 ## [0.5.0]
 

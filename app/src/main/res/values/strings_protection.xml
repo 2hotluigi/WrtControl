@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
     <!-- Cuarentena -->
-    <string name="protection_quarantine_title">Dispositivos nuevos sin internet</string>
+    <string name="protection_quarantine_title">Aprobar los nuevos</string>
     <string name="protection_quarantine_help">Lo que se conecte por primera vez a tu red no tendrá internet hasta que lo apruebes aquí. Así un teléfono nuevo o con otra MAC no se salta los perfiles.</string>
     <string name="protection_no_pending">No hay dispositivos esperando.</string>
     <plurals name="protection_pending_count">
@@ -12,12 +12,7 @@
     <string name="protection_disconnected">Desconectado</string>
     <string name="protection_this_phone">Este teléfono</string>
     <string name="protection_approve">Aprobar</string>
-    <string name="protection_assign_to_profile">Asignar a un perfil</string>
-    <plurals name="protection_approved_without_profile_count">
-        <item quantity="one">%1$d dispositivo aprobado sin perfil</item>
-        <item quantity="other">%1$d dispositivos aprobados sin perfil</item>
-        <item quantity="many">%1$d dispositivos aprobados sin perfil</item>
-    </plurals>
+    <string name="protection_assign_to_profile">Asignar</string>
 
     <!-- Confirmación de la cuarentena -->
     <string name="protection_quarantine_confirm_title">¿Dejar sin internet a los dispositivos nuevos?</string>
@@ -50,14 +45,9 @@
     <string name="protection_add">Agregar</string>
 
     <!-- Bloqueo de la app -->
-    <string name="protection_app_lock_title">Pedir huella o PIN para abrir WrtControl</string>
+    <string name="protection_app_lock_title">Huella o PIN al abrir</string>
     <string name="protection_app_lock_help">Así nadie más puede quitar las reglas desde este teléfono.</string>
     <string name="protection_app_lock_unavailable">Configura un bloqueo de pantalla en el teléfono para poder usarlo.</string>
-    <plurals name="protection_admins_count">
-        <item quantity="one">%1$d teléfono con WrtControl</item>
-        <item quantity="other">%1$d teléfonos con WrtControl</item>
-        <item quantity="many">%1$d teléfonos con WrtControl</item>
-    </plurals>
 
     <!-- Contraseña del router -->
     <string name="protection_password_title">Contraseña del router</string>
@@ -72,4 +62,9 @@
     <!-- Más tiempo -->
     <string name="protection_extra_time_title">Más tiempo para %1$s</string>
     <string name="protection_extra_time_help">Tendrá internet aunque esté en horario. Al acabar el tiempo, el router vuelve a aplicar el horario solo.</string>
+    <string name="protection_section_new">Aparatos nuevos</string>
+    <string name="protection_approved_row">Aprobados sin persona</string>
+    <string name="protection_pending_header">Esperando</string>
+    <string name="protection_section_app">Esta app</string>
+    <string name="protection_admins_row">Administradores</string>
 </resources>

@@ -25,8 +25,6 @@
     <string name="parental_flow_offloading_body">Con flow offloading, las conexiones que ya estaban abiertas pueden seguir hasta que se cierren aunque pauses, bloquees un servicio, quites una aprobación o bloquees el DNS cifrado. Las nuevas sí se bloquean.</string>
     <string name="parental_mark_conflicts_title">Otras reglas usan la misma marca</string>
     <string name="parental_mark_conflicts_body">Estas reglas del firewall cambian la marca 0x08000000 que usa WrtControl y podrían interferir con las pausas y horarios: %1$s.</string>
-    <string name="parental_title">Control parental</string>
-    <string name="parental_profiles">Perfiles</string>
     <string name="parental_empty_hint">Crea un perfil por persona y asígnale sus dispositivos. Después podrás pausarle internet o programar horarios sin conexión, como la hora de dormir.</string>
     <string name="parental_lock_enable">Activar el bloqueo de WrtControl</string>
     <string name="parental_lock_disable">Quitar el bloqueo de WrtControl</string>
@@ -48,8 +46,6 @@
     <string name="parental_schedule_disabled">%1$s (desactivado)</string>
     <string name="parental_resume">Reanudar</string>
     <string name="parental_extra_time">Más tiempo</string>
-    <string name="parental_pause_internet">Pausar internet</string>
-    <string name="parental_clear_extra_time">Quitar tiempo extra</string>
     <string name="parental_edit">Editar</string>
     <string name="parental_close">Cerrar</string>
     <string name="parental_cancel">Cancelar</string>
@@ -180,4 +176,7 @@
     <string name="parental_busy_reapplying">Volviendo a aplicar las reglas…</string>
     <string name="parental_busy_timezone">Cambiando la zona horaria del router…</string>
     <string name="parental_busy_password">Cambiando la contraseña del router…</string>
+    <string name="parental_people">Personas</string>
+    <string name="parental_pause_short">Pausar</string>
+    <string name="parental_clear_extra_short">Quitar extra</string>
 </resources>

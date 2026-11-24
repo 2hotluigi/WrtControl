@@ -1,5 +1,6 @@
 package dev.angel.wrtcontrol.ui.parental
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,14 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,13 +31,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,9 +57,16 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalAppSettings
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
-import dev.angel.wrtcontrol.ui.StatusPill
 import dev.angel.wrtcontrol.ui.authenticate
 import dev.angel.wrtcontrol.ui.canLockApp
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.CircleAction
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.RowIcon
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.rememberVendors
 import kotlinx.coroutines.launch
@@ -102,8 +106,8 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
             val busy = vm.busy != null
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(CardGap),
             ) {
                 vm.progress?.let { item { ApplyingBanner(it) } }
                 if (editing == null && !askPassword) vm.error?.let { e -> item { DismissibleError(e.text()) { vm.error = null } } }
@@ -190,18 +194,7 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
                 }
 
                 if (family) item {
-                    Text(
-                        stringResource(if (snapshot.profiles.isEmpty()) R.string.parental_title else R.string.parental_profiles),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
-                if (family && snapshot.profiles.isEmpty()) item {
-                    Text(
-                        stringResource(R.string.parental_empty_hint),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
+                    SectionHeader(stringResource(R.string.parental_people))
                 }
                 if (family) items(snapshot.profiles, key = { it.id }) { profile ->
                     ProfileCard(
@@ -214,6 +207,21 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
                         onExtraTime = { extraFor = profile },
                         onClearExtraTime = { vm.extraTime(profile, null) },
                     )
+                }
+                if (family) item {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        GroupCard {
+                            GroupRow(
+                                stringResource(R.string.parental_new_profile),
+                                leading = { RowIcon(R.drawable.ic_add, LocalPalette.current.accent) },
+                                labelColor = LocalPalette.current.accent,
+                                divider = false,
+                                onClick = { if (!busy) editing = newProfile(data) },
+                                modifier = Modifier.testTag("new-profile"),
+                            )
+                        }
+                        if (snapshot.profiles.isEmpty()) GroupFooter(stringResource(R.string.parental_empty_hint))
+                    }
                 }
 
                 if (!family) item {
@@ -302,23 +310,6 @@ fun ParentalScreen(connection: Connection.SignedIn, section: ParentalSection) {
                 }
             }
         }
-
-        val data = state.data
-        if (data != null && family) {
-            val newProfileLabel = stringResource(R.string.parental_new_profile)
-            ExtendedFloatingActionButton(
-                onClick = { editing = newProfile(data) },
-                icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                text = { Text(newProfileLabel) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .testTag("new-profile")
-                    // El FAB extendido no expone el texto de su etiqueta a accesibilidad (se vio con
-                    // uiautomator: nodo clicable sin texto). Sin esto, TalkBack solo diría "botón".
-                    .semantics { contentDescription = newProfileLabel },
-            )
-        }
     }
 
     val data = state.data
@@ -367,6 +358,10 @@ private fun zoneLabel(zone: String?): String = zone?.replace('_', ' ') ?: string
 private fun newProfile(data: ParentalData): Profile =
     Profile(newId(data.snapshot.profiles.map { it.id }.toSet()), "", emptyList(), protectRouter = true)
 
+/**
+ * Una persona: su inicial, cómo está su internet, sus aparatos, su filtro y sus horarios; debajo,
+ * lo que se puede hacer (pausar o devolver, más tiempo, editar). Tocarla la edita.
+ */
 @Composable
 internal fun ProfileCard(
     profile: Profile,
@@ -378,78 +373,134 @@ internal fun ProfileCard(
     onExtraTime: () -> Unit,
     onClearExtraTime: () -> Unit,
 ) {
+    val palette = LocalPalette.current
     val now = data.snapshot.routerNow
     val access = profile.access(now)
     val status = accessText(profile, now)
     val vendors = rememberVendors()
     val names = profile.macs.map { mac -> data.devices.firstOrNull { it.mac == mac }?.let { deviceTitle(it, vendors) } ?: mac }
-    val bypass = data.snapshot.dnsBypassBlocked(profile)
+    val tint = when (status.blocked) {
+        true -> palette.bad
+        false -> palette.good
+        null -> palette.secondary
+    }
 
-    Card(Modifier.fillMaxWidth().clickable(enabled = !busy, onClick = onEdit).testTag("profile-${profile.id}")) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(profile.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                StatusPill(status.pill.text(), status.blocked?.not())
+    GroupCard(Modifier.testTag("profile-${profile.id}")) {
+        Row(
+            Modifier.fillMaxWidth().clickable(enabled = !busy, onClick = onEdit).padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Text(profile.name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = tint)
             }
-            Text(
-                if (names.isEmpty()) {
-                    stringResource(R.string.parental_no_devices)
-                } else {
-                    pluralStringResource(R.plurals.parental_devices, names.size, names.size, names.joinToString())
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            status.detail?.let { Text(it.text(), style = MaterialTheme.typography.bodyMedium) }
-            formatFilter(profile.filter)?.let { Text(it.text(), style = MaterialTheme.typography.bodySmall) }
-            if (data.snapshot.filterRunning(profile) == false) {
-                Text(
-                    stringResource(R.string.parental_filter_not_running),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            if (bypass > 0) {
-                Text(
-                    pluralStringResource(
-                        R.plurals.parental_dns_bypass,
-                        bypass.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                        bypass,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-            }
-            profile.schedules.forEach { s ->
-                val schedule = formatSchedule(s).text()
-                Text(
-                    if (s.enabled) schedule else stringResource(R.string.parental_schedule_disabled, schedule),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (s.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                when {
-                    profile.pause != null -> FilledTonalButton(
-                        onClick = onResume,
-                        enabled = !busy,
-                    ) { Text(stringResource(R.string.parental_resume)) }
-                    access is Access.Blocked -> FilledTonalButton(onClick = onExtraTime, enabled = !busy, modifier = Modifier.testTag("extra-${profile.id}")) {
-                        Text(stringResource(R.string.parental_extra_time))
-                    }
-                    else -> FilledTonalButton(onClick = onPause, enabled = !busy && profile.macs.isNotEmpty()) {
-                        Text(stringResource(R.string.parental_pause_internet))
-                    }
-                }
-                if (access is Access.ExtraTime) {
-                    TextButton(onClick = onClearExtraTime, enabled = !busy, modifier = Modifier.testTag("clear-extra-${profile.id}")) {
-                        Text(stringResource(R.string.parental_clear_extra_time))
-                    }
-                } else {
-                    TextButton(onClick = onEdit, enabled = !busy) { Text(stringResource(R.string.parental_edit)) }
-                }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(profile.name, style = MaterialTheme.typography.titleMedium, color = palette.label)
+                Text(status.detail?.text() ?: status.pill.text(), style = MaterialTheme.typography.bodyMedium, color = tint)
             }
         }
+        ProfileFacts(profile, data, names)
+        ProfileActions(profile, access, busy, onEdit, onPause, onResume, onExtraTime, onClearExtraTime)
+    }
+}
+
+/** Lo que tiene puesto: sus aparatos, su filtro, sus horarios y lo que no va bien. */
+@Composable
+private fun ProfileFacts(profile: Profile, data: ParentalData, names: List<String>) {
+    val palette = LocalPalette.current
+    val bypass = data.snapshot.dnsBypassBlocked(profile)
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            if (names.isEmpty()) {
+                stringResource(R.string.parental_no_devices)
+            } else {
+                pluralStringResource(R.plurals.parental_devices, names.size, names.size, names.joinToString())
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = palette.secondary,
+        )
+        formatFilter(profile.filter)?.let { Text(it.text(), style = MaterialTheme.typography.bodySmall, color = palette.secondary) }
+        profile.schedules.forEach { s ->
+            val schedule = formatSchedule(s).text()
+            Text(
+                if (s.enabled) schedule else stringResource(R.string.parental_schedule_disabled, schedule),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (s.enabled) palette.label else palette.tertiary,
+            )
+        }
+        if (data.snapshot.filterRunning(profile) == false) {
+            Text(stringResource(R.string.parental_filter_not_running), style = MaterialTheme.typography.bodySmall, color = palette.bad)
+        }
+        if (bypass > 0) {
+            Text(
+                pluralStringResource(R.plurals.parental_dns_bypass, bypass.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), bypass),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.warning,
+            )
+        }
+    }
+}
+
+/** Pausar o devolver internet, más tiempo (o quitarlo) y editar, como controles redondos. */
+@Composable
+private fun ProfileActions(
+    profile: Profile,
+    access: Access,
+    busy: Boolean,
+    onEdit: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onExtraTime: () -> Unit,
+    onClearExtraTime: () -> Unit,
+) {
+    val palette = LocalPalette.current
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        val action = Modifier.weight(1f)
+        when {
+            profile.pause != null -> CircleAction(
+                R.drawable.ic_pause,
+                stringResource(R.string.parental_resume),
+                null,
+                active = true,
+                tint = palette.bad,
+                modifier = action.testTag("resume-${profile.id}"),
+                onClick = { if (!busy) onResume() },
+            )
+            access is Access.Blocked -> CircleAction(
+                R.drawable.ic_timer,
+                stringResource(R.string.parental_extra_time),
+                null,
+                active = false,
+                modifier = action.testTag("extra-${profile.id}"),
+                onClick = { if (!busy) onExtraTime() },
+            )
+            profile.macs.isNotEmpty() -> CircleAction(
+                R.drawable.ic_pause,
+                stringResource(R.string.parental_pause_short),
+                null,
+                active = false,
+                modifier = action.testTag("pause-${profile.id}"),
+                onClick = { if (!busy) onPause() },
+            )
+        }
+        if (access is Access.ExtraTime) {
+            CircleAction(
+                R.drawable.ic_timer,
+                stringResource(R.string.parental_clear_extra_short),
+                null,
+                active = true,
+                modifier = action.testTag("clear-extra-${profile.id}"),
+                onClick = { if (!busy) onClearExtraTime() },
+            )
+        }
+        CircleAction(
+            R.drawable.ic_edit,
+            stringResource(R.string.parental_edit),
+            null,
+            active = false,
+            modifier = action.testTag("edit-${profile.id}"),
+            onClick = { if (!busy) onEdit() },
+        )
     }
 }
 
