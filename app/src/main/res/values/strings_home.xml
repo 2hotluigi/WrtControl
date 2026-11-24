@@ -54,7 +54,6 @@
     <string name="status_firmware">Firmware</string>
     <string name="status_kernel">Kernel</string>
     <string name="status_uptime">Encendido</string>
-    <string name="status_load_memory">Carga y memoria</string>
     <string name="status_load">Carga (1/5/15 min)</string>
     <string name="status_memory">Memoria</string>
     <string name="status_storage">Almacenamiento</string>
@@ -167,4 +166,6 @@
     <string name="device_pause_120">2 horas</string>
     <string name="device_action_pause">Pausar</string>
     <string name="device_action_block_caption">Sin límite</string>
+    <string name="status_iface_state">Estado</string>
+    <string name="status_load_short">Carga</string>
 </resources>

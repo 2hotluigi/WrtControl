@@ -56,3 +56,6 @@ fun formatLoad(raw: Long): String = String.format(Locale.ROOT, "%.2f", raw / 65_
 
 fun fraction(part: Long, total: Long): Float =
     if (total <= 0) 0f else (part.toFloat() / total).coerceIn(0f, 1f)
+
+/** [f] (0 a 1) en porcentaje, como se escribe en el idioma del teléfono ("42 %" o "42%"). */
+fun formatPercent(f: Float): String = java.text.NumberFormat.getPercentInstance().format(f.toDouble())

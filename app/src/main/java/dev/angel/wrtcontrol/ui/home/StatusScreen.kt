@@ -1,11 +1,12 @@
 package dev.angel.wrtcontrol.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,15 +32,22 @@ import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.openWrtSupportNotice
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.ui.ErrorBanner
-import dev.angel.wrtcontrol.ui.InfoCard
-import dev.angel.wrtcontrol.ui.InfoRow
 import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
-import dev.angel.wrtcontrol.ui.StatusPill
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.MeterRow
+import dev.angel.wrtcontrol.ui.design.SectionHeader
+import dev.angel.wrtcontrol.ui.design.Stat
+import dev.angel.wrtcontrol.ui.design.StatStrip
+import dev.angel.wrtcontrol.ui.design.ValueRows
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.formatLoad
+import dev.angel.wrtcontrol.ui.formatPercent
 import dev.angel.wrtcontrol.ui.fraction
 import dev.angel.wrtcontrol.ui.userMessage
 import dev.angel.wrtcontrol.ui.watchAsState
@@ -111,15 +119,15 @@ fun StatusContent(
 ) {
     LoadableContent(state) { data, error ->
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(CardGap),
         ) {
             if (error != null) item { ErrorBanner(stringResource(R.string.common_stale_data, error)) }
             openWrtSupportNotice(data.board.release.version)?.let { notice ->
                 item { NoticeCard(stringResource(R.string.status_untested_openwrt), notice.text()) }
             }
+            item { Summary(data.info) }
             item { SystemCard(data.board, data.info) }
-            item { ResourcesCard(data.info) }
             // Si no se pudo averiguar, no se enseña: lo demás de la pantalla no depende de ello.
             if (capabilities != null) item { CapabilitiesCard(capabilities, verified) }
             items(data.interfaces, key = { it.name }) { InterfaceCard(it) }
@@ -128,49 +136,77 @@ fun StatusContent(
     }
 }
 
+/** Arriba, lo que más se mira: cuánto lleva encendido, la carga y la memoria. */
 @Composable
-private fun SystemCard(board: BoardInfo, info: SystemInfo) {
-    InfoCard(stringResource(R.string.status_system)) {
-        InfoRow(stringResource(R.string.status_model), board.model)
-        InfoRow(stringResource(R.string.status_firmware), board.release.description)
-        InfoRow(stringResource(R.string.status_kernel), board.kernel)
-        InfoRow(stringResource(R.string.status_uptime), formatDuration(info.uptime))
-    }
+private fun Summary(info: SystemInfo) {
+    val mem = info.memory
+    StatStrip(
+        listOf(
+            Stat(stringResource(R.string.status_uptime), formatDuration(info.uptime)),
+            Stat(stringResource(R.string.status_load_short), formatLoad(info.load.first())),
+            Stat(stringResource(R.string.status_memory), formatPercent(fraction(mem.total - mem.available, mem.total))),
+        ),
+    )
 }
 
 @Composable
-private fun ResourcesCard(info: SystemInfo) {
+private fun SystemCard(board: BoardInfo, info: SystemInfo) {
     val mem = info.memory
     val memUsed = mem.total - mem.available
-    InfoCard(stringResource(R.string.status_load_memory)) {
-        InfoRow(stringResource(R.string.status_load), info.load.joinToString(" · ") { formatLoad(it) })
-        InfoRow(
-            stringResource(R.string.status_memory),
-            stringResource(R.string.status_used_of, formatBytes(memUsed), formatBytes(mem.total)),
-        )
-        LinearProgressIndicator(progress = { fraction(memUsed, mem.total) }, modifier = Modifier.fillMaxWidth())
-        info.root?.let { root ->
-            InfoRow(
-                stringResource(R.string.status_storage),
-                stringResource(R.string.status_used_of, formatBytes(root.used * 1024), formatBytes(root.total * 1024)),
+    Column {
+        SectionHeader(stringResource(R.string.status_system))
+        GroupCard {
+            ValueRows(
+                listOf(
+                    stringResource(R.string.status_model) to board.model,
+                    stringResource(R.string.status_firmware) to board.release.description,
+                    stringResource(R.string.status_kernel) to board.kernel,
+                    stringResource(R.string.status_load) to info.load.joinToString(" · ") { formatLoad(it) },
+                ),
             )
-            LinearProgressIndicator(progress = { fraction(root.used, root.total) }, modifier = Modifier.fillMaxWidth())
+            HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = LocalPalette.current.separator)
+            MeterRow(
+                stringResource(R.string.status_memory),
+                formatPercent(fraction(memUsed, mem.total)),
+                stringResource(R.string.status_used_of, formatBytes(memUsed), formatBytes(mem.total)),
+                fraction(memUsed, mem.total),
+                divider = info.root != null,
+            )
+            info.root?.let { root ->
+                MeterRow(
+                    stringResource(R.string.status_storage),
+                    formatPercent(fraction(root.used, root.total)),
+                    stringResource(R.string.status_used_of, formatBytes(root.used * KIB), formatBytes(root.total * KIB)),
+                    fraction(root.used, root.total),
+                    divider = false,
+                )
+            }
         }
     }
 }
 
+/** Una conexión del router (WAN, LAN...): si está activa y sus direcciones. */
 @Composable
 private fun InterfaceCard(iface: NetInterface) {
-    InfoCard(
-        title = iface.name.uppercase(),
-        trailing = { StatusPill(stringResource(if (iface.up) R.string.status_iface_up else R.string.status_iface_down), iface.up) },
-    ) {
-        InfoRow(stringResource(R.string.status_protocol), iface.proto)
-        InfoRow(stringResource(R.string.status_device), iface.l3Device ?: iface.device ?: "—")
-        if (iface.ipv4.isNotEmpty()) InfoRow("IPv4", iface.ipv4.joinToString { "${it.address}/${it.mask}" })
-        val v6 = iface.ipv6 + iface.ipv6Prefixes.map { IpAddress(it.address, it.mask) }
-        if (v6.isNotEmpty()) InfoRow("IPv6", v6.joinToString { "${it.address}/${it.mask}" })
-        if (iface.dns.isNotEmpty()) InfoRow("DNS", iface.dns.joinToString())
-        if (iface.up) iface.uptime?.let { InfoRow(stringResource(R.string.status_connected_for), formatDuration(it)) }
+    val palette = LocalPalette.current
+    val v6 = iface.ipv6 + iface.ipv6Prefixes.map { IpAddress(it.address, it.mask) }
+    val rows = listOfNotNull(
+        stringResource(R.string.status_protocol) to iface.proto,
+        stringResource(R.string.status_device) to (iface.l3Device ?: iface.device ?: "—"),
+        iface.ipv4.takeIf { it.isNotEmpty() }?.let { v4 -> "IPv4" to v4.joinToString { "${it.address}/${it.mask}" } },
+        v6.takeIf { it.isNotEmpty() }?.let { "IPv6" to it.joinToString { a -> "${a.address}/${a.mask}" } },
+        iface.dns.takeIf { it.isNotEmpty() }?.let { "DNS" to it.joinToString() },
+        iface.uptime?.takeIf { iface.up }?.let { stringResource(R.string.status_connected_for) to formatDuration(it) },
+    )
+    Column {
+        SectionHeader(iface.name.uppercase())
+        GroupCard {
+            GroupRow(
+                stringResource(R.string.status_iface_state),
+                value = stringResource(if (iface.up) R.string.status_iface_up else R.string.status_iface_down),
+                valueColor = if (iface.up) palette.good else palette.bad,
+            )
+            ValueRows(rows)
+        }
     }
 }

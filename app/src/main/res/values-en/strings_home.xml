@@ -50,7 +50,6 @@
     <string name="status_firmware">Firmware</string>
     <string name="status_kernel">Kernel</string>
     <string name="status_uptime">Uptime</string>
-    <string name="status_load_memory">Load and memory</string>
     <string name="status_load">Load (1/5/15 min)</string>
     <string name="status_memory">Memory</string>
     <string name="status_storage">Storage</string>
@@ -162,4 +161,6 @@
     <string name="device_pause_120">2 hours</string>
     <string name="device_action_pause">Pause</string>
     <string name="device_action_block_caption">No limit</string>
+    <string name="status_iface_state">Status</string>
+    <string name="status_load_short">Load</string>
 </resources>
