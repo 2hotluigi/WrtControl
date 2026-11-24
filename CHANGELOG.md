@@ -27,6 +27,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Funciones y el editor de perfiles con el diseño nuevo: cada función con su estado en color, y el
   editor por grupos, con una marca en lo elegido en vez de casillas y chips.
 
+### Corregido
+- La pantalla que pide el permiso de red local se leía mal en modo oscuro (texto negro sobre gris).
+
 ## [0.5.0]
 
 ### Añadido
