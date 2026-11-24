@@ -64,6 +64,20 @@ hace vnStat 2 (`luci-app-vnstat2`), que la app instala con un toque (`UsageApi`,
   vnStat guardó (cada hora), empieza cuando empezó a mirar la tarjeta y las horas o los días sin
   entrada cuentan cero.
 
+Lo que gasta cada aparato lo cuenta nlbwmon (`luci-app-nlbwmon`, unos 250 KB), que la app también
+instala con un toque (`DeviceUsageApi`, ver `Nlbwmon.kt`):
+
+- **Cómo cuenta:** con las conexiones del cortafuegos (conntrack), por periodos (de serie, el mes
+  desde el día 1). Solo TCP y UDP: un ping no cuenta. Tarda hasta 30 s en contar una conexión
+  abierta.
+- **Qué se lee:** `nlbwmon-action download -g mac,ip` (su ACL lo deja). El propio router sale como
+  un aparato más, con la IP de su WAN, y lo que no se sabe de quién es, con la MAC 00:00:...: los
+  dos se quitan. Los nombres son los de Dispositivos.
+- **Dónde guarda:** de serie en `/var/lib/nlbwmon`, en RAM, y una vez al día. A diferencia de
+  vnStat, se cambia por UCI: la app pone `database_directory` en `/etc/wrtc_nlbwmon` y
+  `commit_interval` en `1h` con `applySafely`, y el servicio se recarga solo. Al cambiarlo empieza
+  de cero, así que se hace al instalar.
+
 ### Qué puede hacer el router
 
 `Capabilities` (paquete `openwrt`) dice, sin probar a hacerlo, si el router puede con cada función

@@ -28,6 +28,7 @@ import dev.angel.wrtcontrol.data.Loadable
 import dev.angel.wrtcontrol.data.RouterAccess
 import dev.angel.wrtcontrol.data.RouterMonitor
 import dev.angel.wrtcontrol.data.UsageState
+import dev.angel.wrtcontrol.openwrt.DeviceRecorder
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
 import dev.angel.wrtcontrol.openwrt.Recorder
 import dev.angel.wrtcontrol.openwrt.UsageHistory
@@ -46,8 +47,10 @@ import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
+import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
+import dev.angel.wrtcontrol.ui.rememberVendors
 import dev.angel.wrtcontrol.ui.watchAsState
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -58,7 +61,7 @@ private val USAGE_REFRESH = 10.seconds
 /** Lo guardado por horas y días cambia cada hora: se mira de minuto en minuto. */
 private val RECORDER_REFRESH = 1.minutes
 
-/** Instalar o configurar vnStat, con el cambio en curso y su error. */
+/** Instalar o configurar vnStat y nlbwmon, con el cambio en curso y su error. */
 class UsageViewModel(private val router: RouterAccess, private val monitor: RouterMonitor) : ViewModel() {
     private val changes = ChangeRunner(viewModelScope)
 
@@ -70,6 +73,10 @@ class UsageViewModel(private val router: RouterAccess, private val monitor: Rout
 
     fun setUp() = run(txt(R.string.usage_busy_setup)) { it.usage.setUp(it.interfaces()) }
 
+    fun installDevices() = run(txt(R.string.usage_busy_installing_devices), installs = true) { it.deviceUsage.install() }
+
+    fun setUpDevices() = run(txt(R.string.usage_busy_setup_devices)) { it.deviceUsage.setUp() }
+
     private fun run(label: Txt, installs: Boolean = false, block: suspend (OpenWrtApi) -> Unit) {
         val refresh = {
             // Aunque falle, la instalación pudo quedar a medias: se vuelve a mirar qué hay.
@@ -78,6 +85,7 @@ class UsageViewModel(private val router: RouterAccess, private val monitor: Rout
                 monitor.capabilities.refresh()
             }
             monitor.usageRecorder.refresh()
+            monitor.deviceUsage.refresh()
         }
         changes.run(label, onFinished = refresh) { router.use { block(it) } }
     }
@@ -90,13 +98,25 @@ fun UsageScreen(address: String) {
     val vm: UsageViewModel = viewModel(key = "usage:$address") { UsageViewModel(repo, repo.monitor) }
     val state by repo.monitor.usage.watchAsState(USAGE_REFRESH)
     val recorder by repo.monitor.usageRecorder.watchAsState(RECORDER_REFRESH)
+    val perDevice by repo.monitor.deviceUsage.watchAsState(RECORDER_REFRESH)
+    val devices by repo.monitor.devices.watchAsState(RECORDER_REFRESH)
+    val vendors = rememberVendors()
     var period by rememberSaveable { mutableStateOf(UsagePeriod.Day) }
     val data = state.data
     UsageContent(
-        state = if (data == null) state else state.copy(data = data.copy(recorder = recorder.data?.recorder)),
+        state = if (data == null) state else state.copy(data = data.copy(recorder = recorder.data?.recorder, devices = perDevice.data)),
         period = period,
         onPeriod = { period = it },
-        actions = RecorderActions(vm.progress, vm.error?.text(), enabled = !LocalAppLocked.current, vm::install, vm::setUp),
+        actions = RecorderActions(
+            vm.progress,
+            vm.error?.text(),
+            enabled = !LocalAppLocked.current,
+            onInstall = vm::install,
+            onSetUp = vm::setUp,
+            onInstallDevices = vm::installDevices,
+            onSetUpDevices = vm::setUpDevices,
+        ),
+        deviceNames = devices.data.orEmpty().associate { it.mac.uppercase() to deviceTitle(it, vendors) },
     )
 }
 
@@ -107,6 +127,8 @@ class RecorderActions(
     val enabled: Boolean = true,
     val onInstall: () -> Unit = {},
     val onSetUp: () -> Unit = {},
+    val onInstallDevices: () -> Unit = {},
+    val onSetUpDevices: () -> Unit = {},
 )
 
 @Composable
@@ -115,6 +137,7 @@ fun UsageContent(
     period: UsagePeriod,
     onPeriod: (UsagePeriod) -> Unit,
     actions: RecorderActions = RecorderActions(),
+    deviceNames: Map<String, String> = emptyMap(),
 ) {
     LoadableContent(state) { data, error ->
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -123,6 +146,8 @@ fun UsageContent(
             if (error != null) item { ErrorBanner(stringResource(R.string.common_stale_data, error)) }
             val recorder = data.recorder
             if (recorder is Recorder.Ready) item { HistoryCard(recorder.history, period, onPeriod) }
+            val perDevice = data.devices
+            if (perDevice is DeviceRecorder.Ready) item { DevicesUsageCard(perDevice, deviceNames) }
             item {
                 val sinceBoot = data.sinceBoot
                 if (sinceBoot != null) {
@@ -132,6 +157,7 @@ fun UsageContent(
                 }
             }
             if (recorder != null && recorder !is Recorder.Ready) item { RecorderCard(recorder, actions) }
+            if (perDevice != null && perDevice !is DeviceRecorder.Ready) item { DeviceRecorderCard(perDevice, actions) }
         }
     }
 }

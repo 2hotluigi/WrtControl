@@ -12,6 +12,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Uso de internet: con "Instalar", la app pone vnStat en el router y enseña una gráfica de las
   últimas 24 horas, 7 días y 30 días (tocar una barra dice lo de esa hora o ese día). Lo guarda una
   vez por hora en la memoria del router, así que no se pierde al reiniciarlo.
+- Uso de internet: "Quién gasta más" este mes, aparato por aparato (con "Instalar", la app pone
+  nlbwmon en el router). Lo de cada uno sale también en su ficha de Dispositivos.
 
 ## [0.4.0]
 

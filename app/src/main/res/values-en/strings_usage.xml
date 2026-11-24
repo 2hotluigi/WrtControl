@@ -36,4 +36,20 @@
     <string name="usage_recorder_no_wan">The router has no internet connection right now: there\'s nothing to keep track of.</string>
     <string name="usage_recorder_not_watching">vnStat didn\'t start counting the internet connection, so everything was left as it was.</string>
     <string name="usage_recorder_not_saved">vnStat couldn\'t be made to save to the router\'s storage: what it counts would be lost when it restarts. Try again.</string>
+    <string name="usage_devices_title">Who uses the most</string>
+    <string name="usage_devices_period">This month, since the 1st.</string>
+    <string name="usage_devices_empty">Nothing counted yet. Each device shows up once it uses something (it takes half a minute).</string>
+    <string name="usage_devices_detail">%1$s downloaded, %2$s uploaded</string>
+    <string name="usage_devices_more">See all (%1$d)</string>
+    <string name="usage_devices_less">See less</string>
+    <string name="usage_devices_offer_title">See what each device uses</string>
+    <string name="usage_devices_missing_body">For that, the router has to count each device\'s connections. This installs nlbwmon, which takes less than 1 MB and saves once an hour.</string>
+    <string name="usage_devices_no_space">It needs 1 MB free and the router has %1$s left.</string>
+    <string name="usage_devices_setup_body">nlbwmon is installed, but it keeps its data in memory that\'s wiped when the router restarts. Setting it up starts counting from zero.</string>
+    <string name="usage_busy_installing_devices">Installing nlbwmon…</string>
+    <string name="usage_busy_setup_devices">Setting up nlbwmon…</string>
+    <string name="usage_devices_no_config">nlbwmon is installed but its settings are missing. Reinstall it from LuCI.</string>
+    <string name="usage_devices_not_started">nlbwmon didn\'t start again with the change, so everything was left as it was.</string>
+    <string name="devices_usage_month">This month: %1$s</string>
+    <string name="usage_devices_period_other">In nlbwmon\'s current period (set in LuCI).</string>
 </resources>

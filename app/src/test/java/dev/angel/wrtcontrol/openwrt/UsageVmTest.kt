@@ -26,6 +26,9 @@ class UsageVmTest {
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
     private val password: String = System.getenv("WRTCONTROL_PASSWORD").orEmpty()
 
+    /** Una web a la que llega el cliente de pruebas: en la CI, el PC (los runners no siempre dejan salir). */
+    private val httpTarget: String = System.getenv("WRTCONTROL_HTTP_TARGET") ?: "http://1.1.1.1/cdn-cgi/trace"
+
     /** Ejecuta [command] en el router por la entrada de `sh -s` (así las comillas llegan tal cual desde Windows). */
     private fun ssh(command: String): String {
         val process = ProcessBuilder(listOf("ssh", "-o", "BatchMode=yes") + sshOptions + listOf("root@$vm", "sh -s"))
@@ -103,9 +106,50 @@ class UsageVmTest {
         assertEquals(crontab, ssh(CRONTAB_STATE))
     }
 
+    /**
+     * nlbwmon desde la app (ver Nlbwmon.kt): se instala, guarda en la flash cada hora y cuenta lo
+     * que gasta el cliente de pruebas, sin contar al propio router. Instala un paquete: solo en una
+     * máquina virtual, y con el cliente de pruebas (tools/vm/netns-client.sh).
+     */
+    @Test
+    fun `nlbwmon - se instala, guarda en la flash y cuenta cada aparato`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeTrue("Solo en una máquina virtual", ssh("cat /sys/class/dmi/id/sys_vendor 2>/dev/null").let { "QEMU" in it || "innotek" in it })
+        assumeTrue("Hace falta el cliente de pruebas", ssh("/usr/libexec/ip-full netns list 2>/dev/null").contains("wrtc_client"))
+        val http = OkHttpClient.Builder().callTimeout(2, TimeUnit.MINUTES).build()
+        val api = OpenWrtApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val interfaces = api.interfaces()
+        val free = api.systemInfo().root?.avail
+
+        when (api.deviceUsage.recorder(interfaces, free)) {
+            is DeviceRecorder.Missing -> api.deviceUsage.install()
+            DeviceRecorder.NeedsSetup -> api.deviceUsage.setUp()
+            is DeviceRecorder.Ready -> Unit
+        }
+        assertEquals(NLBW_DIR, ssh("uci -q get nlbwmon.@nlbwmon[0].database_directory"))
+        assertEquals("1h", ssh("uci -q get nlbwmon.@nlbwmon[0].commit_interval"))
+        assertEquals("en marcha", ssh("pidof nlbwmon >/dev/null && echo en-marcha || echo parado").replace('-', ' '))
+
+        // Tráfico del cliente hacia fuera, y que nlbwmon lo cuente (refresh_interval 30 s). Con TCP: el
+        // ping no lo cuenta (solo TCP y UDP).
+        val fetch = "/usr/libexec/ip-full netns exec wrtc_client wget -q -O /dev/null $httpTarget"
+        ssh("for i in 1 2 3 4 5; do $fetch; done; sleep $NLBW_REFRESH_S")
+        val recorder = api.deviceUsage.recorder(api.interfaces(), free)
+        assertTrue("listo: $recorder", recorder is DeviceRecorder.Ready)
+        val devices = (recorder as DeviceRecorder.Ready).devices
+        val client = devices.firstOrNull { it.mac == CLIENT_MAC }
+        assertTrue("el cliente de pruebas gasta: $devices", client != null && client.receivedBytes > 0 && client.sentBytes > 0)
+        val routerMacs = ssh("cat /sys/class/net/*/address").lines().map { it.trim().uppercase() }.toSet() - CLIENT_MAC
+        assertTrue("el router no sale como un aparato: $devices", devices.none { it.mac in routerMacs })
+    }
+
     private companion object {
         /** Cada cuánto lee vnStat los contadores (UpdateInterval). */
         const val VNSTAT_UPDATE_S = 25
+
+        /** Lo que tarda nlbwmon en contar una conexión abierta (refresh_interval), con margen. */
+        const val NLBW_REFRESH_S = 35
+        const val CLIENT_MAC = "02:00:00:00:00:99"
 
         /** El crontab de root tal cual, o que no existe (no es lo mismo que vacío: con él, cron arranca). */
         const val CRONTAB_STATE = "cat /etc/crontabs/root 2>/dev/null || echo sin-crontab"

@@ -8,6 +8,7 @@ import dev.angel.wrtcontrol.describeError
 import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.DeviceRecorder
 import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.HomeLayout
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
@@ -47,8 +48,9 @@ data class WanLinkState(val link: WanLink?)
 /**
  * [sinceBoot] null: no hay salida a internet que mirar o el router no deja ver sus contadores.
  * [recorder]: si el router guarda lo gastado por horas y días (vnStat); null si no se sabe.
+ * [devices]: si cuenta lo de cada aparato (nlbwmon); null si no se sabe.
  */
-data class UsageState(val sinceBoot: WanUsage?, val recorder: Recorder? = null) {
+data class UsageState(val sinceBoot: WanUsage?, val recorder: Recorder? = null, val devices: DeviceRecorder? = null) {
     val history: UsageHistory? get() = (recorder as? Recorder.Ready)?.history
 }
 
@@ -169,6 +171,16 @@ class RouterMonitor(
             networks.await() to about.await()
         }
         router.use { RecorderState(it.usage.recorder(known, info.root?.avail)) }
+    }
+
+    /** Lo que gasta cada aparato este periodo (nlbwmon). Cuenta cada 30 s: se mira de minuto en minuto. */
+    val deviceUsage: Feed<DeviceRecorder> = feed {
+        val (known, info) = coroutineScope {
+            val networks = async { interfaces.fresh(SHARED_MAX_AGE) }
+            val about = async { system.fresh(STABLE_MAX_AGE) }
+            networks.await() to about.await()
+        }
+        router.use { it.deviceUsage.recorder(known, info.root?.avail) }
     }
 
     /** Qué router es (modelo y MAC de la red de casa). Se averigua una vez por sesión. */

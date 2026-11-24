@@ -49,6 +49,8 @@ import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.DeviceIdentity
 import dev.angel.wrtcontrol.openwrt.DeviceKind
+import dev.angel.wrtcontrol.openwrt.DeviceRecorder
+import dev.angel.wrtcontrol.openwrt.DeviceUsage
 import dev.angel.wrtcontrol.openwrt.LeaseState
 import dev.angel.wrtcontrol.openwrt.MAX_LABEL_LENGTH
 import dev.angel.wrtcontrol.openwrt.Presence
@@ -67,16 +69,21 @@ import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.LocalStatusColors
+import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.parental.formatUntil
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
 import dev.angel.wrtcontrol.ui.rememberVendors
 import dev.angel.wrtcontrol.ui.watchAsState
 import java.time.LocalDateTime
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** La lista de equipos cambia despacio. */
 private val DEVICES_REFRESH = 10.seconds
+
+/** Lo de cada aparato este mes: nlbwmon lo cuenta cada 30 s. */
+private val USAGE_REFRESH = 1.minutes
 
 /** De quién es cada aparato solo cambia desde la app. */
 private val PROFILES_REFRESH = 30.seconds
@@ -92,6 +99,8 @@ fun DevicesScreen(address: String) {
     val canAssign = parental.data?.newerSchema == false
     val pauses = parental.data?.let { DevicePauses(it.settings.withoutExpired(it.routerNow).devicePauses, it.routerNow) }
     val vendors = rememberVendors()
+    // Lo de este mes en la ficha de cada uno, si el router lo cuenta (nlbwmon, en Uso de internet).
+    val usage by repo.monitor.deviceUsage.watchAsState(USAGE_REFRESH)
     val locked = LocalAppLocked.current
     val context = LocalContext.current
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
@@ -129,6 +138,9 @@ fun DevicesScreen(address: String) {
                     )
                 },
                 thisPhone = device.mac in phoneMacs,
+                usage = (usage.data as? DeviceRecorder.Ready)?.takeIf { it.monthly }?.let { ready ->
+                    ready.devices.firstOrNull { it.mac == device.mac.uppercase() } ?: DeviceUsage(device.mac, 0, 0)
+                },
                 onDismiss = {
                     vm.error = null
                     editing = null
@@ -265,6 +277,8 @@ fun DeviceDialog(
     onSave: (DeviceChange) -> Unit,
     internet: InternetControl? = null,
     thisPhone: Boolean = false,
+    /** Lo que ha gastado este mes; null si el router no lo cuenta. */
+    usage: DeviceUsage? = null,
     onDismiss: () -> Unit,
 ) {
     val currentOwner = profiles.firstOrNull { device.mac in it.macs }?.id.orEmpty()
@@ -284,6 +298,15 @@ fun DeviceDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (error != null) ErrorBanner(error)
                 if (progress != null) ApplyingBanner(progress)
+                if (usage != null) {
+                    Text(
+                        stringResource(R.string.devices_usage_month, formatBytes(usage.totalBytes)) + " · " +
+                            stringResource(R.string.usage_devices_detail, formatBytes(usage.receivedBytes), formatBytes(usage.sentBytes)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("device-usage"),
+                    )
+                }
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it.take(MAX_LABEL_LENGTH) },
