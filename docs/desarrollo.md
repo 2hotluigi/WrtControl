@@ -17,6 +17,14 @@ había al activar detekt y lint está en `app/detekt-baseline.xml` y `app/lint-b
 solo falla por problemas nuevos. Al arreglar algo de la línea base, se regenera con
 `gradlew detektBaseline` o `gradlew updateLintBaseline`.
 
+La caché de Gradle de la CI (`gradle/actions/setup-gradle`) solo se escribe desde `master`; los PR
+la leen. El repositorio tiene 10 GB de caché y GitHub borra lo más viejo al pasarse, así que solo
+escriben los trabajos que lo necesitan: `android`, `demo` y, de las VM, la de 25.12. Los demás
+(`nft-samples` y las otras VM) leen la de otro trabajo del mismo workflow. Gradle se ejecuta una
+sola vez para las reglas de `nft`: `nft-samples` genera los ejemplos y cada `nft-<versión>` solo
+los comprueba. Cinco Gradle a la vez descargando lo mismo de Maven Central acababan en "429 Too
+Many Requests".
+
 El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
 `app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar
 `tunnel/`, con Go y el NDK de Android (gomobile lo instala el script, de la versión de `go.mod`):

@@ -55,8 +55,40 @@ jobs:
 
   # Las reglas que genera la app, con el nftables y el fw4 de cada versión de OpenWrt (imágenes
   # oficiales openwrt/rootfs). Así un cambio que no analiza en una versión falla aquí, no en un router.
+  # Los ejemplos se generan una vez (un solo Gradle: cinco a la vez descargando lo mismo de Maven
+  # Central acababan en "429 Too Many Requests") y cada versión solo los comprueba.
+  nft-samples:
+    name: nft-samples
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Las mismas dependencias que "android": lee su caché y no escribe una propia.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Ejemplos de reglas
+        env:
+          WRTCONTROL_NFT_SAMPLES: ${{ runner.temp }}/nft-samples
+        run: ./gradlew :app:testDebugUnitTest --tests '*NftSamplesTest*' --rerun
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nft-samples
+          path: ${{ runner.temp }}/nft-samples
+          if-no-files-found: error
+          retention-days: 1
+
   nft:
     name: nft-${{ matrix.openwrt }}
+    needs: nft-samples
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -66,17 +98,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: 25
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Ejemplos de reglas
-        env:
-          WRTCONTROL_NFT_SAMPLES: ${{ runner.temp }}/nft-samples
-        run: ./gradlew :app:testDebugUnitTest --tests '*NftSamplesTest*' --rerun
+          name: nft-samples
+          path: ${{ runner.temp }}/nft-samples
 
       - name: nft -c y fw4 check en OpenWrt ${{ matrix.openwrt }}
         run: |
