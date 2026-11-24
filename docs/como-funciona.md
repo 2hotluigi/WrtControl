@@ -68,8 +68,9 @@ Lo que gasta cada aparato lo cuenta nlbwmon (`luci-app-nlbwmon`, unos 250 KB), q
 instala con un toque (`DeviceUsageApi`, ver `Nlbwmon.kt`):
 
 - **Cómo cuenta:** con las conexiones del cortafuegos (conntrack), por periodos (de serie, el mes
-  desde el día 1). Solo TCP y UDP: un ping no cuenta. Tarda hasta 30 s en contar una conexión
-  abierta.
+  desde el día 1). Solo TCP y UDP: un ping no cuenta. Tampoco lo que va de una red local a otra
+  (`local_network`, de serie las privadas: 10/8, 172.16/12 y 192.168/16), como entrar al módem.
+  Tarda hasta 30 s en contar una conexión abierta.
 - **Qué se lee:** `nlbwmon-action download -g mac,ip` (su ACL lo deja). El propio router sale como
   un aparato más, con la IP de su WAN, y lo que no se sabe de quién es, con la MAC 00:00:...: los
   dos se quitan. Los nombres son los de Dispositivos.

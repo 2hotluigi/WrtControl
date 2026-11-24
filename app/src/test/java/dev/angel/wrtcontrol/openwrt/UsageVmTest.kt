@@ -26,9 +26,6 @@ class UsageVmTest {
     private val sshOptions = System.getenv("WRTCONTROL_SSH_OPTS")?.split(' ')?.filter { it.isNotBlank() }.orEmpty()
     private val password: String = System.getenv("WRTCONTROL_PASSWORD").orEmpty()
 
-    /** Una web a la que llega el cliente de pruebas: en la CI, el PC (los runners no siempre dejan salir). */
-    private val httpTarget: String = System.getenv("WRTCONTROL_HTTP_TARGET") ?: "http://1.1.1.1/cdn-cgi/trace"
-
     /** Ejecuta [command] en el router por la entrada de `sh -s` (así las comillas llegan tal cual desde Windows). */
     private fun ssh(command: String): String {
         val process = ProcessBuilder(listOf("ssh", "-o", "BatchMode=yes") + sshOptions + listOf("root@$vm", "sh -s"))
@@ -130,9 +127,11 @@ class UsageVmTest {
         assertEquals("1h", ssh("uci -q get nlbwmon.@nlbwmon[0].commit_interval"))
         assertEquals("en marcha", ssh("pidof nlbwmon >/dev/null && echo en-marcha || echo parado").replace('-', ' '))
 
-        // Tráfico del cliente hacia fuera, y que nlbwmon lo cuente (refresh_interval 30 s). Con TCP: el
-        // ping no lo cuenta (solo TCP y UDP).
-        val fetch = "/usr/libexec/ip-full netns exec wrtc_client wget -q -O /dev/null $httpTarget"
+        // Tráfico del cliente hacia internet, y que nlbwmon lo cuente (refresh_interval 30 s). Con TCP: el
+        // ping no lo cuenta. Y a una dirección pública: nlbwmon descarta lo que va de una red local a
+        // otra, y el PC de la CI (10.0.3.2, WRTCONTROL_HTTP_TARGET) está en 10.0.0.0/8. La VM llega a
+        // downloads.openwrt.org: de ahí instala los paquetes.
+        val fetch = "/usr/libexec/ip-full netns exec wrtc_client wget -q -O /dev/null $INTERNET_TARGET"
         ssh("for i in 1 2 3 4 5; do $fetch; done; sleep $NLBW_REFRESH_S")
         val recorder = api.deviceUsage.recorder(api.interfaces(), free)
         assertTrue("listo: $recorder", recorder is DeviceRecorder.Ready)
@@ -150,6 +149,7 @@ class UsageVmTest {
         /** Lo que tarda nlbwmon en contar una conexión abierta (refresh_interval), con margen. */
         const val NLBW_REFRESH_S = 35
         const val CLIENT_MAC = "02:00:00:00:00:99"
+        const val INTERNET_TARGET = "http://downloads.openwrt.org/"
 
         /** El crontab de root tal cual, o que no existe (no es lo mismo que vacío: con él, cron arranca). */
         const val CRONTAB_STATE = "cat /etc/crontabs/root 2>/dev/null || echo sin-crontab"
