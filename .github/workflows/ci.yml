@@ -29,6 +29,8 @@ jobs:
           java-version: 25
 
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Pruebas unitarias
         # Las pruebas unitarias y, con ellas, la comparación de las capturas (Roborazzi).
@@ -72,6 +74,7 @@ jobs:
       # Las mismas dependencias que "android": lee su caché y no escribe una propia.
       - uses: gradle/actions/setup-gradle@v6
         with:
+          cache-provider: basic
           cache-read-only: true
 
       - name: Ejemplos de reglas
