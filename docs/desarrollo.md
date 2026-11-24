@@ -23,7 +23,9 @@ con Gradle Inc. Su clave sale de los ficheros de Gradle, así que todos los trab
 sola entrada; solo se escribe desde `master` y los PR la leen. Al cambiar una dependencia, la
 primera ejecución lo descarga todo otra vez. Gradle se ejecuta una sola vez para las reglas de
 `nft`: `nft-samples` genera los ejemplos y cada `nft-<versión>` solo los comprueba. Cinco Gradle a la
-vez descargando lo mismo de Maven Central acababan en "429 Too Many Requests".
+vez descargando lo mismo de Maven Central acababan en "429 Too Many Requests". El `android-all` que
+Robolectric descarga en plena prueba (a `~/.m2`, fuera de la caché de Gradle) tiene su propia caché
+en los trabajos `android` y de la release, por lo mismo.
 
 El túnel del acceso remoto es Go (`tunnel/`: wireguard-go con netstack) y va ya compilado en
 `app/libs/wrtcvpn.aar`, así que la app compila sin Go. Solo hay que recompilarlo al cambiar

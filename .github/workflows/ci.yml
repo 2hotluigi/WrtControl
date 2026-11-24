@@ -32,6 +32,15 @@ jobs:
         with:
           cache-provider: basic
 
+      # Robolectric descarga en plena prueba su android-all (unos 150 MB) de Maven Central a ~/.m2,
+      # fuera de la caché de Gradle: sin esto, cada ejecución lo pide y a veces responde "429 Too
+      # Many Requests". Cambia con la versión de Robolectric (libs.versions.toml).
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
+
       - name: Pruebas unitarias
         # Las pruebas unitarias y, con ellas, la comparación de las capturas (Roborazzi).
         run: ./gradlew :app:verifyRoborazziDebug
