@@ -1,8 +1,5 @@
 package dev.angel.wrtcontrol.openwrt
 
-import dev.angel.wrtcontrol.ubus.UbusCaller
-import dev.angel.wrtcontrol.ubus.UbusException
-import dev.angel.wrtcontrol.ubus.callAs
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
@@ -79,25 +76,4 @@ internal fun wanUsage(device: String, json: DeviceStatsJson, uptimeSeconds: Long
     val received = json.stats?.rxBytes
     val sent = json.stats?.txBytes
     return if (received == null || sent == null) null else WanUsage(device, received, sent, uptimeSeconds)
-}
-
-/** Lo que lee la app del consumo. Ahora, solo los contadores desde el arranque. */
-class UsageApi internal constructor(private val ubus: UbusCaller) {
-    /**
-     * Lo que ha pasado por la salida a internet desde que se encendió el router; null si no hay
-     * salida que mirar o el router no deja ver sus contadores.
-     */
-    suspend fun sinceBoot(interfaces: List<NetInterface>, uptimeSeconds: Long): WanUsage? {
-        val device = wanDevice(interfaces) ?: return null
-        val json = try {
-            ubus.callAs<Map<String, DeviceStatsJson>>("luci-rpc", "getNetworkDevices")[device]
-        } catch (_: UbusException.AccessDenied) {
-            null
-        } catch (_: UbusException.Status) {
-            null
-        } catch (_: UbusException.Protocol) {
-            null
-        }
-        return json?.let { wanUsage(device, it, uptimeSeconds) }
-    }
 }

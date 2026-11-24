@@ -65,7 +65,9 @@ deshace solo si algo sale mal. Para empezar no hay que instalar nada en el route
   en vez de anchos de canal, el canal más libre, la potencia, quién está conectado y qué señal le
   llega, y un horario para apagar el Wi-Fi por la noche.
 - **Uso de internet.** Cuánto se ha descargado y subido desde que se encendió el router, y la media
-  al día, con los contadores del propio router y sin instalar nada.
+  al día, con los contadores del propio router y sin instalar nada. Con un toque la app instala
+  vnStat para ver una gráfica de las últimas 24 horas, 7 días y 30 días, que se guarda una vez por
+  hora: no se pierde al reiniciar y no desgasta la memoria del router.
 - **Wi-Fi de invitados.** Una red aparte con código QR: las visitas tienen internet, pero no ven tus
   aparatos ni entran al router.
 - **Funciones por resultado.** "Entrar desde fuera de casa" (WireGuard, con el túnel dentro de la

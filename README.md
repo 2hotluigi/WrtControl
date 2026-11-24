@@ -66,7 +66,9 @@ anything on the router.
   channel widths, the least crowded channel, transmit power, who is connected and how good their
   signal is, and a schedule to turn the Wi-Fi off at night.
 - **Internet usage.** How much has been downloaded and uploaded since the router was turned on, and
-  the daily average, read from the router's own counters with nothing to install.
+  the daily average, read from the router's own counters with nothing to install. With one tap the
+  app installs vnStat for a chart of the last 24 hours, 7 days and 30 days, saved once an hour so
+  it survives restarts without wearing out the router's storage.
 - **Guest Wi-Fi.** A separate network with a QR code: guests get internet, but can't see your
   devices or reach the router.
 - **Features by outcome.** "Reach home from outside" (WireGuard, with the tunnel built into the

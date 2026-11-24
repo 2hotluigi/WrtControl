@@ -21,4 +21,19 @@
     <string name="usage_chart_hour_range">De %1$02d:00 a %2$02d:00</string>
     <string name="usage_chart_hour_label">%1$d h</string>
     <string name="usage_chart_description">Gráfica de consumo de %1$s: %2$s recibido y %3$s enviado</string>
+    <string name="usage_history_note">Se actualiza cada hora.</string>
+    <string name="usage_history_empty">El router ya está guardando el consumo. La gráfica se irá llenando: se actualiza cada hora.</string>
+    <string name="usage_recorder_title">Ver las últimas 24 horas, 7 días y 30 días</string>
+    <string name="usage_recorder_missing_body">Para eso el router tiene que ir guardando lo que se gasta. Se instala vnStat, que ocupa unos 3 MB y guarda una vez por hora para no desgastar la memoria del router.</string>
+    <string name="usage_recorder_no_space">Necesita unos 4 MB libres y al router le quedan %1$s.</string>
+    <string name="usage_recorder_install">Instalar</string>
+    <string name="usage_recorder_setup_body">vnStat está instalado, pero no cuenta la salida a internet o lo guarda en una memoria que se borra al reiniciar el router.</string>
+    <string name="usage_recorder_setup">Configurar</string>
+    <string name="usage_busy_installing">Instalando vnStat…</string>
+    <string name="usage_busy_setup">Configurando vnStat (tarda hasta un minuto)…</string>
+    <string name="usage_recorder_cannot_install">El router no deja instalar paquetes desde la app.</string>
+    <string name="usage_recorder_denied">El router no deja escribir sus tareas programadas, así que no se puede hacer que guarde el consumo.</string>
+    <string name="usage_recorder_no_wan">El router no tiene salida a internet ahora mismo: no hay nada que guardar.</string>
+    <string name="usage_recorder_not_watching">vnStat no empezó a contar la salida a internet, así que se ha dejado como estaba.</string>
+    <string name="usage_recorder_not_saved">No se pudo hacer que vnStat guarde en la memoria del router: lo que cuente se perdería al reiniciarlo. Vuelve a intentarlo.</string>
 </resources>

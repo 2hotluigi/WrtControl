@@ -33,6 +33,7 @@ import dev.angel.wrtcontrol.openwrt.LuciFeatures
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.Radio
+import dev.angel.wrtcontrol.openwrt.Recorder
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.UsageBucket
 import dev.angel.wrtcontrol.openwrt.UsageHistory
@@ -350,19 +351,32 @@ class ScreenshotTest {
     /** El consumo de las últimas 24 horas (con más por la noche, la tele) y lo contado desde el arranque. */
     @Test
     fun `uso de internet`() = both("uso-de-internet") {
-        UsageContent(Loadable(UsageState(sinceBoot, usageHistory)), UsagePeriod.Day, onPeriod = {})
+        UsageContent(Loadable(UsageState(sinceBoot, Recorder.Ready(usageHistory))), UsagePeriod.Day, onPeriod = {})
     }
 
     /** Los últimos 30 días. */
     @Test
     fun `uso de internet en un mes`() = both("uso-de-internet-mes") {
-        UsageContent(Loadable(UsageState(sinceBoot, usageHistory)), UsagePeriod.Month, onPeriod = {})
+        UsageContent(Loadable(UsageState(sinceBoot, Recorder.Ready(usageHistory))), UsagePeriod.Month, onPeriod = {})
     }
 
-    /** Sin historial guardado en el router: solo lo que cuenta desde que se encendió. */
+    /** Sin historial guardado en el router: lo que cuenta desde que se encendió, y la oferta de instalar vnStat. */
     @Test
     fun `uso de internet sin historial`() = both("uso-de-internet-sin-historial") {
-        UsageContent(Loadable(UsageState(sinceBoot)), UsagePeriod.Day, onPeriod = {})
+        UsageContent(Loadable(UsageState(sinceBoot, Recorder.Missing(freeKiB = 60_000))), UsagePeriod.Day, onPeriod = {})
+    }
+
+    /** vnStat recién instalado, aún sin nada guardado. */
+    @Test
+    fun `uso de internet recien instalado`() = both("uso-de-internet-recien-instalado") {
+        val empty = Recorder.Ready(UsageHistory(emptyList(), emptyList()))
+        UsageContent(Loadable(UsageState(sinceBoot, empty)), UsagePeriod.Day, onPeriod = {})
+    }
+
+    /** Sin sitio en el router para instalar vnStat. */
+    @Test
+    fun `uso de internet sin sitio`() = both("uso-de-internet-sin-sitio") {
+        UsageContent(Loadable(UsageState(sinceBoot, Recorder.Missing(freeKiB = 1_200))), UsagePeriod.Day, onPeriod = {})
     }
 
     private val sinceBoot = WanUsage("wan", receivedBytes = 183L * GIB, sentBytes = 21L * GIB, sinceSeconds = 9 * DAY_SECONDS + 4 * 3600)

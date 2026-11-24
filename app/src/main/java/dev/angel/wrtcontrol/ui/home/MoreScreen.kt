@@ -49,7 +49,7 @@ fun MoreScreen(connection: Connection.SignedIn, page: MorePage, onPage: (MorePag
         }
         MorePage.Wifi -> SubPage(R.string.more_wifi_title, onBack = { onPage(MorePage.Menu) }) { WifiScreen(connection.address) }
         MorePage.Guest -> SubPage(R.string.more_guest_title, onBack = { onPage(MorePage.Menu) }) { GuestScreen(connection.address) }
-        MorePage.Usage -> SubPage(R.string.more_usage_title, onBack = { onPage(MorePage.Menu) }) { UsageScreen() }
+        MorePage.Usage -> SubPage(R.string.more_usage_title, onBack = { onPage(MorePage.Menu) }) { UsageScreen(connection.address) }
         MorePage.Features -> SubPage(R.string.more_features_title, onBack = { onPage(MorePage.Menu) }) { AddonsScreen(connection.address) }
         MorePage.Router -> SubPage(R.string.more_router_title, onBack = { onPage(MorePage.Menu) }) { StatusScreen() }
         MorePage.Pair -> SubPage(R.string.more_pair_title, onBack = { onPage(MorePage.Menu) }) {
