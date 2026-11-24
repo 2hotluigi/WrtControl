@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="more_usage_title">Internet usage</string>
-    <string name="more_usage_detail">How much has been downloaded and uploaded</string>
     <string name="usage_received">Downloaded</string>
     <string name="usage_sent">Uploaded</string>
     <string name="usage_total">Total</string>

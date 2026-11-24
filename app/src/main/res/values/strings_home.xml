@@ -4,7 +4,6 @@
     <string name="home_tab_devices">Dispositivos</string>
     <string name="home_tab_family">Familia</string>
     <string name="home_tab_security">Seguridad</string>
-    <string name="home_tab_more">Más</string>
     <string name="common_back">Volver</string>
     <string name="overview_online">Conectado a internet</string>
     <string name="overview_online_since">Sin cortes desde hace %1$s</string>
@@ -56,7 +55,6 @@
     <string name="overview_rules_inactive_action">Ver qué pasa</string>
     <string name="overview_pause_action">Pausar a…</string>
     <string name="more_features_title">Funciones del router</string>
-    <string name="more_features_detail">Entrar desde fuera de casa, nombre fijo, calidad de la conexión y puertos</string>
     <string name="more_router_title">Router</string>
     <string name="more_router_detail">Detalles técnicos: sistema, memoria, redes y qué puede hacer</string>
     <string name="more_sign_out_detail">Olvida la contraseña guardada en este teléfono</string>
@@ -156,4 +154,9 @@
         <item quantity="other">encendido · %1$d conectados</item>
         <item quantity="many">encendido · %1$d conectados</item>
     </plurals>
+    <string name="settings_title">Ajustes</string>
+    <string name="overview_grid_wifi">Wi-Fi</string>
+    <string name="overview_grid_guest">Invitados</string>
+    <string name="overview_grid_usage">Consumo</string>
+    <string name="overview_grid_features">Funciones</string>
 </resources>

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="more_wifi_title">Wi-Fi</string>
-    <string name="more_wifi_detail">Name, password and bands of the router\'s Wi-Fi</string>
     <string name="wifi_none">This router has no Wi-Fi.</string>
     <string name="wifi_name_label">Network name</string>
     <string name="wifi_password_label">Password</string>

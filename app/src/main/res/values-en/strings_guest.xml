@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="more_guest_title">Guest Wi-Fi</string>
-    <string name="more_guest_detail">A separate network for visitors, with a QR code</string>
     <string name="guest_intro">A separate network for visitors: they get internet, but can\'t see your devices or get into the router.</string>
     <string name="guest_switch">Guest Wi-Fi</string>
     <string name="guest_off_keeps">Turning it off keeps the name and password for the next visit.</string>

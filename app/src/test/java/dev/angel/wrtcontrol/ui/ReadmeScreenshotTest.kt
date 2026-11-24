@@ -2,28 +2,17 @@ package dev.angel.wrtcontrol.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.WrtApp
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.GuestWifi
@@ -41,6 +30,7 @@ import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.raw
+import dev.angel.wrtcontrol.ui.home.AppFrame
 import dev.angel.wrtcontrol.ui.home.DeviceChange
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
@@ -48,6 +38,7 @@ import dev.angel.wrtcontrol.ui.home.GuestContent
 import dev.angel.wrtcontrol.ui.home.HomeWifi
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
+import dev.angel.wrtcontrol.ui.home.Section
 import dev.angel.wrtcontrol.ui.home.WifiContent
 import dev.angel.wrtcontrol.ui.home.devicePreview
 import dev.angel.wrtcontrol.ui.parental.ParentalData
@@ -75,43 +66,19 @@ abstract class ReadmeScreenshots(private val lang: String) {
 
     private val options = RoborazziOptions(compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.01f))
 
-    private enum class Tab(val label: Int, val icon: Int) {
-        Home(R.string.home_tab_overview, R.drawable.ic_home),
-        Devices(R.string.home_tab_devices, R.drawable.ic_devices),
-        Family(R.string.home_tab_family, R.drawable.ic_family),
-        Security(R.string.home_tab_security, R.drawable.ic_shield),
-        More(R.string.home_tab_more, R.drawable.ic_more),
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    private fun screen(name: String, tab: Tab, title: String? = null, content: @Composable () -> Unit) {
+    /** Una pantalla completa con el marco de la app: [section] es la pestaña; con [title], una página interior. */
+    private fun screen(name: String, section: Section, title: String? = null, content: @Composable () -> Unit) {
         captureRoboImage("../docs/screenshots/$lang/$name.png", roborazziOptions = options) {
             // Las barras de progreso se dibujan quietas, como en una vista previa.
             CompositionLocalProvider(LocalInspectionMode provides true) {
                 WrtTheme(dark = false) {
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        topBar = {
-                            TopAppBar(title = {
-                                Column {
-                                    Text(title ?: "OpenWrt")
-                                    Text("192.168.1.1", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            })
-                        },
-                        bottomBar = {
-                            NavigationBar {
-                                Tab.entries.forEach { t ->
-                                    NavigationBarItem(
-                                        selected = t == tab,
-                                        onClick = {},
-                                        icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                                        label = { Text(stringResource(t.label), maxLines = 1, style = MaterialTheme.typography.labelSmall) },
-                                    )
-                                }
-                            }
-                        },
-                    ) { padding -> Column(Modifier.padding(padding)) { content() } }
+                    AppFrame(
+                        title = t("Home", "Casa"),
+                        subtitle = "192.168.1.1",
+                        section = section,
+                        onSection = {},
+                        pageTitle = title,
+                    ) { content() }
                 }
             }
         }
@@ -121,7 +88,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
     private val anaPhone = "9C:29:76:00:00:01"
 
     @Test
-    fun home() = screen("home", Tab.Home) {
+    fun home() = screen("home", Section.Overview) {
         OverviewContent(
             Overview(
                 online = true, onlineSeconds = 9 * 86_400L + 4 * 3600, devices = 14, profiles = 2, paused = 1, newDevices = 1,
@@ -133,7 +100,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
     }
 
     @Test
-    fun devices() = screen("devices", Tab.Devices) {
+    fun devices() = screen("devices", Section.Devices) {
         val vendors = (RuntimeEnvironment.getApplication() as WrtApp).vendors
         fun device(mac: String, name: String?, ip: String, lease: LeaseState = LeaseState.Expires(40_000)) =
             Device(mac, name, listOf(ip), emptyList(), lease)
@@ -154,7 +121,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
     }
 
     @Test
-    fun family() = screen("family", Tab.Family) {
+    fun family() = screen("family", Section.Family) {
         val school = setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
         val profiles = listOf(
             Profile(
@@ -184,7 +151,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
     }
 
     @Test
-    fun wifi() = screen("wifi", Tab.More, title = "Wi-Fi") {
+    fun wifi() = screen("wifi", Section.Overview, title = "Wi-Fi") {
         val radios = listOf(
             WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true, country = "MX", htmode = "HE20", htmodes = listOf("HE20", "HE40")),
             WifiRadio("radio1", WifiBand.Band5, enabled = true, up = true, country = "MX", htmode = "HE80", htmodes = listOf("HE80", "HE160")),
@@ -197,7 +164,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
     }
 
     @Test
-    fun guests() = screen("guests", Tab.More, title = t("Guest Wi-Fi", "Wi-Fi de invitados")) {
+    fun guests() = screen("guests", Section.Overview, title = t("Guest Wi-Fi", "Wi-Fi de invitados")) {
         val radios = listOf(WifiRadio("radio0", WifiBand.Band2, enabled = true, up = true))
         val guest = WifiNetwork(
             section = "wrtcguest_radio0", radio = "radio0", ssid = t("Home guests", "Casa invitados"), encryption = "sae-mixed", key = "hk7m2pqx4n",
@@ -208,7 +175,7 @@ abstract class ReadmeScreenshots(private val lang: String) {
 
     /** Lo que distingue a la app: antes, qué va a cambiar; durante, aplicar, comprobar y confirmar. */
     @Test
-    fun safety() = screen("safe-changes", Tab.Devices) {
+    fun safety() = screen("safe-changes", Section.Devices) {
         val ip = "192.168.1.42"
         val tablet = Device("9C:29:76:00:00:08", "tablet", listOf(ip), emptyList(), LeaseState.Expires(3600), label = t("Tablet", "Tableta"))
         val change = DeviceChange(label = t("Ana's tablet", "Tableta de Ana"), fixedIp = ip, owner = "a1")

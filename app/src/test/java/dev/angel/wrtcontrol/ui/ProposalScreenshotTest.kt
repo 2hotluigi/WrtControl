@@ -34,6 +34,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.openwrt.UsageBucket
 import dev.angel.wrtcontrol.openwrt.UsagePeriod
+import dev.angel.wrtcontrol.ui.design.BarAction
 import dev.angel.wrtcontrol.ui.design.CardGap
 import dev.angel.wrtcontrol.ui.design.CenterTopBar
 import dev.angel.wrtcontrol.ui.design.CircleAction
@@ -84,12 +85,12 @@ class ProposalScreenshotTest {
     private fun Screen(title: String, selectedTab: Int?, start: Int? = null, end: Int? = null, content: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
-                CenterTopBar(title, start = start, end = end)
+                CenterTopBar(title, start = start?.let { BarAction(it, "", {}) }, end = end?.let { BarAction(it, "", {}) })
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(CardGap)) { content() }
             }
             if (selectedTab != null) {
                 Box(Modifier.align(Alignment.BottomCenter)) {
-                    FloatingNavBar(nav, selectedTab, onSelect = {}, round = R.drawable.ic_shield, roundBadge = true)
+                    FloatingNavBar(nav, selectedTab, onSelect = {}, round = NavItem(R.drawable.ic_shield, "Seguridad"), roundBadge = true)
                 }
             }
         }

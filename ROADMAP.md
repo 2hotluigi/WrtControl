@@ -134,7 +134,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
     a una cuadrícula en Inicio. Aprobado sobre una maqueta (`ProposalScreenshotTest`). Por partes:
     - ~~Paleta y componentes (`ui/design`)~~: hecho. El esquema de Material sale de la paleta
       nueva, así que todas las pantallas ya tienen sus colores; capturas regrabadas.
-    - Navegación flotante y Más dentro de Inicio.
+    - ~~Navegación flotante y Más dentro de Inicio~~: hecho. `AppFrame`: título centrado con la
+      dirección debajo, engranaje de Ajustes (Router, Añadir otro teléfono, Desconectar) y píldora
+      flotante con Inicio, Dispositivos y Familia, más Seguridad en el botón redondo. Wi-Fi,
+      Invitados, Consumo y Funciones, en una cuadrícula al final de Inicio. Las capturas del README
+      usan el mismo marco.
     - Inicio.
     - Dispositivos y la ficha de un dispositivo (pantalla en vez de diálogo).
     - Familia y Seguridad.

@@ -4,7 +4,6 @@
     <string name="home_tab_devices">Devices</string>
     <string name="home_tab_family">Family</string>
     <string name="home_tab_security">Security</string>
-    <string name="home_tab_more">More</string>
     <string name="common_back">Back</string>
     <string name="overview_online">Connected to the internet</string>
     <string name="overview_online_since">No drops for %1$s</string>
@@ -51,7 +50,6 @@
     <string name="overview_rules_inactive_action">See what\'s wrong</string>
     <string name="overview_pause_action">Pause someone…</string>
     <string name="more_features_title">Router features</string>
-    <string name="more_features_detail">Access from outside, fixed name, connection quality and ports</string>
     <string name="more_router_title">Router</string>
     <string name="more_router_detail">Technical details: system, memory, networks and what it can do</string>
     <string name="more_sign_out_detail">Forgets the password saved on this phone</string>
@@ -148,4 +146,9 @@
         <item quantity="one">on · %1$d connected</item>
         <item quantity="other">on · %1$d connected</item>
     </plurals>
+    <string name="settings_title">Settings</string>
+    <string name="overview_grid_wifi">Wi-Fi</string>
+    <string name="overview_grid_guest">Guests</string>
+    <string name="overview_grid_usage">Usage</string>
+    <string name="overview_grid_features">Features</string>
 </resources>

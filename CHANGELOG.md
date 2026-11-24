@@ -9,6 +9,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 ### Cambiado
 - Colores nuevos: fondo negro con tarjetas gris oscuro en modo oscuro (gris claro y tarjetas
   blancas en claro) y un azul más vivo. Es el primer paso del diseño nuevo de la app.
+- Navegación nueva: una barra flotante con Inicio, Dispositivos y Familia, y Seguridad en el botón
+  redondo. Wi-Fi, Invitados, Consumo y Funciones están ahora en Inicio, y el router, añadir otro
+  teléfono y desconectar, en Ajustes (el engranaje de arriba).
 
 ## [0.5.0]
 
