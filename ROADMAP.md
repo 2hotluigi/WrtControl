@@ -169,7 +169,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
       ahora con la señal en dBm (en rojo si es débil). Invitados: el interruptor, la red, guardar,
       el QR en su tarjeta y borrarlo. Los avisos (`NoticeCard`) de toda la app pasan a tarjeta con
       icono. Piezas nuevas `FieldRow` y `CheckRow` (`ui/design/Fields.kt`). Probado con las capturas.
-    - Funciones del router y el editor de perfiles.
+    - ~~Funciones del router y el editor de perfiles~~: hecho. Cada función es una tarjeta con su
+      icono y su estado en color; el editor de perfiles es una pantalla por grupos (nombre,
+      aparatos con su marca, horarios con interruptor, filtro, YouTube, servicios, sitios, proteger
+      el router y borrar). Fuera la maqueta (`ProposalScreenshotTest`). Probado en el emulador
+      contra el GL-MT6000 abriendo Funciones y el editor sin guardar nada.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.

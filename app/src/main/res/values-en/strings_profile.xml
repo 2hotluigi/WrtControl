@@ -8,7 +8,6 @@
 
     <!-- Name -->
     <string name="profile_name">Name</string>
-    <string name="profile_name_placeholder">For example: John</string>
 
     <!-- Devices -->
     <string name="profile_devices_title">Devices</string>
@@ -19,7 +18,6 @@
     <string name="profile_note_this_phone">This phone: if you pause it, it loses internet too</string>
     <string name="profile_note_admin">Has WrtControl: never locked out of the router settings</string>
     <string name="profile_note_other_profile">Currently in “%1$s”: will move to this profile</string>
-    <string name="profile_add_by_mac">Add by MAC</string>
     <string name="profile_invalid_mac">Invalid MAC</string>
     <string name="profile_add">Add</string>
 
@@ -44,8 +42,6 @@
     <string name="profile_services_help">Blocks each service\'s main domains; over time, apps may start using others.</string>
     <string name="profile_blocked_sites">Blocked sites</string>
     <string name="profile_remove_site">Remove %1$s</string>
-    <string name="profile_add_site">Add site</string>
-    <string name="profile_site_placeholder">example.com</string>
     <string name="profile_invalid_site">Enter a domain, e.g. example.com</string>
     <!-- Siempre varios: el número es un límite fijo (nunca 1). -->
     <string name="profile_max_sites" tools:ignore="PluralsCandidate">Up to %1$d sites</string>
@@ -61,4 +57,5 @@
     <string name="profile_delete_help">Their devices will have internet again, with no pauses or schedules.</string>
     <string name="profile_delete_confirm">Delete</string>
     <string name="profile_cancel">Cancel</string>
+    <string name="profile_name_placeholder">For example: John</string>
 </resources>

@@ -5,8 +5,8 @@ grandes como protagonistas y controles que se entienden sin leer. Se parece a lo
 de routers "premium" (Firewalla, Deco), con nuestros colores, nuestros iconos (Material Icons) y
 nuestra fuente (Manrope).
 
-La maqueta de referencia son las capturas `propuesta-*` de `app/src/test/screenshots`
-(`ProposalScreenshotTest`): Inicio, Dispositivos y la ficha de un dispositivo, en claro y oscuro.
+Todas las pantallas lo siguen; sus capturas, en claro y oscuro, están en `app/src/test/screenshots`
+(las de la propuesta que se aprobó se quitaron al terminar).
 
 ## Colores
 
@@ -33,8 +33,14 @@ gráficas (recibido y enviado) tienen sus propios colores, comprobados para dalt
 - `GroupRow`: etiqueta a la izquierda, valor a la derecha y `›` si lleva a otro sitio; la línea fina
   de debajo empieza donde el texto. Con `leading` (`RowIcon`: icono de color sobre un cuadrado
   redondeado, con un punto de estado opcional) y `supporting` (segunda línea gris).
-- `SwitchRow`, `ActionRow` (acción sola, centrada; roja si no tiene vuelta atrás), `SectionHeader`
-  (título pequeño en mayúsculas encima de un grupo) y `GroupFooter` (explicación debajo).
+- `SwitchRow` (y `PlainSwitch`, el interruptor suelto), `ActionRow` (acción sola, centrada; roja si
+  no tiene vuelta atrás; gris si no se puede), `SectionHeader` (título pequeño en mayúsculas encima
+  de un grupo) y `GroupFooter` (explicación debajo).
+- `FieldRow` (campo de texto dentro de un grupo, con la etiqueta a la izquierda) y `CheckRow` (una
+  opción de las que se elige una, con la marca en la elegida). En `Fields.kt`.
+- `ValueRows` (filas de solo leer), `MeterRow` y `MeterBar` (cuánto está lleno) y `OfferGroup` (qué
+  se consigue y el botón para hacerlo). En `Rows.kt`.
+- `NoticeCard` (en `ui/Components.kt`): un aviso con icono, título y explicación.
 - `StatStrip`: dos o tres cifras grandes con su etiqueta encima, separadas por líneas verticales.
 - `PillTabs`: pestañas en píldora sobre un carril gris, sin marcas.
 - `CircleAction`: control redondo con su nombre y cómo está ("Pausado · hasta 18:30"); el activo,

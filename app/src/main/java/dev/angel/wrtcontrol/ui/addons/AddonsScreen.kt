@@ -73,6 +73,12 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.StatusPill
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.RowIcon
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.parental.DismissibleError
@@ -103,8 +109,8 @@ fun AddonsScreen(address: String) {
             fun status(addon: Addon) = s.status(addon, data.packages)
 
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(CardGap),
             ) {
                 if (loadError != null) item { ErrorBanner(stringResource(R.string.addons_stale_data, loadError)) }
                 vm.progress?.let { item { ApplyingBanner(it) } }
@@ -244,8 +250,23 @@ fun AddonsScreen(address: String) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+    SectionHeader(text)
 }
+
+/** Una explicación pequeña dentro de la tarjeta. */
+@Composable
+private fun Hint(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = LocalPalette.current.secondary)
+}
+
+/** El icono de cada función, en su tarjeta. */
+private val Addon.icon: Int
+    get() = when (this) {
+        Addon.WireGuard -> R.drawable.ic_lock
+        Addon.Ddns -> R.drawable.ic_home
+        Addon.Sqm -> R.drawable.ic_bar_chart
+        Addon.Upnp -> R.drawable.ic_extension
+    }
 
 @Composable
 private fun AddonCard(
@@ -257,32 +278,33 @@ private fun AddonCard(
     onFinish: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val (label, ok) = when (status) {
-        AddonStatus.Installed -> stringResource(R.string.addons_status_installed) to true
-        AddonStatus.Missing -> stringResource(R.string.addons_status_missing) to null
-        AddonStatus.Partial -> stringResource(R.string.addons_status_partial) to false
-        AddonStatus.NeedsRestart -> stringResource(R.string.addons_status_needs_restart) to false
+    val palette = LocalPalette.current
+    val (label, color) = when (status) {
+        AddonStatus.Installed -> stringResource(R.string.addons_status_installed) to palette.good
+        AddonStatus.Missing -> stringResource(R.string.addons_status_missing) to palette.secondary
+        AddonStatus.Partial -> stringResource(R.string.addons_status_partial) to palette.warning
+        AddonStatus.NeedsRestart -> stringResource(R.string.addons_status_needs_restart) to palette.warning
     }
-    InfoCard(addon.title.text(), modifier = Modifier.testTag("addon-${addon.name}"), trailing = { StatusPill(label, ok) }) {
-        Text(addon.summary.text(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        when (status) {
-            AddonStatus.Installed -> content()
-            AddonStatus.Missing -> Button(onClick = onInstall, enabled = canInstall && !busy, modifier = Modifier.testTag("install-${addon.name}")) {
-                Text(stringResource(R.string.addons_install))
-            }
-            AddonStatus.Partial -> {
-                Text(
-                    stringResource(R.string.addons_partial_help, addon.luciPackage),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(onClick = onInstall, enabled = canInstall && !busy) { Text(stringResource(R.string.addons_complete_install)) }
-            }
-            AddonStatus.NeedsRestart -> {
-                Text(
-                    stringResource(R.string.addons_needs_restart_help),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(onClick = onFinish, enabled = !busy) { Text(stringResource(R.string.addons_restart_network)) }
+    GroupCard(Modifier.testTag("addon-${addon.name}")) {
+        GroupRow(addon.title.text(), value = label, valueColor = color, leading = { RowIcon(addon.icon, palette.accent) }, divider = false)
+        Column(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(addon.summary.text(), style = MaterialTheme.typography.bodyMedium, color = palette.secondary)
+            when (status) {
+                AddonStatus.Installed -> content()
+                AddonStatus.Missing -> Button(onClick = onInstall, enabled = canInstall && !busy, modifier = Modifier.testTag("install-${addon.name}")) {
+                    Text(stringResource(R.string.addons_install))
+                }
+                AddonStatus.Partial -> {
+                    Hint(stringResource(R.string.addons_partial_help, addon.luciPackage))
+                    Button(onClick = onInstall, enabled = canInstall && !busy) { Text(stringResource(R.string.addons_complete_install)) }
+                }
+                AddonStatus.NeedsRestart -> {
+                    Hint(stringResource(R.string.addons_needs_restart_help))
+                    Button(onClick = onFinish, enabled = !busy) { Text(stringResource(R.string.addons_restart_network)) }
+                }
             }
         }
     }

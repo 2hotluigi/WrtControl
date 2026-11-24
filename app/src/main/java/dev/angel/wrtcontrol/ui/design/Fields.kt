@@ -46,6 +46,8 @@ fun FieldRow(
     hidden: Boolean = false,
     password: Boolean = false,
     divider: Boolean = true,
+    keyboardOptions: KeyboardOptions? = null,
+    placeholder: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val palette = LocalPalette.current
@@ -72,8 +74,15 @@ fun FieldRow(
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = if (enabled) palette.label else palette.tertiary),
             cursorBrush = SolidColor(palette.accent),
             visualTransformation = if (hidden) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = if (password) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+            keyboardOptions = keyboardOptions
+                ?: if (password) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
             modifier = modifier.weight(1f).padding(vertical = 14.dp),
+            decorationBox = { field ->
+                if (value.isEmpty() && placeholder != null) {
+                    Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = palette.tertiary)
+                }
+                field()
+            },
         )
         trailing?.invoke()
     }

@@ -16,7 +16,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,13 +45,17 @@ import dev.angel.wrtcontrol.ui.design.GroupCard
 import dev.angel.wrtcontrol.ui.design.GroupFooter
 import dev.angel.wrtcontrol.ui.design.GroupRow
 import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.PlainSwitch
 import dev.angel.wrtcontrol.ui.design.RowIcon
 import dev.angel.wrtcontrol.ui.design.SectionHeader
 import dev.angel.wrtcontrol.ui.design.SwitchRow
 import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.rememberVendors
 
-/** Interruptor con título y explicación (el de antes del diseño nuevo; se va con Funciones y el editor). */
+/**
+ * Interruptor con título y explicación debajo, para dentro de una tarjeta que ya tiene su margen
+ * (las de Funciones); en un grupo se usa SwitchRow.
+ */
 @Composable
 internal fun HelpSwitch(
     title: String,
@@ -62,12 +65,13 @@ internal fun HelpSwitch(
     onChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val palette = LocalPalette.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            help?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = palette.label)
+            help?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = palette.secondary) }
         }
-        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
+        PlainSwitch(checked, onChange, enabled = enabled)
     }
 }
 
