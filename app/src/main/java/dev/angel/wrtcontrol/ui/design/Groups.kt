@@ -218,15 +218,25 @@ fun SwitchRow(
 
 /** Una acción sola en su grupo, centrada: azul, o roja si no tiene vuelta atrás. */
 @Composable
-fun ActionRow(text: String, destructive: Boolean = false, onClick: () -> Unit) {
+fun ActionRow(
+    text: String,
+    modifier: Modifier = Modifier,
+    destructive: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     val palette = LocalPalette.current
-    GroupCard {
+    GroupCard(modifier) {
         Text(
             text,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (destructive) palette.bad else palette.accent,
+            color = when {
+                !enabled -> palette.tertiary
+                destructive -> palette.bad
+                else -> palette.accent
+            },
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(vertical = 16.dp),
         )
     }
 }

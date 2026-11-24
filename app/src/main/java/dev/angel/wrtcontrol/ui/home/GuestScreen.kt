@@ -2,19 +2,13 @@ package dev.angel.wrtcontrol.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -44,7 +39,6 @@ import dev.angel.wrtcontrol.openwrt.wifiQrText
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.text
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ui.ApplyingBanner
 import dev.angel.wrtcontrol.ui.ChangePreview
 import dev.angel.wrtcontrol.ui.ChangePreviewHost
 import dev.angel.wrtcontrol.ui.ChangeProgress
@@ -55,6 +49,16 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.PreviewLine
 import dev.angel.wrtcontrol.ui.Proposals
+import dev.angel.wrtcontrol.ui.design.ActionRow
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.FieldRow
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.RowIcon
+import dev.angel.wrtcontrol.ui.design.SectionHeader
+import dev.angel.wrtcontrol.ui.design.SwitchRow
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
 import dev.angel.wrtcontrol.ui.watchAsState
 import java.security.SecureRandom
@@ -182,9 +186,9 @@ fun GuestContent(
         GuestForm(state, loadError, progress, error, enabled, onSave = onSave, onRemove = onRemove)
         return
     }
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.padding(start = 16.dp, top = 4.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(CardGap)) {
         if (loadError != null) ErrorBanner(stringResource(R.string.common_stale_data, loadError))
-        Text(stringResource(R.string.wifi_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        GroupCard { GroupRow(stringResource(R.string.wifi_none), labelLines = 3, divider = false) }
     }
 }
 
@@ -212,63 +216,78 @@ private fun GuestForm(
     // Apagado y sin crear, cambiar el nombre no guarda nada: no hay qué guardar hasta encenderlo.
     val changed = edit != current && (edit.on || guest != null)
 
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(CardGap),
+    ) {
         if (loadError != null) ErrorBanner(stringResource(R.string.common_stale_data, loadError))
-        WifiHint(stringResource(R.string.guest_intro))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.guest_switch), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Switch(checked = on, onCheckedChange = { on = it }, enabled = !busy, modifier = Modifier.testTag("guest-on"))
+        Column {
+            GroupCard {
+                SwitchRow(
+                    stringResource(R.string.guest_switch),
+                    checked = on,
+                    onChange = { on = it },
+                    modifier = Modifier.testTag("guest-on"),
+                    divider = false,
+                    enabled = !busy,
+                    leading = { RowIcon(R.drawable.ic_wifi, LocalPalette.current.accent) },
+                )
+            }
+            GroupFooter(stringResource(R.string.guest_intro), Modifier.padding(top = 6.dp))
         }
-        GuestField(R.string.wifi_name_label, ssid, enabled = !busy, tag = "guest-ssid") { ssid = it }
-        GuestField(R.string.wifi_password_label, key, enabled = !busy, tag = "guest-key") { key = it }
-        if (guest?.on == true && !on) WifiHint(stringResource(R.string.guest_off_keeps))
-        GuestStatus(problem?.text(), error, progress)
-        Button(
-            onClick = { onSave(current, edit) },
-            enabled = !busy && changed && problem == null,
-            modifier = Modifier.align(Alignment.End).testTag("guest-save"),
-        ) { Text(stringResource(R.string.wifi_save)) }
+        Column {
+            SectionHeader(stringResource(R.string.wifi_network_section))
+            GroupCard {
+                FieldRow(stringResource(R.string.wifi_field_name), ssid, { ssid = it }, Modifier.testTag("guest-ssid"), enabled = !busy)
+                FieldRow(
+                    stringResource(R.string.wifi_password_label),
+                    key,
+                    { key = it },
+                    Modifier.testTag("guest-key"),
+                    enabled = !busy,
+                    divider = false,
+                )
+            }
+            if (guest?.on == true && !on) GroupFooter(stringResource(R.string.guest_off_keeps), Modifier.padding(top = 6.dp))
+        }
+        SaveStatus(problem?.text(), error, progress)
+        ActionRow(stringResource(R.string.wifi_save), Modifier.testTag("guest-save"), enabled = !busy && changed && problem == null) {
+            onSave(current, edit)
+        }
         if (guest?.on == true) GuestAccess(guest)
         if (guest != null) {
-            HorizontalDivider()
-            TextButton(onClick = { onRemove(guest) }, enabled = !busy, modifier = Modifier.testTag("guest-remove")) {
-                Text(stringResource(R.string.guest_remove), color = MaterialTheme.colorScheme.error)
+            ActionRow(stringResource(R.string.guest_remove), Modifier.testTag("guest-remove"), destructive = true, enabled = !busy) {
+                onRemove(guest)
             }
         }
     }
 }
 
-@Composable
-private fun GuestField(label: Int, value: String, enabled: Boolean, tag: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(stringResource(label)) },
-        singleLine = true,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth().testTag(tag),
-    )
-}
-
-/** Lo que hay que saber junto al botón: por qué no se puede guardar, el último error o cómo va el cambio. */
-@Composable
-private fun GuestStatus(problem: String?, error: String?, progress: ChangeProgress?) {
-    if (problem != null) Text(problem, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-    if (error != null) ErrorBanner(error)
-    if (progress != null) ApplyingBanner(progress)
-}
-
 /** Cómo se conecta la visita: el QR de lo que hay guardado en el router, y cuántos hay ahora. */
 @Composable
 private fun GuestAccess(guest: GuestWifi) {
-    HorizontalDivider()
-    Text(stringResource(R.string.guest_qr_title), style = MaterialTheme.typography.titleSmall)
-    QrCode(
-        wifiQrText(guest.ssid, guest.key),
-        stringResource(R.string.guest_qr_description),
-        Modifier.size(220.dp).testTag("guest-qr"),
-    )
-    WifiHint(stringResource(R.string.guest_qr_help, guest.ssid))
     val count = guest.clients.size
-    if (count > 0) Text(pluralStringResource(R.plurals.guest_clients, count, count), style = MaterialTheme.typography.bodyMedium)
+    Column {
+        SectionHeader(stringResource(R.string.guest_qr_title))
+        GroupCard {
+            Column(
+                Modifier.fillMaxWidth().padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                QrCode(
+                    wifiQrText(guest.ssid, guest.key),
+                    stringResource(R.string.guest_qr_description),
+                    Modifier.size(220.dp).testTag("guest-qr"),
+                )
+                Text(
+                    stringResource(R.string.guest_qr_help, guest.ssid),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LocalPalette.current.secondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        if (count > 0) GroupFooter(pluralStringResource(R.plurals.guest_clients, count, count), Modifier.padding(top = 6.dp))
+    }
 }

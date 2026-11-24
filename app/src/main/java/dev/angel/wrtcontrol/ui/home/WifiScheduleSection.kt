@@ -1,21 +1,15 @@
 package dev.angel.wrtcontrol.ui.home
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -28,11 +22,16 @@ import dev.angel.wrtcontrol.openwrt.nextWifiOff
 import dev.angel.wrtcontrol.openwrt.wifiOffWindow
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.text
-import dev.angel.wrtcontrol.ui.NoticeCard
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.RowIcon
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 import dev.angel.wrtcontrol.ui.parental.ScheduleDialog
 import dev.angel.wrtcontrol.ui.parental.formatSchedule
 import dev.angel.wrtcontrol.ui.parental.formatWhen
 import java.time.DayOfWeek
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 private val PROPOSED_OFF: LocalTime = LocalTime.parse("23:00")
@@ -59,51 +58,37 @@ fun ScheduleSection(
     onChange: (List<Schedule>) -> Unit,
     onTurnOn: () -> Unit,
 ) {
-    Text(stringResource(R.string.wifi_schedule_title), style = MaterialTheme.typography.titleSmall)
-    WifiHint(stringResource(R.string.wifi_schedule_help))
-    if (schedule == null) {
-        if (unavailable) WifiHint(stringResource(R.string.wifi_schedule_denied))
-        return
-    }
     var editing by remember { mutableStateOf<Schedule?>(null) }
-    val list = schedule.schedules
-    val now = schedule.now
-    val offNow = wifiOffWindow(list, now)
-    if (offNow != null && state.someRadioDown) {
-        NoticeCard(
-            stringResource(R.string.wifi_schedule_off_now_title),
-            stringResource(R.string.wifi_schedule_off_now_body, formatWhen(offNow.end, now).text()),
-        )
-        OutlinedButton(onClick = onTurnOn, enabled = enabled, modifier = Modifier.testTag("wifi-schedule-on")) {
-            Text(stringResource(R.string.wifi_schedule_turn_on))
+    Column {
+        SectionHeader(stringResource(R.string.wifi_schedule_title))
+        if (schedule == null) {
+            WifiHint(stringResource(R.string.wifi_schedule_help))
+            if (unavailable) WifiHint(stringResource(R.string.wifi_schedule_denied))
+            return@Column
         }
-    } else {
-        nextWifiOff(list, now)?.let { WifiHint(stringResource(R.string.wifi_schedule_next, formatWhen(it, now).text())) }
-    }
-    list.forEach { s ->
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { editing = s }.testTag("wifi-schedule-${s.id}"),
-        ) {
-            Text(
-                formatSchedule(s).text(),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+        val list = schedule.schedules
+        val now = schedule.now
+        val offNow = wifiOffWindow(list, now)?.takeIf { state.someRadioDown }
+        GroupCard {
+            if (offNow != null) OffNowRows(offNow.end, now, enabled, onTurnOn)
+            list.forEach { s -> ScheduleRow(s, enabled, onEdit = { editing = s }, onRemove = { onChange(list.filter { it.id != s.id }) }) }
+            GroupRow(
+                stringResource(R.string.wifi_schedule_add),
+                leading = { RowIcon(R.drawable.ic_add, LocalPalette.current.accent) },
+                labelColor = LocalPalette.current.accent,
+                divider = false,
+                onClick = { if (enabled) editing = newSchedule(nextId(list)) },
+                modifier = Modifier.testTag("wifi-schedule-add"),
             )
-            IconButton(onClick = { onChange(list.filter { it.id != s.id }) }, enabled = enabled) {
-                Icon(painterResource(R.drawable.ic_delete), contentDescription = stringResource(R.string.wifi_schedule_remove))
+        }
+        Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (offNow == null) {
+                nextWifiOff(list, now)?.let { WifiHint(stringResource(R.string.wifi_schedule_next, formatWhen(it, now).text())) }
             }
+            WifiHint(stringResource(R.string.wifi_schedule_help))
         }
     }
-    TextButton(
-        onClick = { editing = newSchedule(((list.maxOfOrNull { it.id.toIntOrNull() ?: 0 } ?: -1) + 1).toString()) },
-        enabled = enabled,
-        modifier = Modifier.testTag("wifi-schedule-add"),
-    ) {
-        Icon(painterResource(R.drawable.ic_add), contentDescription = null)
-        Text(stringResource(R.string.wifi_schedule_add), modifier = Modifier.padding(start = 8.dp))
-    }
-
+    val list = schedule?.schedules ?: return
     editing?.let { s ->
         val isNew = list.none { it.id == s.id }
         ScheduleDialog(
@@ -119,4 +104,44 @@ fun ScheduleSection(
             },
         )
     }
+}
+
+/** El id del siguiente horario: uno más que el mayor. */
+private fun nextId(list: List<Schedule>): String = ((list.maxOfOrNull { it.id.toIntOrNull() ?: 0 } ?: -1) + 1).toString()
+
+/** El Wi-Fi está apagado por horario: hasta cuándo, y encenderlo ya. */
+@Composable
+private fun OffNowRows(end: LocalDateTime, now: LocalDateTime, enabled: Boolean, onTurnOn: () -> Unit) {
+    GroupRow(
+        stringResource(R.string.wifi_schedule_off_now_title),
+        supporting = stringResource(R.string.wifi_schedule_off_now_body, formatWhen(end, now).text()),
+        supportingLines = 3,
+        leading = { RowIcon(R.drawable.ic_wifi, LocalPalette.current.warning) },
+    )
+    GroupRow(
+        stringResource(R.string.wifi_schedule_turn_on),
+        labelColor = LocalPalette.current.accent,
+        onClick = { if (enabled) onTurnOn() },
+        modifier = Modifier.testTag("wifi-schedule-on"),
+    )
+}
+
+/** Una franja: tocarla la edita; la papelera la quita. */
+@Composable
+private fun ScheduleRow(schedule: Schedule, enabled: Boolean, onEdit: () -> Unit, onRemove: () -> Unit) {
+    GroupRow(
+        formatSchedule(schedule).text(),
+        labelLines = 2,
+        onClick = { if (enabled) onEdit() },
+        modifier = Modifier.testTag("wifi-schedule-${schedule.id}"),
+        trailing = {
+            IconButton(onClick = onRemove, enabled = enabled) {
+                Icon(
+                    painterResource(R.drawable.ic_delete),
+                    contentDescription = stringResource(R.string.wifi_schedule_remove),
+                    tint = LocalPalette.current.secondary,
+                )
+            }
+        },
+    )
 }

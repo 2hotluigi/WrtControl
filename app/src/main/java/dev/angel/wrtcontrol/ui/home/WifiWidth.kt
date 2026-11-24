@@ -1,20 +1,13 @@
 package dev.angel.wrtcontrol.ui.home
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
@@ -31,6 +24,10 @@ import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ChangePreview
 import dev.angel.wrtcontrol.ui.PreviewLine
+import dev.angel.wrtcontrol.ui.design.CheckRow
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 
 /** Cómo llama la app a cada ancho de cada banda (por lo que da, no por los MHz), o null si no lo ofrece. */
 @StringRes
@@ -78,41 +75,37 @@ private fun widthName(band: WifiBand?, mhz: Int?): Txt = when (mhz) {
 @Composable
 fun WidthSection(state: WifiState, enabled: Boolean, onPick: (WifiRadio, Int) -> Unit) {
     val radios = state.radios.filter { radio -> widthChoices(radio.band).count { radio.offers(it) } > 1 }
-    if (radios.isEmpty()) return
-    Text(stringResource(R.string.wifi_width_title), style = MaterialTheme.typography.titleSmall)
     radios.forEach { radio -> RadioWidth(radio, needsCountry = radio.band == WifiBand.Band5 && state.country == null, enabled, onPick) }
 }
 
 @Composable
 private fun RadioWidth(radio: WifiRadio, needsCountry: Boolean, enabled: Boolean, onPick: (WifiRadio, Int) -> Unit) {
     val choices = widthChoices(radio.band).filter { radio.offers(it) }
+    val band = radio.band?.let { stringResource(it.label) } ?: radio.name
     Column {
-        Text(radio.band?.let { stringResource(it.label) } ?: radio.name, style = MaterialTheme.typography.bodyLarge)
-        choices.forEach { width ->
-            WifiOption(
-                label = widthLabel(radio.band, width)?.let { stringResource(it) } ?: stringResource(R.string.wifi_width_mhz, width),
-                selected = radio.width == width,
-                enabled = enabled && !(needsCountry && width == WIDTH_160),
-                tag = "wifi-width-${radio.name}-$width",
-            ) { if (radio.width != width) onPick(radio, width) }
+        SectionHeader(stringResource(R.string.wifi_section_band, stringResource(R.string.wifi_width_title), band))
+        GroupCard {
+            choices.forEachIndexed { i, width ->
+                CheckRow(
+                    widthLabel(radio.band, width)?.let { stringResource(it) } ?: stringResource(R.string.wifi_width_mhz, width),
+                    selected = radio.width == width,
+                    onClick = { if (radio.width != width) onPick(radio, width) },
+                    modifier = Modifier.testTag("wifi-width-${radio.name}-$width"),
+                    enabled = enabled && !(needsCountry && width == WIDTH_160),
+                    divider = i < choices.lastIndex,
+                )
+            }
         }
-        WifiHint(stringResource(if (radio.band == WifiBand.Band2) R.string.wifi_width_2_help else R.string.wifi_width_5_help))
-        if (needsCountry) WifiHint(stringResource(R.string.wifi_width_needs_country))
-        radio.width?.takeIf { it !in choices }?.let { WifiHint(stringResource(R.string.wifi_width_now, it)) }
+        Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            WifiHint(stringResource(if (radio.band == WifiBand.Band2) R.string.wifi_width_2_help else R.string.wifi_width_5_help))
+            if (needsCountry) WifiHint(stringResource(R.string.wifi_width_needs_country))
+            radio.width?.takeIf { it !in choices }?.let { WifiHint(stringResource(R.string.wifi_width_now, it)) }
+        }
     }
 }
 
-/** Una opción de las que se elige una (ancho, potencia). */
-@Composable
-internal fun WifiOption(label: String, selected: Boolean, enabled: Boolean, tag: String, onSelect: () -> Unit) {
-    val select = Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)
-    Row(Modifier.fillMaxWidth().then(select).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = selected, onClick = null, enabled = enabled)
-        Text(label, modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
-    }
-}
-
+/** Una explicación bajo un grupo, como pie. */
 @Composable
 internal fun WifiHint(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    GroupFooter(text)
 }

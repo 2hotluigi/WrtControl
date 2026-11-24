@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +37,10 @@ import dev.angel.wrtcontrol.txt
 import dev.angel.wrtcontrol.ui.ChangePreview
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.PreviewLine
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 import java.util.Locale
 
 /** Nombre del país [code] en el idioma del teléfono; [fallback] (el del router) si el teléfono no lo conoce. */
@@ -105,19 +108,18 @@ fun CountrySection(state: WifiState, countries: List<WifiCountry>?, suggested: S
             }
         }
     } else {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.wifi_country_title), style = MaterialTheme.typography.titleSmall)
-                Text(name(current), style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    stringResource(R.string.wifi_country_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column {
+            SectionHeader(stringResource(R.string.wifi_country_title))
+            GroupCard {
+                GroupRow(
+                    name(current),
+                    chevron = enabled,
+                    divider = false,
+                    onClick = { if (enabled) picking = true },
+                    modifier = Modifier.testTag("wifi-country-pick"),
                 )
             }
-            TextButton(onClick = { picking = true }, enabled = enabled, modifier = Modifier.testTag("wifi-country-pick")) {
-                Text(stringResource(R.string.wifi_country_change))
-            }
+            GroupFooter(stringResource(R.string.wifi_country_help), Modifier.padding(top = 6.dp))
         }
     }
     if (picking) {

@@ -1,37 +1,23 @@
 package dev.angel.wrtcontrol.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -64,6 +50,16 @@ import dev.angel.wrtcontrol.ui.LocalAppLocked
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.NoticeCard
 import dev.angel.wrtcontrol.ui.Proposals
+import dev.angel.wrtcontrol.ui.design.ActionRow
+import dev.angel.wrtcontrol.ui.design.CardGap
+import dev.angel.wrtcontrol.ui.design.CheckRow
+import dev.angel.wrtcontrol.ui.design.FieldRow
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.SectionHeader
+import dev.angel.wrtcontrol.ui.design.SwitchRow
 import dev.angel.wrtcontrol.ui.deviceTitle
 import dev.angel.wrtcontrol.ui.parental.onWifiBehind
 import dev.angel.wrtcontrol.ui.parental.phoneAddresses
@@ -313,70 +309,103 @@ fun WifiContent(
     val busy = progress != null || !enabled
 
     Column(
-        Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(CardGap),
     ) {
         if (loadError != null) ErrorBanner(stringResource(R.string.common_stale_data, loadError))
         if (state.radios.isEmpty()) {
-            Text(stringResource(R.string.wifi_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            GroupCard { GroupRow(stringResource(R.string.wifi_none), labelLines = 3, divider = false) }
             return@Column
         }
         WifiNotices(state, current, otherAccessPoints)
-        OutlinedTextField(
-            value = ssid,
-            onValueChange = { ssid = it },
-            label = { Text(stringResource(R.string.wifi_name_label)) },
-            singleLine = true,
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().testTag("wifi-ssid"),
-        )
+        NetworkGroup(ssid, key, security, enabled = !busy, onSsid = { ssid = it }, onKey = { key = it })
         SecurityPicker(security, enabled = !busy) { security = it }
-        if (security != WifiSecurity.Open) PasswordField(key, enabled = !busy) { key = it }
-        HorizontalDivider()
         Bands(state, radios.toSet(), enabled = !busy) { radio, on -> radios = if (on) radios + radio else radios - radio }
+        // Junto al botón, que es donde se está mirando al guardar.
+        SaveStatus(problem?.takeIf { edit != current }?.text(), error, progress)
+        if (newNetwork != null) AddNetworkCard(newNetwork, onDone = onNetworkAdded)
+        ActionRow(
+            stringResource(R.string.wifi_save),
+            Modifier.testTag("wifi-save"),
+            enabled = !busy && problem == null && edit != current,
+        ) { onSave(edit) }
         ClientsSection(state, names)
-        HorizontalDivider()
         ScheduleSection(state, schedule, scheduleUnavailable, enabled = !busy, onChange = onSchedule, onTurnOn = onTurnOn)
-        HorizontalDivider()
         CountrySection(state, countries, suggestedCountry, enabled = !busy, onPick = onCountry)
         WidthSection(state, enabled = !busy, onPick = onWidth)
         ChannelSection(state, channelSearches, enabled = !busy, onFind = onFindChannel, onUse = onChannel)
         PowerSection(state, enabled = !busy, onPick = onPower)
-        if (problem != null && edit != current) {
-            Text(problem.text(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** Lo que hay que saber junto al botón de guardar: por qué no se puede, el último error o cómo va. */
+@Composable
+internal fun SaveStatus(problem: String?, error: String?, progress: ChangeProgress?) {
+    if (problem != null) {
+        Text(
+            problem,
+            color = LocalPalette.current.bad,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+    if (error != null) ErrorBanner(error)
+    if (progress != null) ApplyingBanner(progress)
+}
+
+/** El nombre de la red y su contraseña (sin contraseña si es abierta). */
+@Composable
+private fun NetworkGroup(
+    ssid: String,
+    key: String,
+    security: WifiSecurity,
+    enabled: Boolean,
+    onSsid: (String) -> Unit,
+    onKey: (String) -> Unit,
+) {
+    Column {
+        SectionHeader(stringResource(R.string.wifi_network_section))
+        GroupCard {
+            FieldRow(
+                stringResource(R.string.wifi_field_name),
+                ssid,
+                onSsid,
+                Modifier.testTag("wifi-ssid"),
+                enabled = enabled,
+                divider = security != WifiSecurity.Open,
+            )
+            if (security != WifiSecurity.Open) PasswordRow(key, enabled, onKey)
         }
-        // Junto al botón, que es donde se está mirando al guardar (arriba quedarían fuera de la vista).
-        if (error != null) ErrorBanner(error)
-        if (progress != null) ApplyingBanner(progress)
-        if (newNetwork != null) AddNetworkCard(newNetwork, onDone = onNetworkAdded)
-        Button(
-            onClick = { onSave(edit) },
-            enabled = !busy && problem == null && edit != current,
-            modifier = Modifier.align(Alignment.End).testTag("wifi-save"),
-        ) { Text(stringResource(R.string.wifi_save)) }
     }
 }
 
 /** Una fila por radio, con cuántos hay conectados a su red ahora. */
 @Composable
 private fun Bands(state: WifiState, on: Set<String>, enabled: Boolean, onChange: (radio: String, on: Boolean) -> Unit) {
-    Text(stringResource(R.string.wifi_bands_title), style = MaterialTheme.typography.titleSmall)
-    Hint(R.string.wifi_bands_help)
-    state.radios.forEach { radio ->
-        val network = state.home.firstOrNull { it.radio == radio.name }
-        BandRow(
-            label = radio.band?.let { stringResource(it.label) } ?: radio.name,
-            clients = network?.clients?.size?.takeIf { network.ifname != null },
-            on = radio.name in on,
-            enabled = enabled,
-            tag = "wifi-band-${radio.name}",
-        ) { onChange(radio.name, it) }
+    Column {
+        SectionHeader(stringResource(R.string.wifi_bands_title))
+        GroupCard {
+            state.radios.forEachIndexed { i, radio ->
+                val network = state.home.firstOrNull { it.radio == radio.name }
+                val clients = network?.clients?.size?.takeIf { network.ifname != null }
+                SwitchRow(
+                    radio.band?.let { stringResource(it.label) } ?: radio.name,
+                    checked = radio.name in on,
+                    onChange = { onChange(radio.name, it) },
+                    modifier = Modifier.testTag("wifi-band-${radio.name}"),
+                    divider = i < state.radios.lastIndex,
+                    supporting = clients?.let { pluralStringResource(R.plurals.wifi_band_clients, it, it) },
+                    enabled = enabled,
+                )
+            }
+        }
+        GroupFooter(stringResource(R.string.wifi_bands_help), Modifier.padding(top = 6.dp))
     }
 }
 
 @Composable
 private fun Hint(text: Int) {
-    Text(stringResource(text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    WifiHint(stringResource(text))
 }
 
 @Composable
@@ -394,54 +423,42 @@ private fun WifiNotices(state: WifiState, current: WifiEdit, otherAccessPoints: 
 
 @Composable
 private fun SecurityPicker(selected: WifiSecurity, enabled: Boolean, onSelect: (WifiSecurity) -> Unit) {
-    Text(stringResource(R.string.wifi_security_title), style = MaterialTheme.typography.titleSmall)
     Column {
-        WifiSecurity.entries.forEach { option ->
-            val select = Modifier.selectable(selected = option == selected, enabled = enabled, role = Role.RadioButton) { onSelect(option) }
-            Row(
-                Modifier.fillMaxWidth().then(select),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = option == selected, onClick = null, enabled = enabled)
-                Text(stringResource(option.label), modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun PasswordField(key: String, enabled: Boolean, onChange: (String) -> Unit) {
-    var visible by rememberSaveable { mutableStateOf(false) }
-    OutlinedTextField(
-        value = key,
-        onValueChange = onChange,
-        label = { Text(stringResource(R.string.wifi_password_label)) },
-        singleLine = true,
-        enabled = enabled,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            TextButton(onClick = { visible = !visible }) {
-                Text(stringResource(if (visible) R.string.wifi_password_hide else R.string.wifi_password_show))
-            }
-        },
-        modifier = Modifier.fillMaxWidth().testTag("wifi-key"),
-    )
-}
-
-@Composable
-private fun BandRow(label: String, clients: Int?, on: Boolean, enabled: Boolean, tag: String, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            if (clients != null) {
-                Text(
-                    pluralStringResource(R.plurals.wifi_band_clients, clients, clients),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        SectionHeader(stringResource(R.string.wifi_security_title))
+        GroupCard {
+            WifiSecurity.entries.forEachIndexed { i, option ->
+                CheckRow(
+                    stringResource(option.label),
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                    enabled = enabled,
+                    divider = i < WifiSecurity.entries.lastIndex,
                 )
             }
         }
-        Switch(checked = on, onCheckedChange = onChange, enabled = enabled, modifier = Modifier.testTag(tag))
     }
+}
+
+/** La contraseña, con puntos hasta que se pide verla. */
+@Composable
+private fun PasswordRow(key: String, enabled: Boolean, onChange: (String) -> Unit) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    FieldRow(
+        stringResource(R.string.wifi_password_label),
+        key,
+        onChange,
+        Modifier.testTag("wifi-key"),
+        enabled = enabled,
+        hidden = !visible,
+        password = true,
+        divider = false,
+        trailing = {
+            Text(
+                stringResource(if (visible) R.string.wifi_password_hide else R.string.wifi_password_show),
+                style = MaterialTheme.typography.bodyMedium,
+                color = LocalPalette.current.accent,
+                modifier = Modifier.clickable { visible = !visible }.padding(vertical = 8.dp),
+            )
+        },
+    )
 }
