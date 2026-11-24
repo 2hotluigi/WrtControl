@@ -63,7 +63,52 @@ class UsageVmTest {
         assertTrue(after.sinceSeconds >= before.sinceSeconds)
     }
 
+    /**
+     * vnStat desde la app (ver Vnstat.kt): se instala, mira la WAN, guarda en la flash y da su
+     * historial; el crontab y cron quedan como estaban. Instala un paquete: solo en una máquina
+     * virtual.
+     */
+    @Test
+    fun `vnStat - se instala, guarda en la flash y da el historial de la WAN`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeTrue("Solo en una máquina virtual", ssh("cat /sys/class/dmi/id/sys_vendor 2>/dev/null").let { "QEMU" in it || "innotek" in it })
+        val http = OkHttpClient.Builder().callTimeout(2, TimeUnit.MINUTES).build()
+        val api = OpenWrtApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val interfaces = api.interfaces()
+        val device = wanDevice(interfaces)
+        assumeTrue("la VM tiene salida a internet", device != null)
+        val crontab = ssh(CRONTAB_STATE)
+        val cron = ssh("pidof crond >/dev/null && echo en-marcha || echo parado")
+
+        when (api.usage.recorder(interfaces, api.systemInfo().root?.avail)) {
+            is Recorder.Missing -> api.usage.install(interfaces)
+            Recorder.NeedsSetup -> api.usage.setUp(interfaces)
+            is Recorder.Ready, null -> Unit
+        }
+        assertTrue("guarda en la flash cada hora", vnstatKeepsData(ssh("/usr/bin/vnstat --showconfig")))
+        assertTrue("mira la WAN", device!! in ssh("uci -q get vnstat.@vnstat[0].interface"))
+        assertEquals("el crontab, como estaba", crontab, ssh(CRONTAB_STATE))
+        assertEquals("cron, como estaba", cron, ssh("pidof crond >/dev/null && echo en-marcha || echo parado"))
+
+        // Tráfico por la WAN y que vnStat lo vuelque a la base (sin esperar a la hora).
+        val gateway = ssh("ip -4 route show default | awk '{print \$3; exit}'")
+        ssh("ping -c $PINGS -s $PING_BYTES -W 1 $gateway >/dev/null 2>&1; sleep $VNSTAT_UPDATE_S; kill -HUP \$(pidof vnstatd); sleep 2")
+        val recorder = api.usage.recorder(api.interfaces(), api.systemInfo().root?.avail)
+        assertTrue("listo: $recorder", recorder is Recorder.Ready)
+        val hours = (recorder as Recorder.Ready).history.hours
+        assertTrue("la hora actual lleva lo enviado: $hours", hours.isNotEmpty() && hours.last().sentBytes >= PINGS * PING_BYTES)
+
+        // Otra vez no cambia nada.
+        api.usage.setUp(api.interfaces())
+        assertEquals(crontab, ssh(CRONTAB_STATE))
+    }
+
     private companion object {
+        /** Cada cuánto lee vnStat los contadores (UpdateInterval). */
+        const val VNSTAT_UPDATE_S = 25
+
+        /** El crontab de root tal cual, o que no existe (no es lo mismo que vacío: con él, cron arranca). */
+        const val CRONTAB_STATE = "cat /etc/crontabs/root 2>/dev/null || echo sin-crontab"
         const val SSH_TIMEOUT_S = 30L
         const val PINGS = 20
         const val PING_BYTES = 1000

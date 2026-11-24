@@ -331,7 +331,7 @@ marcha guiada. Cada uno se apoya en los anteriores.
     25.12 y snapshot, y en la VM 25.12.6:
     cifras iguales a las del kernel y suben con tráfico de prueba por la WAN). En el emulador contra
     el GL-MT6000: 186/73,7 GiB en 7 días, lo mismo que `/sys/class/net/eth1/statistics`.
-  - *vnStat 2* (`luci-app-vnstat2`), instalado desde la app como SQM: la gráfica de la WAN. Guarda
+  - ~~*vnStat 2* (`luci-app-vnstat2`), instalado desde la app como SQM: la gráfica de la WAN. Guarda
     48 h en tramos de 5 min, 4 días por horas, 62 por días y 25 meses. El ACL de lectura solo deja
     `vnstat --json f 1`, pero el de escritura deja `/usr/bin/vnstat` con cualquier argumento
     (`vnstat --json h 24`, `d 30`). Viene sin interfaz: poner la de la WAN en `vnstat.interface`
@@ -340,7 +340,18 @@ marcha guiada. Cada uno se apoya en los anteriores.
     que una línea del crontab (`# wrtc_vnstat`, idempotente) pone `DatabaseDir /etc/wrtc_vnstat`
     y `SaveInterval 60` (una escritura por hora en la flash) y reinicia vnStat. Probado: se aplica
     en menos de un minuto y los datos sobreviven al reinicio. Hacerlo al instalar, con la base
-    vacía. El usuario limitado del agente (Hito 3) necesitará el grupo de escritura del paquete.
+    vacía. El usuario limitado del agente (Hito 3) necesitará el grupo de escritura del paquete.~~
+    Hecho: "Instalar" en Más → Uso de internet (si quedan 4 MB libres) instala el paquete, añade la
+    tarjeta física de la WAN con `applySafely` y deja la base en `/etc/wrtc_vnstat` con una línea de
+    cron que se borra sola; cron y el crontab quedan como estaban. Si ya estaba instalado, la tarjeta
+    "Configurar" hace lo mismo sin instalar. La gráfica se llena con `--json h 24` y `d 30`. Por el
+    camino: el cron de BusyBox corta la línea en el primer `#` aunque vaya entre comillas, así que la
+    orden no lleva ninguno. `VnstatTest`, capturas `uso-de-internet-*` y `UsageVmTest` (en la VM
+    25.12.6 desde cero: instala, guarda en la flash cada hora, el crontab y cron como estaban, y la
+    hora en curso lleva el tráfico de prueba). En el GL-MT6000 desde el emulador: instalado en menos
+    de un minuto (3,2 MB), sin crontab y con cron parado como antes, y la gráfica con la primera hora.
+    Ahí salió que `created` trae la fecha pero no la hora (la gráfica empezaba a medianoche): sale de
+    su timestamp con la diferencia horaria del router. PPPoE sigue sin probar.
   - *nlbwmon* (`luci-app-nlbwmon`): consumo por dispositivo del periodo (el mes) con
     `nlbwmon-action download -g mac,ip` y `periods` para los anteriores; los nombres, de
     `getHostHints`. En su ficha y en una lista "quién gastó más". Solo da totales por periodo, no

@@ -13,6 +13,7 @@ import dev.angel.wrtcontrol.openwrt.HomeLayout
 import dev.angel.wrtcontrol.openwrt.InstalledPackages
 import dev.angel.wrtcontrol.openwrt.NetInterface
 import dev.angel.wrtcontrol.openwrt.OpenWrtApi
+import dev.angel.wrtcontrol.openwrt.Recorder
 import dev.angel.wrtcontrol.openwrt.SystemInfo
 import dev.angel.wrtcontrol.openwrt.UsageHistory
 import dev.angel.wrtcontrol.openwrt.WanLink
@@ -45,9 +46,14 @@ data class WanLinkState(val link: WanLink?)
 
 /**
  * [sinceBoot] null: no hay salida a internet que mirar o el router no deja ver sus contadores.
- * [history] null: el router no guarda lo gastado por horas y días (hace falta vnStat).
+ * [recorder]: si el router guarda lo gastado por horas y días (vnStat); null si no se sabe.
  */
-data class UsageState(val sinceBoot: WanUsage?, val history: UsageHistory? = null)
+data class UsageState(val sinceBoot: WanUsage?, val recorder: Recorder? = null) {
+    val history: UsageHistory? get() = (recorder as? Recorder.Ready)?.history
+}
+
+/** [recorder] null: no hay salida a internet que mirar. */
+data class RecorderState(val recorder: Recorder?)
 
 /** [installed] null: el router no deja listar ni instalar paquetes desde la app. */
 data class PackageListing(val installed: InstalledPackages?)
@@ -153,6 +159,16 @@ class RouterMonitor(
             networks.await() to about.await()
         }
         router.use { UsageState(it.usage.sinceBoot(known, info.uptime)) }
+    }
+
+    /** Si el router guarda el consumo por horas y días, y lo guardado. Cambia cada hora: se mira poco. */
+    val usageRecorder: Feed<RecorderState> = feed {
+        val (known, info) = coroutineScope {
+            val networks = async { interfaces.fresh(SHARED_MAX_AGE) }
+            val about = async { system.fresh(STABLE_MAX_AGE) }
+            networks.await() to about.await()
+        }
+        router.use { RecorderState(it.usage.recorder(known, info.root?.avail)) }
     }
 
     /** Qué router es (modelo y MAC de la red de casa). Se averigua una vez por sesión. */

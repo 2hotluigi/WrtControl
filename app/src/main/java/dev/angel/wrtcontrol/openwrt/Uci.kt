@@ -151,9 +151,10 @@ suspend fun UbusCaller.fileWrite(path: String, data: String, mode: Int? = null) 
 
 /** Códigos de estado de ubus: no existe, y sin permiso. */
 internal const val UBUS_NOT_FOUND = 4
+private const val UBUS_NO_DATA = 5
 private const val UBUS_PERMISSION_DENIED = 6
 
-/** El contenido de [path]: vacío si no existe, null si el ACL no deja leerlo. */
+/** El contenido de [path]: vacío si no existe o está vacío, null si el ACL no deja leerlo. */
 suspend fun UbusCaller.fileRead(path: String): String? = try {
     (callAs<JsonObject>("file", "read", buildJsonObject { put("path", path) })["data"] as? JsonPrimitive)?.contentOrNull.orEmpty()
 } catch (_: UbusException.AccessDenied) {
@@ -161,6 +162,7 @@ suspend fun UbusCaller.fileRead(path: String): String? = try {
 } catch (e: UbusException.Status) {
     when {
         e.code == UBUS_NOT_FOUND -> "" // no existe
+        e.code == UBUS_NO_DATA -> "" // vacío: así responde rpcd en 24.10
         e.code == UBUS_PERMISSION_DENIED -> null
         else -> throw e
     }

@@ -42,8 +42,27 @@ da, pero el ACL de LuCI no deja llamarlo hasta 25.12. Se mira la tarjeta física
 (`device` de la interfaz con la ruta por defecto) y no `pppoe-wan`, que se rehace en cada
 reconexión y empieza de cero. Al reiniciar el router los contadores vuelven a cero.
 
-Para ver las últimas 24 horas, 7 días o 30 días hace falta que el router lo vaya guardando: la
-gráfica (`UsageChart`) ya está hecha y la alimentará vnStat cuando se instale desde la app.
+Para ver las últimas 24 horas, 7 días o 30 días hace falta que el router lo vaya guardando. Lo
+hace vnStat 2 (`luci-app-vnstat2`), que la app instala con un toque (`UsageApi`, ver `Vnstat.kt`):
+
+- **Qué ocupa:** unos 3 MB con sus dependencias (sqlite, y libgd con las librerías de imagen que
+  usan las gráficas de LuCI). La app lo ofrece si quedan al menos 4 MB libres.
+- **Qué mira:** la tarjeta física de la WAN, que se añade a la lista `interface` de
+  `/etc/config/vnstat` (sin quitar las que hubiera) con `applySafely`: se da por bueno cuando
+  `vnstat --json f 1` la tiene.
+- **Dónde guarda:** de serie en `/var/lib/vnstat`, que es RAM y se pierde al reiniciar. Hay que
+  cambiar `DatabaseDir` en `/etc/vnstat.conf`, que el ACL de LuCI no deja ni leer ni escribir.
+  La app pone en el crontab de root (que sí deja escribir) una línea que se ejecuta una vez y se
+  borra sola: para vnStat, copia la base a `/etc/wrtc_vnstat`, pone `SaveInterval 60` (una
+  escritura por hora en la flash en vez de cada 5 minutos) y lo vuelve a arrancar. La app espera
+  a verlo en `vnstat --showconfig` (el ACL de escritura del paquete deja `/usr/bin/vnstat` con
+  cualquier argumento) y deja cron como estaba: si no estaba en marcha lo para, y si no había
+  crontab, lo borra.
+- **Cuidado con cron:** el de BusyBox corta la línea en el primer `#`, también dentro de comillas,
+  así que la orden no lleva ninguno (`VnstatTest` lo vigila).
+- **Qué se lee:** `vnstat --json h 24 -i <tarjeta>` y `--json d 30`. Llega hasta la última vez que
+  vnStat guardó (cada hora), empieza cuando empezó a mirar la tarjeta y las horas o los días sin
+  entrada cuentan cero.
 
 ### Qué puede hacer el router
 
