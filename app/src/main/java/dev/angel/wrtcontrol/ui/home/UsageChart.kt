@@ -78,7 +78,7 @@ private const val HOUR_LABEL_EVERY = 6
 private const val MONTH_LABEL_EVERY = 7
 
 @Composable
-fun UsageChart(buckets: List<UsageBucket>, period: UsagePeriod, modifier: Modifier = Modifier) {
+fun UsageChart(buckets: List<UsageBucket>, period: UsagePeriod, modifier: Modifier = Modifier, showHint: Boolean = true) {
     var selected by remember(buckets, period) { mutableStateOf<Int?>(null) }
     val locale = LocalConfiguration.current.locales[0]
     val colors = LocalChartColors.current
@@ -102,7 +102,7 @@ fun UsageChart(buckets: List<UsageBucket>, period: UsagePeriod, modifier: Modifi
     val gutter = scale.values.maxOf { it.size.width } + with(LocalDensity.current) { LABEL_GAP.toPx() }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
+        if (showHint || pick != null) Text(
             if (pick != null) {
                 val name = bucketName(pick, period, locale)
                 stringResource(R.string.usage_chart_selected, name, formatBytes(pick.receivedBytes), formatBytes(pick.sentBytes))

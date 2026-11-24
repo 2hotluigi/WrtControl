@@ -77,6 +77,7 @@ fun GroupRow(
     modifier: Modifier = Modifier,
     value: String? = null,
     supporting: String? = null,
+    supportingLines: Int = 2,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     chevron: Boolean = false,
@@ -108,13 +109,22 @@ fun GroupRow(
                     it,
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.secondary,
-                    maxLines = 2,
+                    maxLines = supportingLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+        // La etiqueta y el valor se reparten el ancho: si el valor no cabe, se corta él y no la etiqueta.
         value?.let {
-            Text(it, style = MaterialTheme.typography.bodyLarge, color = palette.secondary, maxLines = 1, textAlign = TextAlign.End)
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyLarge,
+                color = palette.secondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f, fill = false),
+            )
         }
         trailing?.invoke(this)
         if (chevron) {

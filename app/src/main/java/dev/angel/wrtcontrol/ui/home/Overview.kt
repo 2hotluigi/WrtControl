@@ -6,6 +6,7 @@ import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LinkProblem
 import dev.angel.wrtcontrol.openwrt.NetInterface
+import dev.angel.wrtcontrol.openwrt.Presence
 import dev.angel.wrtcontrol.openwrt.WanLink
 import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.linkAdvice
@@ -80,6 +81,8 @@ data class Overview(
     /** Cuánto lleva esa salida sin caerse, en segundos. */
     val onlineSeconds: Long?,
     val devices: Int?,
+    /** Los que han hablado hace poco con el router; null si el router no deja saberlo. */
+    val onlineDevices: Int? = null,
     val profiles: Int?,
     val paused: Int,
     /** Dispositivos que esperan aprobación (con la cuarentena activa). */
@@ -116,6 +119,8 @@ fun overview(
         onlineSeconds = uplinks.mapNotNull { it.uptime }.maxOrNull(),
         // Los que solo salen porque tienen nombre guardado no están en la red.
         devices = devices?.count { !it.remembered },
+        onlineDevices = devices?.takeIf { list -> list.any { it.presence != Presence.Unknown } }
+            ?.count { it.presence == Presence.Online || it.presence == Presence.Idle },
         profiles = parental?.profiles?.size,
         paused = paused,
         newDevices = pending,

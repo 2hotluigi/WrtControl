@@ -12,6 +12,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Navegación nueva: una barra flotante con Inicio, Dispositivos y Familia, y Seguridad en el botón
   redondo. Wi-Fi, Invitados, Consumo y Funciones están ahora en Inicio, y el router, añadir otro
   teléfono y desconectar, en Ajustes (el engranaje de arriba).
+- Inicio rehecho: si hay internet en grande, cuántos dispositivos hay y cuántos están en línea,
+  lo que pide atención, lo gastado en las últimas 24 horas y un acceso a cada función con su estado.
 
 ## [0.5.0]
 
