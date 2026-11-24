@@ -6,6 +6,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+## [0.5.0]
+
 ### Añadido
 - Uso de internet (en Más): cuánto se ha descargado y subido desde que se encendió el router, el
   total y la media al día. Sale de los contadores del router: no hace falta instalar nada.
@@ -156,7 +158,8 @@ Primera versión publicada.
 - Bloqueo con huella o PIN.
 - Avisa si el router tiene una versión de OpenWrt anterior a 24.10.
 
-[Sin publicar]: https://github.com/2hotluigi/WrtControl/compare/v0.4.0...HEAD
+[Sin publicar]: https://github.com/2hotluigi/WrtControl/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/2hotluigi/WrtControl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/2hotluigi/WrtControl/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/2hotluigi/WrtControl/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/2hotluigi/WrtControl/releases/tag/v0.2.0
