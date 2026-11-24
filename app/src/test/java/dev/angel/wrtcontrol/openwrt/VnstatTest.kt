@@ -58,6 +58,16 @@ class VnstatTest {
         assertEquals(1, history.days.size)
     }
 
+    /** Lo que dio el GL-MT6000 recién instalado: `created` sin hora; el router va 6 horas por detrás de UTC. */
+    @Test
+    fun `historial - la hora de inicio sale del timestamp y la diferencia horaria del router`() {
+        val text = """{"interfaces":[{"name":"eth1","created":{"date":{"year":2026,"month":11,"day":23},"timestamp":1795479898},""" +
+            """"updated":{"date":{"year":2026,"month":11,"day":23},"time":{"hour":18,"minute":25},"timestamp":1795479900},""" +
+            """"traffic":{"hour":[{"id":1,"date":{"year":2026,"month":11,"day":23},"time":{"hour":18,"minute":0},"rx":8266,"tx":27736}]}}]}"""
+        val history = parseUsageHistory(json(text), json(text), "eth1")!!
+        assertEquals("una sola hora, no desde medianoche", listOf(UsageBucket(LocalDateTime.of(2026, 11, 23, 18, 0), 8266, 27736)), history.hours)
+    }
+
     @Test
     fun `historial - otra tarjeta o sin datos`() {
         assertNull(parseUsageHistory(json(iface(""""hour":[]""")), VnstatJson(), "wan"))

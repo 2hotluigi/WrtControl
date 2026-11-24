@@ -348,7 +348,10 @@ marcha guiada. Cada uno se apoya en los anteriores.
     camino: el cron de BusyBox corta la línea en el primer `#` aunque vaya entre comillas, así que la
     orden no lleva ninguno. `VnstatTest`, capturas `uso-de-internet-*` y `UsageVmTest` (en la VM
     25.12.6 desde cero: instala, guarda en la flash cada hora, el crontab y cron como estaban, y la
-    hora en curso lleva el tráfico de prueba). PPPoE sigue sin probar.
+    hora en curso lleva el tráfico de prueba). En el GL-MT6000 desde el emulador: instalado en menos
+    de un minuto (3,2 MB), sin crontab y con cron parado como antes, y la gráfica con la primera hora.
+    Ahí salió que `created` trae la fecha pero no la hora (la gráfica empezaba a medianoche): sale de
+    su timestamp con la diferencia horaria del router. PPPoE sigue sin probar.
   - *nlbwmon* (`luci-app-nlbwmon`): consumo por dispositivo del periodo (el mes) con
     `nlbwmon-action download -g mac,ip` y `periods` para los anteriores; los nombres, de
     `getHostHints`. En su ficha y en una lista "quién gastó más". Solo da totales por periodo, no

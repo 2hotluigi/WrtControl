@@ -1,8 +1,11 @@
 package dev.angel.wrtcontrol.openwrt
 
 import kotlinx.serialization.Serializable
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 /*
  * vnStat 2 (luci-app-vnstat2): guarda en el router lo que pasa por cada tarjeta, por horas y por
@@ -80,8 +83,9 @@ internal data class VnstatJson(val interfaces: List<Iface> = emptyList()) {
     @Serializable
     data class Iface(val name: String = "", val created: Stamp? = null, val updated: Stamp? = null, val traffic: Traffic = Traffic())
 
+    /** [timestamp]: segundos UTC. `created` trae la fecha y el timestamp, pero no la hora. */
     @Serializable
-    data class Stamp(val date: Date, val time: Time? = null)
+    data class Stamp(val date: Date, val time: Time? = null, val timestamp: Long? = null)
 
     @Serializable
     data class Date(val year: Int, val month: Int, val day: Int)
@@ -100,6 +104,25 @@ private fun VnstatJson.Date.local(): LocalDate = LocalDate.of(year, month, day)
 
 private fun VnstatJson.Stamp.hour(): LocalDateTime = date.local().atTime(time?.hour ?: 0, 0)
 
+private fun VnstatJson.Stamp.minute(): LocalDateTime = date.local().atTime(time?.hour ?: 0, time?.minute ?: 0)
+
+/**
+ * La hora (del router) en que vnStat empezó a mirar la tarjeta. `created` no trae la hora: sale de
+ * su timestamp con la diferencia horaria del router, que se ve en `updated` (trae las dos cosas).
+ * Sin eso, el principio de su día.
+ */
+private fun VnstatJson.Iface.startedHour(updated: VnstatJson.Stamp): LocalDateTime? {
+    val created = created ?: return null
+    val createdAt = created.timestamp
+    val updatedAt = updated.timestamp
+    return if (created.time != null || createdAt == null || updatedAt == null) {
+        created.hour()
+    } else {
+        val offset = Duration.between(LocalDateTime.ofEpochSecond(updatedAt, 0, ZoneOffset.UTC), updated.minute()).toMinutes()
+        LocalDateTime.ofEpochSecond(createdAt, 0, ZoneOffset.UTC).plusMinutes(offset).truncatedTo(ChronoUnit.HOURS)
+    }
+}
+
 /**
  * El historial de [device] con lo que dan `vnstat --json h` ([hours]) y `--json d` ([days]). Va
  * hasta la última vez que vnStat guardó (no hasta ahora: guarda cada hora) y empieza cuando
@@ -108,12 +131,13 @@ private fun VnstatJson.Stamp.hour(): LocalDateTime = date.local().atTime(time?.h
  */
 internal fun parseUsageHistory(hours: VnstatJson, days: VnstatJson, device: String): UsageHistory? {
     val iface = hours.interfaces.firstOrNull { it.name == device } ?: return null
-    val updated = iface.updated?.hour()
+    val updated = iface.updated
     return if (updated == null) UsageHistory(emptyList(), emptyList()) else history(iface, days, device, updated)
 }
 
-private fun history(iface: VnstatJson.Iface, days: VnstatJson, device: String, end: LocalDateTime): UsageHistory {
-    val created = iface.created?.hour() ?: end
+private fun history(iface: VnstatJson.Iface, days: VnstatJson, device: String, updated: VnstatJson.Stamp): UsageHistory {
+    val end = updated.hour()
+    val created = iface.startedHour(updated) ?: end
     val byHour = iface.traffic.hour.associateBy { it.date.local().atTime(it.time?.hour ?: 0, 0) }
     val hourly = (0 until UsagePeriod.Day.buckets).map { end.minusHours(it.toLong()) }
         .filter { !it.isBefore(created) }
