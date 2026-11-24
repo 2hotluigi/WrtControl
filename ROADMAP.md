@@ -128,6 +128,17 @@ marcha guiada. Cada uno se apoya en los anteriores.
     comparan en la CI con las imágenes guardadas).
   - Falta: iconos por tipo de dispositivo, animaciones de aplicar/verificar/confirmar y estados
     vacíos ilustrados. Irán con las pantallas que los usan.
+  - **Lenguaje visual nuevo** (2026-11-24, ver `docs/diseno.md`): la interfaz se sentía "Material
+    de serie". Listas agrupadas sobre fondo negro (o gris claro), cifras grandes, controles
+    redondos, fichas en pantalla y navegación flotante de 3 pestañas más Seguridad; lo de Más pasa
+    a una cuadrícula en Inicio. Aprobado sobre una maqueta (`ProposalScreenshotTest`). Por partes:
+    - ~~Paleta y componentes (`ui/design`)~~: hecho. El esquema de Material sale de la paleta
+      nueva, así que todas las pantallas ya tienen sus colores; capturas regrabadas.
+    - Navegación flotante y Más dentro de Inicio.
+    - Inicio.
+    - Dispositivos y la ficha de un dispositivo (pantalla en vez de diálogo).
+    - Familia y Seguridad.
+    - Uso de internet, Wi-Fi, Invitados, Funciones del router y Router.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.

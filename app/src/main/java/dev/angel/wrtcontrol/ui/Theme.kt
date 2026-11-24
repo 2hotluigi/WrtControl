@@ -20,41 +20,47 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import dev.angel.wrtcontrol.R
+import dev.angel.wrtcontrol.ui.design.DarkPalette
+import dev.angel.wrtcontrol.ui.design.LightPalette
+import dev.angel.wrtcontrol.ui.design.LocalPalette
 
 /*
- * La cara de WrtControl ("Cobalto"): azul cobalto sobre blanco frío, tarjetas blancas y títulos
- * compactos en Manrope. Es la misma en todos los teléfonos: no usa el color dinámico de Android.
+ * La cara de WrtControl: listas agrupadas sobre un fondo neutro. En oscuro, fondo negro y tarjetas
+ * gris muy oscuro sin sombras ni bordes; en claro, gris claro y tarjetas blancas. Títulos compactos
+ * en Manrope. Es la misma en todos los teléfonos: no usa el color dinámico de Android.
  *
- * El azul es la marca y lo que se puede tocar. Verde, ámbar y rojo dicen cómo está algo (bien,
- * aviso, problema) y no se usan para otra cosa: están en [StatusColors], aparte del esquema de
- * Material, salvo el rojo (`error`) y el ámbar de los avisos (`tertiary`).
+ * El azul es la marca y lo que se puede tocar. Verde, naranja y rojo dicen cómo está algo (bien,
+ * aviso, problema) y no se usan para otra cosa: están en [StatusColors] y en la paleta de
+ * ui/design ([dev.angel.wrtcontrol.ui.design.Palette]), aparte del esquema de Material, salvo el
+ * rojo (`error`) y el naranja de los avisos (`tertiary`). El esquema de Material sale de esa paleta:
+ * las pantallas que aún usan sus componentes se ven con los mismos colores.
  */
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF2346D6),
+    primary = Color(0xFF2350E6),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE3E9FB),
-    onPrimaryContainer = Color(0xFF14257A),
-    secondary = Color(0xFF4A5578),
+    primaryContainer = Color(0xFFE4EBFF),
+    onPrimaryContainer = Color(0xFF0F2A80),
+    secondary = Color(0xFF6C6C72),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE3E9FB),
-    onSecondaryContainer = Color(0xFF14257A),
-    tertiary = Color(0xFF8A5A00),
+    secondaryContainer = Color(0xFFE4EBFF),
+    onSecondaryContainer = Color(0xFF0F2A80),
+    tertiary = Color(0xFF9A5B00),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFBF0D9),
-    onTertiaryContainer = Color(0xFF5C3F05),
-    error = Color(0xFFC62F2F),
+    tertiaryContainer = Color(0xFFFFF1DC),
+    onTertiaryContainer = Color(0xFF5C3600),
+    error = Color(0xFFD92D20),
     onError = Color.White,
-    errorContainer = Color(0xFFFDE7E5),
-    onErrorContainer = Color(0xFF7A1414),
-    background = Color(0xFFF5F7FB),
-    onBackground = Color(0xFF141A2E),
-    surface = Color(0xFFF5F7FB),
-    onSurface = Color(0xFF141A2E),
-    surfaceVariant = Color(0xFFE9EDF6),
-    onSurfaceVariant = Color(0xFF5E6680),
-    outline = Color(0xFFB4BCD3),
-    outlineVariant = Color(0xFFE0E5F0),
+    errorContainer = Color(0xFFFDE8E6),
+    onErrorContainer = Color(0xFF7A1410),
+    background = Color(0xFFF2F2F7),
+    onBackground = Color(0xFF111114),
+    surface = Color(0xFFF2F2F7),
+    onSurface = Color(0xFF111114),
+    surfaceVariant = Color(0xFFEDEDF2),
+    onSurfaceVariant = Color(0xFF6C6C72),
+    outline = Color(0xFFC7C7CC),
+    outlineVariant = Color(0xFFE3E3E8),
     surfaceContainerLowest = Color.White,
     surfaceContainerLow = Color.White,
     surfaceContainer = Color.White,
@@ -63,35 +69,35 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF8EA4FF),
-    onPrimary = Color(0xFF0B1236),
-    primaryContainer = Color(0xFF1F2A55),
-    onPrimaryContainer = Color(0xFFDFE5FF),
-    secondary = Color(0xFFB3BCDA),
-    onSecondary = Color(0xFF1C2340),
-    secondaryContainer = Color(0xFF242C4D),
-    onSecondaryContainer = Color(0xFFDFE5FF),
-    tertiary = Color(0xFFE8A63A),
-    onTertiary = Color(0xFF2B1D00),
-    tertiaryContainer = Color(0xFF2E2613),
-    onTertiaryContainer = Color(0xFFF1DCAE),
-    error = Color(0xFFFF8F85),
-    onError = Color(0xFF3A0B08),
-    errorContainer = Color(0xFF3A1614),
-    onErrorContainer = Color(0xFFFFD9D5),
-    background = Color(0xFF0E111B),
-    onBackground = Color(0xFFE8EBF7),
-    surface = Color(0xFF0E111B),
-    onSurface = Color(0xFFE8EBF7),
-    surfaceVariant = Color(0xFF1E2333),
-    onSurfaceVariant = Color(0xFF939BB5),
-    outline = Color(0xFF4A5270),
-    outlineVariant = Color(0xFF272D42),
-    surfaceContainerLowest = Color(0xFF0B0E16),
-    surfaceContainerLow = Color(0xFF131725),
-    surfaceContainer = Color(0xFF131725),
-    surfaceContainerHigh = Color(0xFF171B29),
-    surfaceContainerHighest = Color(0xFF171B29),
+    primary = Color(0xFF3D7BFF),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF12264D),
+    onPrimaryContainer = Color(0xFFD6E3FF),
+    secondary = Color(0xFF98989F),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF12264D),
+    onSecondaryContainer = Color(0xFFD6E3FF),
+    tertiary = Color(0xFFFF9F0A),
+    onTertiary = Color(0xFF2B1A00),
+    tertiaryContainer = Color(0xFF2E2210),
+    onTertiaryContainer = Color(0xFFFFD9A0),
+    error = Color(0xFFFF453A),
+    onError = Color.White,
+    errorContainer = Color(0xFF3A1513),
+    onErrorContainer = Color(0xFFFFD4D0),
+    background = Color.Black,
+    onBackground = Color.White,
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF2C2C2E),
+    onSurfaceVariant = Color(0xFF98989F),
+    outline = Color(0xFF48484A),
+    outlineVariant = Color(0xFF38383A),
+    surfaceContainerLowest = Color(0xFF1C1C1E),
+    surfaceContainerLow = Color(0xFF1C1C1E),
+    surfaceContainer = Color(0xFF1C1C1E),
+    surfaceContainerHigh = Color(0xFF1C1C1E),
+    surfaceContainerHighest = Color(0xFF1C1C1E),
 )
 
 /** Los colores de "va bien": el verde no existe en el esquema de Material. */
@@ -105,9 +111,9 @@ data class StatusColors(
 )
 
 private val LightStatus =
-    StatusColors(ok = Color(0xFF1B7F4B), okContainer = Color(0xFFDDF3E6), onOkContainer = Color(0xFF0E4A2B), signal = Color(0xFF7BE0A2))
+    StatusColors(ok = Color(0xFF1B8A47), okContainer = Color(0xFFE1F5E8), onOkContainer = Color(0xFF0E4A2B), signal = Color(0xFF30D158))
 private val DarkStatus =
-    StatusColors(ok = Color(0xFF5FD08A), okContainer = Color(0xFF14301F), onOkContainer = Color(0xFFBFEBD0), signal = Color(0xFF1B7F4B))
+    StatusColors(ok = Color(0xFF30D158), okContainer = Color(0xFF12301C), onOkContainer = Color(0xFFBFEBD0), signal = Color(0xFF30D158))
 
 val LocalStatusColors = staticCompositionLocalOf { LightStatus }
 
@@ -168,6 +174,7 @@ fun WrtTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> U
     CompositionLocalProvider(
         LocalStatusColors provides if (dark) DarkStatus else LightStatus,
         LocalChartColors provides if (dark) DarkChart else LightChart,
+        LocalPalette provides if (dark) DarkPalette else LightPalette,
     ) {
         MaterialTheme(
             colorScheme = if (dark) DarkColors else LightColors,

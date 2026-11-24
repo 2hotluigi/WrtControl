@@ -2,7 +2,8 @@
 
 Convenciones de WrtControl para agentes de IA (Claude Code, Codex y similares) y para cualquiera
 que llegue nuevo. Lo que se cuenta aquí no se repite en otros sitios: el resto está en
-[docs/desarrollo.md](docs/desarrollo.md) (compilar y probar), [docs/como-funciona.md](docs/como-funciona.md)
+[docs/desarrollo.md](docs/desarrollo.md) (compilar y probar), [docs/diseno.md](docs/diseno.md) (el lenguaje visual
+y sus componentes), [docs/como-funciona.md](docs/como-funciona.md)
 (qué hace la app en el router) y [ROADMAP.md](ROADMAP.md) (qué hay hecho y qué sigue).
 
 ## El proyecto
