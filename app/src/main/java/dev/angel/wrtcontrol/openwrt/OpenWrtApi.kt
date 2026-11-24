@@ -47,6 +47,9 @@ class OpenWrtApi(
     /** Cuánto internet se gasta, y que el router lo guarde por horas y días (instala vnStat). */
     val usage = UsageApi(ubus, writeLock)
 
+    /** Lo que gasta cada aparato de casa (instala nlbwmon). */
+    val deviceUsage = DeviceUsageApi(ubus, writeLock)
+
     /** El informe anonimizado del router, para compartirlo (solo lee). */
     val report = DeviceReportApi(ubus)
 

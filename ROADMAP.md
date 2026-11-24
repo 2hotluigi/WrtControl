@@ -352,12 +352,20 @@ marcha guiada. Cada uno se apoya en los anteriores.
     de un minuto (3,2 MB), sin crontab y con cron parado como antes, y la gráfica con la primera hora.
     Ahí salió que `created` trae la fecha pero no la hora (la gráfica empezaba a medianoche): sale de
     su timestamp con la diferencia horaria del router. PPPoE sigue sin probar.
-  - *nlbwmon* (`luci-app-nlbwmon`): consumo por dispositivo del periodo (el mes) con
+  - ~~*nlbwmon* (`luci-app-nlbwmon`): consumo por dispositivo del periodo (el mes) con
     `nlbwmon-action download -g mac,ip` y `periods` para los anteriores; los nombres, de
     `getHostHints`. En su ficha y en una lista "quién gastó más". Solo da totales por periodo, no
     la curva. Tarda hasta ~2 min en contar (`refresh_interval`). Quitar la entrada de MAC
     `00:00:00:00:00:00`. Guardar en la flash con `database_directory` (UCI) al instalar: si se
-    cambia después empieza vacío. Guarda al apagar y cada 24 h; probado que sobrevive al reinicio.
+    cambia después empieza vacío. Guarda al apagar y cada 24 h; probado que sobrevive al reinicio.~~
+    Hecho: "Instalar" en Más → Uso de internet (si queda 1 MB libre) instala el paquete y pone
+    `database_directory` en `/etc/wrtc_nlbwmon` y `commit_interval` en `1h` con `applySafely`.
+    "Quién gasta más" lista los aparatos de este mes con los nombres de Dispositivos, y la ficha de
+    cada uno dice lo suyo. Por el camino: el propio router sale como un aparato (con la IP de su WAN)
+    y se quita, y nlbwmon no cuenta el ping (solo TCP y UDP). `NlbwmonTest`, capturas
+    `uso-de-internet-aparatos` y `-ofertas`, y `UsageVmTest` (en la VM 25.12.6 desde cero: instala,
+    guarda en la flash cada hora y cuenta al cliente de pruebas sin contar al router). Falta: los
+    periodos anteriores (`periods`) y el aviso con la descarga de flujos por hardware (abajo).
   - *Descarga de flujos:* por software cuenta bien en los dos (fw4 crea la flowtable con
     `counter`; probado). Por hardware los paquetes no pasan por la CPU y es probable que cuenten de
     menos: comprobarlo en un Filogic. Con SQM no pasa (SQM ya obliga a no usarla, ver *Descarga de

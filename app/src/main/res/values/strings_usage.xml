@@ -36,4 +36,20 @@
     <string name="usage_recorder_no_wan">El router no tiene salida a internet ahora mismo: no hay nada que guardar.</string>
     <string name="usage_recorder_not_watching">vnStat no empezó a contar la salida a internet, así que se ha dejado como estaba.</string>
     <string name="usage_recorder_not_saved">No se pudo hacer que vnStat guarde en la memoria del router: lo que cuente se perdería al reiniciarlo. Vuelve a intentarlo.</string>
+    <string name="usage_devices_title">Quién gasta más</string>
+    <string name="usage_devices_period">Este mes, desde el día 1.</string>
+    <string name="usage_devices_empty">Aún no hay nada contado. Cada aparato aparece cuando gasta algo (tarda medio minuto).</string>
+    <string name="usage_devices_detail">%1$s recibido, %2$s enviado</string>
+    <string name="usage_devices_more">Ver todos (%1$d)</string>
+    <string name="usage_devices_less">Ver menos</string>
+    <string name="usage_devices_offer_title">Ver lo que gasta cada aparato</string>
+    <string name="usage_devices_missing_body">Para eso el router tiene que contar las conexiones de cada uno. Se instala nlbwmon, que ocupa menos de 1 MB y guarda una vez por hora.</string>
+    <string name="usage_devices_no_space">Necesita 1 MB libre y al router le quedan %1$s.</string>
+    <string name="usage_devices_setup_body">nlbwmon está instalado, pero guarda en una memoria que se borra al reiniciar el router. Al configurarlo empieza a contar de cero.</string>
+    <string name="usage_busy_installing_devices">Instalando nlbwmon…</string>
+    <string name="usage_busy_setup_devices">Configurando nlbwmon…</string>
+    <string name="usage_devices_no_config">nlbwmon está instalado pero le falta su configuración. Reinstálalo desde LuCI.</string>
+    <string name="usage_devices_not_started">nlbwmon no volvió a arrancar con el cambio, así que se ha dejado como estaba.</string>
+    <string name="devices_usage_month">Este mes: %1$s</string>
+    <string name="usage_devices_period_other">En el periodo actual de nlbwmon (se cambia en LuCI).</string>
 </resources>

@@ -24,6 +24,8 @@ import dev.angel.wrtcontrol.openwrt.BoardInfo
 import dev.angel.wrtcontrol.openwrt.Capabilities
 import dev.angel.wrtcontrol.openwrt.ChannelAdvice
 import dev.angel.wrtcontrol.openwrt.Device
+import dev.angel.wrtcontrol.openwrt.DeviceRecorder
+import dev.angel.wrtcontrol.openwrt.DeviceUsage
 import dev.angel.wrtcontrol.openwrt.Feature
 import dev.angel.wrtcontrol.openwrt.GuestWifi
 import dev.angel.wrtcontrol.openwrt.IpAddress
@@ -364,6 +366,34 @@ class ScreenshotTest {
     @Test
     fun `uso de internet sin historial`() = both("uso-de-internet-sin-historial") {
         UsageContent(Loadable(UsageState(sinceBoot, Recorder.Missing(freeKiB = 60_000))), UsagePeriod.Day, onPeriod = {})
+    }
+
+    /** Quién gasta más este mes (nlbwmon), con los nombres de casa; uno ya no está y sale su MAC. */
+    @Test
+    fun `uso de internet por aparato`() = both("uso-de-internet-aparatos") {
+        val devices = listOf(
+            DeviceUsage("AA:00:00:00:00:01", 96L * GIB, 4L * GIB),
+            DeviceUsage("AA:00:00:00:00:02", 41L * GIB, 3L * GIB),
+            DeviceUsage("AA:00:00:00:00:03", 18L * GIB, 9L * GIB),
+            DeviceUsage("AA:00:00:00:00:04", 6L * GIB, GIB / 2),
+            DeviceUsage("AA:00:00:00:00:05", 900L * MIB, 120L * MIB),
+            DeviceUsage("AA:00:00:00:00:06", 300L * MIB, 30L * MIB),
+        )
+        val names = mapOf(
+            "AA:00:00:00:00:01" to "Tele de la sala",
+            "AA:00:00:00:00:02" to "Portátil de Ana",
+            "AA:00:00:00:00:03" to "Consola",
+            "AA:00:00:00:00:05" to "Aparato Samsung",
+            "AA:00:00:00:00:06" to "Teléfono de Luis",
+        )
+        val state = UsageState(sinceBoot, Recorder.Ready(UsageHistory(emptyList(), emptyList())), DeviceRecorder.Ready(devices))
+        UsageContent(Loadable(state), UsagePeriod.Day, onPeriod = {}, deviceNames = names)
+    }
+
+    /** Las dos ofertas: guardar por horas y días (vnStat) y lo de cada aparato (nlbwmon). */
+    @Test
+    fun `uso de internet sin nada instalado`() = both("uso-de-internet-ofertas") {
+        UsageContent(Loadable(UsageState(sinceBoot, Recorder.Missing(60_000), DeviceRecorder.Missing(60_000))), UsagePeriod.Day, onPeriod = {})
     }
 
     /** vnStat recién instalado, aún sin nada guardado. */

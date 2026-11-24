@@ -39,7 +39,7 @@ sealed interface Recorder {
 
 /** Lo que tarda como mucho la línea del crontab en ejecutarse (cron mira cada minuto) y vnStat en volver. */
 private const val CRON_WAIT_MS = 100_000L
-private const val POLL_MS = 3_000L
+internal const val POLL_MS = 3_000L
 
 /** Tras instalar un paquete de LuCI, rpcd se recarga: lo que se espera a que vuelva a contestar. */
 private const val RPCD_WAIT_MS = 45_000L
@@ -91,7 +91,7 @@ class UsageApi internal constructor(
         writeLock.withLock {
             val tool = ubus.installedPackages()?.tool ?: throw UserFacingException(txt(R.string.usage_recorder_cannot_install))
             ubus.installPackages(tool, listOf(VNSTAT_PACKAGE))
-            waitForRpcd()
+            ubus.awaitAfterInstall("vnstat", pollMs)
         }
         setUp(interfaces)
     }
@@ -162,20 +162,23 @@ class UsageApi internal constructor(
         }
         if (!cronWasRunning && !hasOtherJobs(target)) optional { ubus.initAction("cron", "stop") }
     }
+}
 
-    /** Tras instalar, rpcd se recarga y tarda en volver a atender: se espera a que conteste. */
-    private suspend fun waitForRpcd() {
-        withTimeoutOrNull(RPCD_WAIT_MS) {
-            while (true) {
-                try {
-                    ubus.uciSections("vnstat", "vnstat")
-                    return@withTimeoutOrNull
-                } catch (_: UbusException.Network) {
-                    delay(pollMs)
-                }
+/**
+ * Tras instalar un paquete de LuCI, rpcd se recarga y tarda en volver a atender: se espera a que
+ * conteste leyendo la configuración [config] que trae el paquete.
+ */
+internal suspend fun UbusClient.awaitAfterInstall(config: String, pollMs: Long) {
+    withTimeoutOrNull(RPCD_WAIT_MS) {
+        while (true) {
+            try {
+                uciSections(config)
+                return@withTimeoutOrNull
+            } catch (_: UbusException.Network) {
+                delay(pollMs)
             }
-        } ?: throw UbusException.Network("El router no volvió a responder después de instalar el paquete.")
-    }
+        }
+    } ?: throw UbusException.Network("El router no volvió a responder después de instalar el paquete.")
 }
 
 /** rw------- : el crontab es de root. */
