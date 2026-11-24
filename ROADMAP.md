@@ -156,7 +156,13 @@ marcha guiada. Cada uno se apoya en los anteriores.
       Asignar) y esta app (huella o PIN, administradores). El botón redondo lleva un punto si el
       router no tiene contraseña o hay aparatos esperando. Capturas nuevas y probado en el
       emulador contra el GL-MT6000, solo mirando.
-    - Uso de internet, Wi-Fi, Invitados, Funciones del router y Router.
+    - ~~Uso de internet y Router~~: hecho. Uso: pestañas 24 h · 7 días · 30 días, la gráfica en su
+      grupo, los totales en una tira de cifras, quién gasta más con su barra y lo de desde que se
+      encendió en filas; instalar vnStat o nlbwmon es un grupo con el botón al pie. Router: encendido,
+      carga y memoria arriba; sistema con memoria y disco en barras; qué puede hacer con su estado en
+      color; cada conexión en su grupo y el informe al final. Lo nuevo (`ValueRows`, `MeterRow`,
+      `OfferGroup`) va en `ui/design/Rows.kt`. Probado con las capturas.
+    - Wi-Fi, Invitados, Funciones del router y el editor de perfiles.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.

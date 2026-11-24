@@ -4,11 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,8 +22,14 @@ import androidx.compose.ui.unit.dp
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.openwrt.DeviceRecorder
 import dev.angel.wrtcontrol.openwrt.DeviceUsage
-import dev.angel.wrtcontrol.ui.InfoCard
 import dev.angel.wrtcontrol.ui.LocalChartColors
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.MeterBar
+import dev.angel.wrtcontrol.ui.design.OfferGroup
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.fraction
 
@@ -37,101 +42,94 @@ private const val TOP_DEVICES = 5
  */
 @Composable
 fun DevicesUsageCard(recorder: DeviceRecorder.Ready, names: Map<String, String>) {
+    val palette = LocalPalette.current
     var expanded by rememberSaveable { mutableStateOf(false) }
-    InfoCard(stringResource(R.string.usage_devices_title), Modifier.testTag("usage-devices")) {
-        Text(
-            stringResource(if (recorder.monthly) R.string.usage_devices_period else R.string.usage_devices_period_other),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val devices = recorder.devices
-        if (devices.isEmpty()) {
-            Text(stringResource(R.string.usage_devices_empty), style = MaterialTheme.typography.bodyMedium)
-            return@InfoCard
-        }
-        val top = devices.first().totalBytes
-        devices.take(if (expanded) devices.size else TOP_DEVICES).forEach { usage ->
-            DeviceUsageRow(usage, names[usage.mac] ?: usage.mac, top)
-        }
-        if (devices.size > TOP_DEVICES) {
-            TextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("usage-devices-more")) {
-                Text(
+    val devices = recorder.devices
+    val more = devices.size > TOP_DEVICES
+    Column(Modifier.testTag("usage-devices")) {
+        SectionHeader(stringResource(R.string.usage_devices_title))
+        GroupCard {
+            if (devices.isEmpty()) {
+                GroupRow(stringResource(R.string.usage_devices_empty), labelLines = 4, divider = false)
+            } else {
+                val top = devices.first().totalBytes
+                val shown = devices.take(if (expanded) devices.size else TOP_DEVICES)
+                shown.forEachIndexed { i, usage ->
+                    DeviceUsageRow(usage, names[usage.mac] ?: usage.mac, top, divider = i < shown.lastIndex || more)
+                }
+            }
+            if (more) {
+                GroupRow(
                     if (expanded) {
                         stringResource(R.string.usage_devices_less)
                     } else {
                         stringResource(R.string.usage_devices_more, devices.size)
                     },
+                    labelColor = palette.accent,
+                    divider = false,
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.testTag("usage-devices-more"),
                 )
             }
         }
+        GroupFooter(
+            stringResource(if (recorder.monthly) R.string.usage_devices_period else R.string.usage_devices_period_other),
+            Modifier.padding(top = 6.dp),
+        )
     }
 }
 
 @Composable
-private fun DeviceUsageRow(usage: DeviceUsage, name: String, top: Long) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun DeviceUsageRow(usage: DeviceUsage, name: String, top: Long, divider: Boolean) {
+    val palette = LocalPalette.current
+    Column {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = palette.label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(formatBytes(usage.totalBytes), style = MaterialTheme.typography.bodyLarge, color = palette.secondary)
+            }
+            MeterBar(fraction(usage.totalBytes, top), color = LocalChartColors.current.received)
             Text(
-                name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                stringResource(R.string.usage_devices_detail, formatBytes(usage.receivedBytes), formatBytes(usage.sentBytes)),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.secondary,
             )
-            Text(formatBytes(usage.totalBytes), style = MaterialTheme.typography.bodyMedium)
         }
-        LinearProgressIndicator(
-            progress = { fraction(usage.totalBytes, top) },
-            color = LocalChartColors.current.received,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            drawStopIndicator = {},
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            stringResource(R.string.usage_devices_detail, formatBytes(usage.receivedBytes), formatBytes(usage.sentBytes)),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (divider) HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = palette.separator)
     }
 }
 
 /** Ofrece instalar nlbwmon o terminar de configurarlo, para ver lo que gasta cada aparato. */
 @Composable
 fun DeviceRecorderCard(recorder: DeviceRecorder, actions: RecorderActions) {
-    val busy = actions.progress != null
-    InfoCard(stringResource(R.string.usage_devices_offer_title), Modifier.testTag("usage-devices-offer")) {
-        when (recorder) {
-            is DeviceRecorder.Missing -> {
-                Text(stringResource(R.string.usage_devices_missing_body), style = MaterialTheme.typography.bodyMedium)
-                if (recorder.fits) {
-                    Button(
-                        onClick = actions.onInstallDevices,
-                        enabled = actions.enabled && !busy,
-                        modifier = Modifier.testTag("usage-devices-install"),
-                    ) {
-                        Text(stringResource(R.string.usage_recorder_install))
-                    }
-                } else {
-                    Text(
-                        stringResource(R.string.usage_devices_no_space, formatBytes((recorder.freeKiB ?: 0) * KIB)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-            DeviceRecorder.NeedsSetup -> {
-                Text(stringResource(R.string.usage_devices_setup_body), style = MaterialTheme.typography.bodyMedium)
-                Button(
-                    onClick = actions.onSetUpDevices,
-                    enabled = actions.enabled && !busy,
-                    modifier = Modifier.testTag("usage-devices-setup"),
-                ) {
-                    Text(stringResource(R.string.usage_recorder_setup))
-                }
-            }
-            is DeviceRecorder.Ready -> Unit
-        }
+    val enabled = actions.enabled && actions.progress == null
+    when (recorder) {
+        is DeviceRecorder.Missing -> OfferGroup(
+            stringResource(R.string.usage_devices_offer_title),
+            stringResource(R.string.usage_devices_missing_body),
+            action = stringResource(R.string.usage_recorder_install).takeIf { recorder.fits },
+            onAction = actions.onInstallDevices,
+            enabled = enabled,
+            problem = noSpace(R.string.usage_devices_no_space, recorder.fits, recorder.freeKiB),
+            actionTag = "usage-devices-install",
+            modifier = Modifier.testTag("usage-devices-offer"),
+        )
+        DeviceRecorder.NeedsSetup -> OfferGroup(
+            stringResource(R.string.usage_devices_offer_title),
+            stringResource(R.string.usage_devices_setup_body),
+            action = stringResource(R.string.usage_recorder_setup),
+            onAction = actions.onSetUpDevices,
+            enabled = enabled,
+            actionTag = "usage-devices-setup",
+            modifier = Modifier.testTag("usage-devices-offer"),
+        )
+        is DeviceRecorder.Ready -> Unit
     }
 }
-
-private const val KIB = 1024L

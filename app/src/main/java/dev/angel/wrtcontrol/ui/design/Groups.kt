@@ -80,11 +80,13 @@ fun GroupRow(
     value: String? = null,
     supporting: String? = null,
     supportingLines: Int = 2,
+    labelLines: Int = 1,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     chevron: Boolean = false,
     divider: Boolean = true,
     labelColor: Color? = null,
+    valueColor: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val palette = LocalPalette.current
@@ -113,7 +115,7 @@ fun GroupRow(
                     label,
                     style = MaterialTheme.typography.bodyLarge,
                     color = labelColor ?: palette.label,
-                    maxLines = 1,
+                    maxLines = labelLines,
                     overflow = TextOverflow.Ellipsis,
                 )
                 supporting?.let {
@@ -131,7 +133,7 @@ fun GroupRow(
                 Text(
                     it,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = palette.secondary,
+                    color = valueColor ?: palette.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.End,

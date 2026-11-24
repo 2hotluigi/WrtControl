@@ -2,17 +2,11 @@ package dev.angel.wrtcontrol.ui.home
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import dev.angel.wrtcontrol.R
-import dev.angel.wrtcontrol.ui.ErrorBanner
-import dev.angel.wrtcontrol.ui.InfoCard
+import dev.angel.wrtcontrol.ui.design.OfferGroup
 import java.io.File
 
 /** Cómo va el informe del router: preparándose ([busy]) o con un error que contar. */
@@ -21,17 +15,15 @@ data class ReportUi(val busy: Boolean = false, val error: String? = null, val on
 /** Qué es el informe del router, qué no lleva y el botón para compartirlo (ver openwrt/DeviceReport.kt). */
 @Composable
 fun ReportCard(report: ReportUi) {
-    InfoCard(stringResource(R.string.report_title)) {
-        Text(
-            stringResource(R.string.report_body),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        report.error?.let { ErrorBanner(it) }
-        OutlinedButton(onClick = report.onShare, enabled = !report.busy, modifier = Modifier.testTag("report-share")) {
-            Text(stringResource(if (report.busy) R.string.report_busy else R.string.report_share))
-        }
-    }
+    OfferGroup(
+        stringResource(R.string.report_title),
+        stringResource(R.string.report_body),
+        action = stringResource(if (report.busy) R.string.report_busy else R.string.report_share),
+        onAction = report.onShare,
+        enabled = !report.busy,
+        problem = report.error,
+        actionTag = "report-share",
+    )
 }
 
 /** Guarda [json] en la caché de la app y abre el menú de compartir de Android con ese archivo. */

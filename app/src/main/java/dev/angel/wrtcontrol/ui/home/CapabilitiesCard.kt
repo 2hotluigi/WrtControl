@@ -1,13 +1,8 @@
 package dev.angel.wrtcontrol.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -20,8 +15,11 @@ import dev.angel.wrtcontrol.openwrt.availability
 import dev.angel.wrtcontrol.openwrt.notVerifiedDetail
 import dev.angel.wrtcontrol.openwrt.wifiSummary
 import dev.angel.wrtcontrol.text
-import dev.angel.wrtcontrol.ui.InfoCard
-import dev.angel.wrtcontrol.ui.StatusPill
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.GroupFooter
+import dev.angel.wrtcontrol.ui.design.GroupRow
+import dev.angel.wrtcontrol.ui.design.LocalPalette
+import dev.angel.wrtcontrol.ui.design.SectionHeader
 
 /**
  * Cada función de la app: si este router puede con ella, si hay que instalar algo o por qué no.
@@ -31,28 +29,32 @@ import dev.angel.wrtcontrol.ui.StatusPill
  */
 @Composable
 fun CapabilitiesCard(capabilities: Capabilities, verified: Set<Feature>? = null) {
-    InfoCard(stringResource(R.string.capability_title)) {
-        Feature.entries.forEach { feature ->
-            FeatureRow(feature, capabilities.availability(feature), verified?.let { feature in it }, capabilities.version)
+    Column {
+        SectionHeader(stringResource(R.string.capability_title))
+        GroupCard {
+            Feature.entries.forEachIndexed { i, feature ->
+                FeatureRow(
+                    feature,
+                    capabilities.availability(feature),
+                    verified?.let { feature in it },
+                    capabilities.version,
+                    divider = i < Feature.entries.lastIndex,
+                )
+            }
         }
-        Text(
-            wifiSummary(capabilities.radios).text(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        GroupFooter(
+            listOfNotNull(
+                wifiSummary(capabilities.radios).text(),
+                stringResource(R.string.capability_low_memory).takeIf { capabilities.lowMemory },
+            ).joinToString("\n\n"),
+            Modifier.padding(top = 6.dp),
         )
-        if (capabilities.lowMemory) {
-            Text(
-                stringResource(R.string.capability_low_memory),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
 /** [verified]: si ya funciona en este router (null: no se sabe). [version]: la de OpenWrt del router. */
 @Composable
-private fun FeatureRow(feature: Feature, availability: Availability, verified: Boolean?, version: String) {
+private fun FeatureRow(feature: Feature, availability: Availability, verified: Boolean?, version: String, divider: Boolean) {
     val (label, ok) = when (availability) {
         Availability.Ready -> when (verified) {
             null -> stringResource(R.string.capability_ready) to true
@@ -67,13 +69,19 @@ private fun FeatureRow(feature: Feature, availability: Availability, verified: B
         is Availability.Installable -> stringResource(R.string.capability_installable_detail, availability.packages.joinToString())
         is Availability.Unsupported -> availability.reason.text()
     }
-    Column(Modifier.fillMaxWidth().testTag("capability-${feature.name}"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(feature.title.text(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            StatusPill(label, ok)
-        }
-        if (detail != null) {
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+    val palette = LocalPalette.current
+    GroupRow(
+        feature.title.text(),
+        value = label,
+        valueColor = when (ok) {
+            true -> palette.good
+            false -> palette.bad
+            null -> palette.secondary
+        },
+        supporting = detail,
+        supportingLines = 4,
+        labelLines = 2,
+        divider = divider,
+        modifier = Modifier.testTag("capability-${feature.name}"),
+    )
 }

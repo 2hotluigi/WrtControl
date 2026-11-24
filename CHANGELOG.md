@@ -20,6 +20,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 - Familia y Seguridad rehechas: cada persona en una tarjeta con cómo está su internet y botones
   para pausarlo, darle más tiempo o editarla; Seguridad agrupa los aparatos nuevos y el bloqueo de
   la app, y su botón avisa con un punto si algo espera.
+- Uso de internet y Router con el diseño nuevo: pestañas para el periodo, cifras grandes, barras
+  para lo que gasta cada aparato, la memoria y el disco, y el estado de cada función en color.
 
 ## [0.5.0]
 
