@@ -6,6 +6,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Cambiado
+- Colores nuevos: fondo negro con tarjetas gris oscuro en modo oscuro (gris claro y tarjetas
+  blancas en claro) y un azul más vivo. Es el primer paso del diseño nuevo de la app.
+
 ## [0.5.0]
 
 ### Añadido
