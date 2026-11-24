@@ -49,6 +49,5 @@
     <string name="usage_busy_setup_devices">Setting up nlbwmon…</string>
     <string name="usage_devices_no_config">nlbwmon is installed but its settings are missing. Reinstall it from LuCI.</string>
     <string name="usage_devices_not_started">nlbwmon didn\'t start again with the change, so everything was left as it was.</string>
-    <string name="devices_usage_month">This month: %1$s</string>
     <string name="usage_devices_period_other">In nlbwmon\'s current period (set in LuCI).</string>
 </resources>

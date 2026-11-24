@@ -144,7 +144,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
       últimas 24 horas con su gráfica, Familia en una fila y la cuadrícula de funciones con su
       estado debajo. Probado en el emulador contra el GL-MT6000; por el camino, la barra de arriba y
       la píldora respetan ahora la barra de estado y la de gestos.
-    - Dispositivos y la ficha de un dispositivo (pantalla en vez de diálogo).
+    - ~~Dispositivos y la ficha de un dispositivo~~: hecho. Lista con total / en línea / fuera,
+      pestañas Todos · Por persona · Por tipo y filas con el icono del tipo, el punto de estado, la
+      IP y lo de este mes. La ficha es una pantalla (antes un diálogo): consumo del mes, controles
+      redondos de internet, detalles (nombre y persona se cambian desde su fila) y la dirección fija
+      con su interruptor. Probado en el emulador contra el GL-MT6000 (20 aparatos), solo mirando.
     - Familia y Seguridad.
     - Uso de internet, Wi-Fi, Invitados, Funciones del router y Router.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
