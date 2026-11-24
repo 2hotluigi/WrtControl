@@ -6,6 +6,10 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+## [0.6.0]
+
+Diseño nuevo de toda la app.
+
 ### Cambiado
 - Colores nuevos: fondo negro con tarjetas gris oscuro en modo oscuro (gris claro y tarjetas
   blancas en claro) y un azul más vivo. Es el primer paso del diseño nuevo de la app.
@@ -179,7 +183,8 @@ Primera versión publicada.
 - Bloqueo con huella o PIN.
 - Avisa si el router tiene una versión de OpenWrt anterior a 24.10.
 
-[Sin publicar]: https://github.com/2hotluigi/WrtControl/compare/v0.5.0...HEAD
+[Sin publicar]: https://github.com/2hotluigi/WrtControl/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/2hotluigi/WrtControl/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/2hotluigi/WrtControl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/2hotluigi/WrtControl/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/2hotluigi/WrtControl/compare/v0.2.0...v0.3.0
