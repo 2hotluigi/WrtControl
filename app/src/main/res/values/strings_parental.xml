@@ -179,4 +179,6 @@
     <string name="parental_people">Personas</string>
     <string name="parental_pause_short">Pausar</string>
     <string name="parental_clear_extra_short">Quitar extra</string>
+    <string name="profile_mac_label" translatable="false">MAC</string>
+    <string name="profile_site_label">Sitio</string>
 </resources>

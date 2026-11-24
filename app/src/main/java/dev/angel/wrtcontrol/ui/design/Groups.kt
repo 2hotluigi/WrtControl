@@ -174,6 +174,32 @@ fun RowIcon(icon: Int, tint: Color, badge: Color? = null) {
 /** Lo apagado se ve, pero más tenue. */
 private const val DISABLED_ALPHA = 0.5f
 
+/** El interruptor de la app, suelto: para ponerlo al final de una fila que ya tiene otras cosas. */
+@Composable
+fun PlainSwitch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    val palette = LocalPalette.current
+    Switch(
+        checked = checked,
+        onCheckedChange = onChange,
+        enabled = enabled,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = palette.accent,
+            checkedBorderColor = palette.accent,
+            uncheckedThumbColor = Color.White,
+            uncheckedTrackColor = palette.raised,
+            uncheckedBorderColor = palette.raised,
+            disabledCheckedThumbColor = Color.White.copy(alpha = DISABLED_ALPHA),
+            disabledCheckedTrackColor = palette.accent.copy(alpha = DISABLED_ALPHA),
+            disabledCheckedBorderColor = palette.accent.copy(alpha = DISABLED_ALPHA),
+            disabledUncheckedThumbColor = Color.White.copy(alpha = DISABLED_ALPHA),
+            disabledUncheckedTrackColor = palette.raised.copy(alpha = DISABLED_ALPHA),
+            disabledUncheckedBorderColor = palette.raised.copy(alpha = DISABLED_ALPHA),
+        ),
+        thumbContent = null,
+    )
+}
+
 /** Una fila con interruptor. */
 @Composable
 fun SwitchRow(
@@ -194,25 +220,7 @@ fun SwitchRow(
         divider = divider,
         onClick = { if (enabled) onChange(!checked) },
         modifier = modifier,
-        trailing = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onChange,
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = palette.accent,
-                    checkedBorderColor = palette.accent,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = palette.raised,
-                    uncheckedBorderColor = palette.raised,
-                    disabledUncheckedThumbColor = Color.White.copy(alpha = DISABLED_ALPHA),
-                    disabledUncheckedTrackColor = palette.raised.copy(alpha = DISABLED_ALPHA),
-                    disabledUncheckedBorderColor = palette.raised.copy(alpha = DISABLED_ALPHA),
-                ),
-                thumbContent = null,
-            )
-        },
+        trailing = { PlainSwitch(checked, onChange, enabled = enabled) },
     )
 }
 

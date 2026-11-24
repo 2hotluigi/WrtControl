@@ -174,4 +174,5 @@
     <string name="parental_people">People</string>
     <string name="parental_pause_short">Pause</string>
     <string name="parental_clear_extra_short">End extra</string>
+    <string name="profile_site_label">Site</string>
 </resources>
