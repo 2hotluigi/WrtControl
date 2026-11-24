@@ -47,7 +47,8 @@ fun AppFrame(
         topBar = {
             Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
                 if (pageTitle != null) {
-                    CenterTopBar(pageTitle, start = BarAction(R.drawable.ic_back, stringResource(R.string.common_back), onBack, "more-back"))
+                    val back = BarAction(R.drawable.ic_back, stringResource(R.string.common_back), onBack, "more-back")
+                    CenterTopBar(pageTitle, start = back)
                 } else {
                     CenterTopBar(
                         title,
