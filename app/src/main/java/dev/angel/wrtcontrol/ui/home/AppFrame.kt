@@ -1,8 +1,12 @@
 package dev.angel.wrtcontrol.ui.home
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -39,31 +43,39 @@ fun AppFrame(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = palette.background,
+        // La app dibuja de borde a borde: las barras dejan sitio a la de estado y a la de gestos.
         topBar = {
-            if (pageTitle != null) {
-                CenterTopBar(pageTitle, start = BarAction(R.drawable.ic_back, stringResource(R.string.common_back), onBack, "more-back"))
-            } else {
-                CenterTopBar(
-                    title,
-                    subtitle = subtitle,
-                    subtitleAccent = subtitleAccent,
-                    end = BarAction(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings, "open-settings"),
-                    subtitleTag = "router-link",
-                )
+            Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+                if (pageTitle != null) {
+                    CenterTopBar(pageTitle, start = BarAction(R.drawable.ic_back, stringResource(R.string.common_back), onBack, "more-back"))
+                } else {
+                    CenterTopBar(
+                        title,
+                        subtitle = subtitle,
+                        subtitleAccent = subtitleAccent,
+                        end = BarAction(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings, "open-settings"),
+                        subtitleTag = "router-link",
+                    )
+                }
             }
         },
         bottomBar = {
             if (pageTitle == null) {
-                FloatingNavBar(
-                    items = TABS.map { NavItem(it.icon, stringResource(it.label), "tab-${it.name}") },
-                    selected = TABS.indexOf(section),
-                    onSelect = { onSection(TABS[it]) },
-                    round = NavItem(Section.Security.icon, stringResource(Section.Security.label), "tab-Security"),
-                    roundSelected = section == Section.Security,
-                    roundBadge = securityBadge,
-                    onRound = { onSection(Section.Security) },
-                )
+                Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) { NavBar(section, onSection, securityBadge) }
             }
         },
     ) { padding -> Box(Modifier.padding(padding)) { content() } }
+}
+
+@Composable
+private fun NavBar(section: Section, onSection: (Section) -> Unit, securityBadge: Boolean) {
+    FloatingNavBar(
+        items = TABS.map { NavItem(it.icon, stringResource(it.label), "tab-${it.name}") },
+        selected = TABS.indexOf(section),
+        onSelect = { onSection(TABS[it]) },
+        round = NavItem(Section.Security.icon, stringResource(Section.Security.label), "tab-Security"),
+        roundSelected = section == Section.Security,
+        roundBadge = securityBadge,
+        onRound = { onSection(Section.Security) },
+    )
 }
