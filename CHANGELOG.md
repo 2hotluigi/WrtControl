@@ -22,6 +22,8 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   la app, y su botón avisa con un punto si algo espera.
 - Uso de internet y Router con el diseño nuevo: pestañas para el periodo, cifras grandes, barras
   para lo que gasta cada aparato, la memoria y el disco, y el estado de cada función en color.
+- Wi-Fi e Invitados con el diseño nuevo: cada ajuste en su grupo, "Guardar" junto a lo que guarda y
+  la señal de cada aparato conectado en dBm. Los avisos de toda la app llevan ahora un icono.
 
 ## [0.5.0]
 

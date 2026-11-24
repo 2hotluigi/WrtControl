@@ -49,7 +49,6 @@
     <string name="wifi_country_use">Poner %1$s</string>
     <string name="wifi_country_other">Elegir otro país</string>
     <string name="wifi_country_choose">Elegir país</string>
-    <string name="wifi_country_change">Cambiar</string>
     <string name="wifi_country_search">Buscar</string>
     <string name="wifi_country_list_error">El router no dejó leer su lista de países.</string>
     <string name="wifi_country_busy">Cambiando el país del Wi-Fi…</string>
@@ -77,9 +76,8 @@
     <string name="wifi_width_preview_radar">El router escuchará un minuto por si hay radares antes de volver a emitir en 5 GHz.</string>
     <string name="wifi_channel_title">Canal</string>
     <string name="wifi_channel_help">El router mira qué canales usan las redes de alrededor y propone el más libre. Tarda unos segundos y, si el Wi-Fi está encendido, puede ir a tirones mientras busca.</string>
-    <string name="wifi_channel_now">%1$s: canal %2$s</string>
     <string name="wifi_channel_auto">automático</string>
-    <string name="wifi_channel_find">Buscar el más libre</string>
+    <string name="wifi_channel_find">Buscar</string>
     <string name="wifi_channel_searching">Buscando…</string>
     <string name="wifi_channel_failed">El router no pudo mirar las redes de alrededor.</string>
     <string name="wifi_channel_best_already">El canal actual es de los más libres (redes cerca: %1$d): no merece la pena cambiar.</string>
@@ -99,7 +97,7 @@
     <string name="wifi_power_preview_title">Cambiar la potencia</string>
     <string name="wifi_clients_title">Conectados ahora</string>
     <string name="wifi_clients_help">Un aparato con señal débil va lento y frena a los demás: acércalo o pon otro punto de acceso.</string>
-    <string name="wifi_client_signal">%1$s (%2$d dBm)</string>
+    <string name="wifi_client_dbm">%1$d dBm</string>
     <string name="wifi_signal_excellent">Señal muy buena</string>
     <string name="wifi_signal_good">Señal buena</string>
     <string name="wifi_signal_fair">Señal justa</string>
@@ -128,4 +126,7 @@
     <string name="guest_remove_note">Se borran su nombre, su contraseña, su red y sus reglas. Para volver a tenerlo habrá que crearlo de nuevo, con otro QR.</string>
     <string name="guest_remove_clients">Los invitados conectados ahora se quedarán sin Wi-Fi.</string>
     <string name="guest_busy_removing">Borrando el Wi-Fi de invitados…</string>
+    <string name="wifi_network_section">Red</string>
+    <string name="wifi_field_name">Nombre</string>
+    <string name="wifi_section_band">%1$s · %2$s</string>
 </resources>

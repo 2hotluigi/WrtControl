@@ -47,7 +47,6 @@
     <string name="wifi_country_use">Set %1$s</string>
     <string name="wifi_country_other">Pick another country</string>
     <string name="wifi_country_choose">Pick a country</string>
-    <string name="wifi_country_change">Change</string>
     <string name="wifi_country_search">Search</string>
     <string name="wifi_country_list_error">The router didn\'t let the app read its list of countries.</string>
     <string name="wifi_country_busy">Changing the Wi-Fi country…</string>
@@ -75,9 +74,8 @@
     <string name="wifi_width_preview_radar">The router will listen for radars for a minute before transmitting on 5 GHz again.</string>
     <string name="wifi_channel_title">Channel</string>
     <string name="wifi_channel_help">The router checks which channels nearby networks use and suggests the clearest one. It takes a few seconds and, if Wi-Fi is on, it may stutter while it looks.</string>
-    <string name="wifi_channel_now">%1$s: channel %2$s</string>
     <string name="wifi_channel_auto">automatic</string>
-    <string name="wifi_channel_find">Find the clearest</string>
+    <string name="wifi_channel_find">Find</string>
     <string name="wifi_channel_searching">Looking…</string>
     <string name="wifi_channel_failed">The router couldn\'t check the networks around.</string>
     <string name="wifi_channel_best_already">The current channel is among the clearest (networks nearby: %1$d): not worth changing.</string>
@@ -97,7 +95,7 @@
     <string name="wifi_power_preview_title">Change power</string>
     <string name="wifi_clients_title">Connected now</string>
     <string name="wifi_clients_help">A device with a weak signal is slow and slows the others down: move it closer or add another access point.</string>
-    <string name="wifi_client_signal">%1$s (%2$d dBm)</string>
+    <string name="wifi_client_dbm">%1$d dBm</string>
     <string name="wifi_signal_excellent">Very good signal</string>
     <string name="wifi_signal_good">Good signal</string>
     <string name="wifi_signal_fair">Fair signal</string>
@@ -126,4 +124,7 @@
     <string name="guest_remove_note">Its name, password, network and rules are deleted. To have it again you\'ll need to create it anew, with a new QR code.</string>
     <string name="guest_remove_clients">Guests connected now will lose Wi-Fi.</string>
     <string name="guest_busy_removing">Deleting guest Wi-Fi…</string>
+    <string name="wifi_network_section">Network</string>
+    <string name="wifi_field_name">Name</string>
+    <string name="wifi_section_band">%1$s · %2$s</string>
 </resources>

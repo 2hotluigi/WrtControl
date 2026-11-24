@@ -162,7 +162,14 @@ marcha guiada. Cada uno se apoya en los anteriores.
       carga y memoria arriba; sistema con memoria y disco en barras; qué puede hacer con su estado en
       color; cada conexión en su grupo y el informe al final. Lo nuevo (`ValueRows`, `MeterRow`,
       `OfferGroup`) va en `ui/design/Rows.kt`. Probado con las capturas.
-    - Wi-Fi, Invitados, Funciones del router y el editor de perfiles.
+    - ~~Wi-Fi e Invitados~~: hecho. Nombre y contraseña como campos dentro de su grupo, la
+      seguridad, el ancho y la potencia como opciones con marca, las bandas con interruptor y
+      "Guardar" justo debajo de lo que guarda; lo que se aplica al momento (horario, país, ancho,
+      canal, potencia) va después, cada cosa en su grupo con la explicación al pie. Conectados
+      ahora con la señal en dBm (en rojo si es débil). Invitados: el interruptor, la red, guardar,
+      el QR en su tarjeta y borrarlo. Los avisos (`NoticeCard`) de toda la app pasan a tarjeta con
+      icono. Piezas nuevas `FieldRow` y `CheckRow` (`ui/design/Fields.kt`). Probado con las capturas.
+    - Funciones del router y el editor de perfiles.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.
   Después, emparejar otros teléfonos por QR.
