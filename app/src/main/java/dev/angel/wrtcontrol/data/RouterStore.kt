@@ -73,6 +73,17 @@ class RouterStore(private val context: Context, private val box: SecretBox) {
         context.routerDataStore.edit { it[setupKey(address)] = true }
     }
 
+    /**
+     * El router de [address] se restableció: lo que se sabía de él ya no vale. Vuelve a ofrecerse
+     * la puesta en marcha y se olvida qué funcionaba ([verifiedKey], ver [verified]).
+     */
+    suspend fun forgetAfterReset(address: String, verifiedKey: String) {
+        context.routerDataStore.edit {
+            it.remove(setupKey(address))
+            it.remove(verifiedKey(verifiedKey))
+        }
+    }
+
     suspend fun saveRouterId(routerId: String) {
         context.routerDataStore.edit { it[ROUTER_ID] = routerId }
     }

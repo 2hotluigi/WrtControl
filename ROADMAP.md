@@ -246,6 +246,11 @@ marcha guiada. Cada uno se apoya en los anteriores.
 
 ## Hito 2 · Lo que se espera de un router (P1)
 
+- ~~**Reiniciar y restablecer de fábrica** desde Ajustes.~~ Hecho: `system.reboot` y
+  `/sbin/firstboot -r -y`, los mismos permisos que LuCI, cada uno con su confirmación (restablecer
+  pide marcar que se entiende). Al reiniciar la app espera a que vuelva (lleva encendido menos que
+  antes); al restablecer olvida el acceso remoto y la puesta en marcha y sale. `RouterPowerTest` y
+  `RouterPowerVmTest` (reinicia la VM de QEMU en la CI; restablecer no se lanza en pruebas).
 - **Wi-Fi:** nombre y clave, red de invitados aislada con QR para compartirla, horario del Wi-Fi.
   Por partes:
   - ~~*Invitados:* red aparte, aislada, con QR.~~ Hecho: Más → Wi-Fi de invitados (red, reparto,
