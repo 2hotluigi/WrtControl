@@ -20,15 +20,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           # El mismo que pide gradle/gradle-daemon-jvm.properties: así no lo descarga en cada ejecución.
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Pruebas unitarias
         # Las pruebas unitarias y, con ellas, la comparación de las capturas (Roborazzi).
@@ -45,7 +45,7 @@ jobs:
 
       - name: Informes
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informes
           path: |
@@ -62,15 +62,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
       # Las mismas dependencias que "android": lee su caché y no escribe una propia.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: true
 
@@ -79,7 +79,7 @@ jobs:
           WRTCONTROL_NFT_SAMPLES: ${{ runner.temp }}/nft-samples
         run: ./gradlew :app:testDebugUnitTest --tests '*NftSamplesTest*' --rerun
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nft-samples
           path: ${{ runner.temp }}/nft-samples
@@ -96,9 +96,9 @@ jobs:
       matrix:
         openwrt: ['22.03.7', '23.05.6', '24.10.8', '25.12.6', SNAPSHOT]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: nft-samples
           path: ${{ runner.temp }}/nft-samples
@@ -117,14 +117,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: tunnel/go.mod
           cache-dependency-path: tunnel/go.sum
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
@@ -146,7 +146,7 @@ jobs:
 
       - name: El .aar de la CI
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wrtcvpn-aar
           path: ${{ runner.temp }}/aar/
@@ -160,9 +160,9 @@ jobs:
       run:
         working-directory: tunnel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: tunnel/go.mod
           cache-dependency-path: tunnel/go.sum
