@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
     <string name="more_usage_title">Uso de internet</string>
-    <string name="more_usage_detail">Cuánto se ha descargado y subido</string>
     <string name="usage_received">Recibido</string>
     <string name="usage_sent">Enviado</string>
     <string name="usage_total">Total</string>

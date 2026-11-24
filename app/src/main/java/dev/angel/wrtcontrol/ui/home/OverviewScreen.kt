@@ -38,6 +38,9 @@ import dev.angel.wrtcontrol.ui.LoadableContent
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.LocalStatusColors
 import dev.angel.wrtcontrol.ui.NoticeCard
+import dev.angel.wrtcontrol.ui.design.FeatureTile
+import dev.angel.wrtcontrol.ui.design.GroupCard
+import dev.angel.wrtcontrol.ui.design.LocalPalette
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.parental.onWifiBehind
 import dev.angel.wrtcontrol.ui.watchAsState
@@ -115,6 +118,28 @@ fun OverviewContent(
         if ((overview.profiles ?: 0) > 0) item {
             Button(onClick = { onOpen(OverviewLink.Family) }, modifier = Modifier.testTag("overview-pause")) {
                 Text(stringResource(R.string.overview_pause_action))
+            }
+        }
+        item { FeatureGrid(onOpen) }
+    }
+}
+
+/** Lo que antes estaba en Más: cada función, con su icono. */
+@Composable
+private fun FeatureGrid(onOpen: (OverviewLink) -> Unit) {
+    val palette = LocalPalette.current
+    val tiles = listOf(
+        Triple(R.drawable.ic_wifi, R.string.overview_grid_wifi, OverviewLink.Wifi) to palette.accent,
+        Triple(R.drawable.ic_person, R.string.overview_grid_guest, OverviewLink.Guest) to palette.good,
+        Triple(R.drawable.ic_bar_chart, R.string.overview_grid_usage, OverviewLink.Usage) to palette.accent,
+        Triple(R.drawable.ic_extension, R.string.overview_grid_features, OverviewLink.Features) to palette.warning,
+    )
+    GroupCard {
+        Row(Modifier.padding(4.dp)) {
+            tiles.forEach { (tile, tint) ->
+                val (icon, label, link) = tile
+                val tag = "more-${link.name.lowercase()}"
+                FeatureTile(icon, stringResource(label), tint, Modifier.weight(1f).testTag(tag)) { onOpen(link) }
             }
         }
     }

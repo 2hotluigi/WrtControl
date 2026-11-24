@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
     <string name="more_guest_title">Wi-Fi de invitados</string>
-    <string name="more_guest_detail">Una red aparte para las visitas, con código QR</string>
     <string name="guest_intro">Una red aparte para quien viene de visita: tiene internet, pero no ve tus aparatos ni puede entrar al router.</string>
     <string name="guest_switch">Wi-Fi de invitados</string>
     <string name="guest_off_keeps">Al apagarlo se conservan el nombre y la contraseña para la próxima visita.</string>

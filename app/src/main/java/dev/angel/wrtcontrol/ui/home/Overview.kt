@@ -1,5 +1,7 @@
 package dev.angel.wrtcontrol.ui.home
 
+import androidx.annotation.StringRes
+import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.Txt
 import dev.angel.wrtcontrol.openwrt.Device
 import dev.angel.wrtcontrol.openwrt.LinkProblem
@@ -13,10 +15,24 @@ import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 
 /** A dónde lleva lo que se toca en Inicio. */
-enum class OverviewLink { Devices, Family, Security, Wifi, Guest }
+enum class OverviewLink { Devices, Family, Security, Wifi, Guest, Usage, Features }
 
-/** Las páginas de Más. Inicio abre algunas directamente (el Wi-Fi). */
-enum class MorePage { Menu, Wifi, Guest, Usage, Features, Router, Pair }
+/**
+ * Las páginas interiores, encima de las pestañas: las de Inicio (Wi-Fi, invitados, consumo,
+ * funciones) y Ajustes con las suyas. [parent]: a dónde se vuelve (null: a la pestaña).
+ */
+enum class MorePage(@param:StringRes val title: Int) {
+    Settings(R.string.settings_title),
+    Wifi(R.string.more_wifi_title),
+    Guest(R.string.more_guest_title),
+    Usage(R.string.more_usage_title),
+    Features(R.string.more_features_title),
+    Router(R.string.more_router_title),
+    Pair(R.string.more_pair_title),
+    ;
+
+    val parent: MorePage? get() = if (this == Router || this == Pair) Settings else null
+}
 
 /** Cómo está el Wi-Fi de casa, para Inicio. */
 sealed interface HomeWifi {

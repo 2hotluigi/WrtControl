@@ -132,7 +132,7 @@ reacciona a las lecturas las haya pedido la pantalla que las haya pedido.
 
 ## Informe del router
 
-Más → Router → "Compartir informe" prepara un archivo JSON con lo que la app lee del router para
+Ajustes (el engranaje) → Router → "Compartir informe" prepara un archivo JSON con lo que la app lee del router para
 saber cómo es (`DeviceReport.kt`), para que quien tenga un router que no es el nuestro lo comparta
 (en un informe de router de GitHub) y la app se pruebe contra él. Solo lee; no cambia nada.
 
@@ -412,7 +412,7 @@ saltar (`SetupScreen`):
 4. **Qué va a cambiar en tu router:** nada todavía; lo que se escriba irá marcado como de la app y
    cada cambio se deshace solo si falla.
 
-**Añadir otro teléfono** (Más → Añadir otro teléfono): un código QR con un enlace
+**Añadir otro teléfono** (Ajustes → Añadir otro teléfono): un código QR con un enlace
 `wrtcontrol://connect?address=192.168.1.1&user=root`. La cámara del otro teléfono lo abre con la
 app, que rellena la dirección y el usuario; la contraseña se escribe a mano y nunca va en el código.
 Un enlace así puede venir de cualquiera (una web, un cartel), así que solo se acepta con una IPv4
@@ -500,14 +500,14 @@ redes (invitados, modo cliente, malla) no se tocan.
 - **Wi-Fi que dan otros aparatos.** Si el router no emite y el teléfono está por Wi-Fi en una red
   cuya puerta de enlace es el router (lo dice Android sin pedir permisos), ese Wi-Fi lo da otro
   aparato de la casa (repetidores, mesh en modo punto de acceso). Entonces la app no avisa de
-  "Wi-Fi apagado": lo explica, en Más → Wi-Fi y en la tarjeta del Wi-Fi de Inicio.
+  "Wi-Fi apagado": lo explica, en Inicio → Wi-Fi y en la tarjeta del Wi-Fi de Inicio.
 
 La puesta en marcha pide el país en un paso propio si el router tiene Wi-Fi y alguna radio está
-sin él (el mismo cambio que en Más → Wi-Fi, con su reversión). Con el país sin poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
+sin él (el mismo cambio que en Inicio → Wi-Fi, con su reversión). Con el país sin poner, el GL-MT6000 emitió bien en 2,4 GHz (canal 1) y en 5 GHz (canal 36).
 
 ## Wi-Fi de invitados: qué hace en el router
 
-Una red aparte para las visitas (Más → Wi-Fi de invitados): tienen internet, pero no ven los
+Una red aparte para las visitas (Inicio → Invitados): tienen internet, pero no ven los
 aparatos de casa ni pueden entrar al router. Todo lo que crea la app se llama `wrtcguest…`:
 
 - **network.** Un puente vacío (`br-wrtcguest`) y la interfaz `wrtcguest`, con dirección fija
