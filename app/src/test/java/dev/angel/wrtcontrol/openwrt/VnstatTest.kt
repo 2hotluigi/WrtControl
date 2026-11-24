@@ -102,6 +102,17 @@ class VnstatTest {
         assertFalse("un comentario no es una tarea", hasOtherJobs(withVnstatLine("# nada\n")))
     }
 
+    /** El de 24.10 viene con un salto de línea suelto: la línea se borra sola, pero el crontab vuelve tal cual. */
+    @Test
+    fun `crontab - vuelve byte a byte si nadie mas lo toco`() {
+        assertEquals("\n", restoredCrontab("\n", ""))
+        assertEquals("\n", restoredCrontab("\n", withVnstatLine("\n")))
+        val mine = "0 4 * * * /sbin/reboot\n\n"
+        assertEquals(mine, restoredCrontab(mine, "0 4 * * * /sbin/reboot\n"))
+        // Si otro (el horario del Wi-Fi) lo cambió mientras tanto, se respeta lo suyo.
+        assertEquals("5 3 * * 0 /sbin/wifi up\n", restoredCrontab("\n", "5 3 * * 0 /sbin/wifi up\n" + VNSTAT_CRON_LINE + "\n"))
+    }
+
     @Test
     fun `la orden de cron no lleva almohadilla - BusyBox cortaria ahi la linea`() {
         val command = VNSTAT_CRON_LINE.substringBeforeLast(" # ")

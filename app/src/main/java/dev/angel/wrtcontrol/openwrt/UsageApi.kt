@@ -11,9 +11,11 @@ import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusJson
 import dev.angel.wrtcontrol.ubus.callAs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -130,23 +132,35 @@ class UsageApi internal constructor(
      */
     private suspend fun keepData() {
         val before = ubus.fileRead(CRONTAB) ?: throw UserFacingException(txt(R.string.usage_recorder_denied))
+        // Que no exista no es lo mismo que vacío: con un crontab, aunque esté vacío, cron arranca con el router.
+        val existed = ubus.fileList(CRONTAB.substringBeforeLast('/'))?.contains(CRONTAB.substringAfterLast('/')) ?: true
         val cronWasRunning = ubus.serviceRunning("cron") == true
-        ubus.fileWrite(CRONTAB, withVnstatLine(before), mode = CRONTAB_MODE)
-        ubus.initAction("cron", "restart")
-        val done = withTimeoutOrNull(CRON_WAIT_MS) {
-            while (!vnstatKeepsData(optional { ubus.exec(VNSTAT, listOf("--showconfig")) }?.stdout.orEmpty())) delay(pollMs)
-            true
-        } ?: false
-        // La línea se borra sola al ejecutarse; si no llegó a hacerlo, se quita aquí. Si no había
-        // crontab, no se deja uno vacío: con él, cron arrancaría con el router sin nada que hacer.
-        val after = ubus.fileRead(CRONTAB).orEmpty()
-        val clean = withoutVnstatLine(after)
-        when {
-            clean.isEmpty() && before.isEmpty() -> optional { ubus.fileRemove(CRONTAB) }
-            clean != after -> ubus.fileWrite(CRONTAB, clean, mode = CRONTAB_MODE)
+        val done = try {
+            ubus.fileWrite(CRONTAB, withVnstatLine(before), mode = CRONTAB_MODE)
+            ubus.initAction("cron", "restart")
+            withTimeoutOrNull(CRON_WAIT_MS) {
+                while (!vnstatKeepsData(optional { ubus.exec(VNSTAT, listOf("--showconfig")) }?.stdout.orEmpty())) delay(pollMs)
+                true
+            } ?: false
+        } finally {
+            // Pase lo que pase, el crontab y cron vuelven a como estaban.
+            withContext(NonCancellable) { restoreCron(before, existed, cronWasRunning) }
         }
-        if (!cronWasRunning && !hasOtherJobs(after)) optional { ubus.initAction("cron", "stop") }
         if (!done) throw UserFacingException(txt(R.string.usage_recorder_not_saved))
+    }
+
+    /**
+     * La línea se borra sola al ejecutarse, pero deja el crontab algo distinto (sin líneas en blanco,
+     * o vacío donde no había fichero); si no llegó a ejecutarse, sigue ahí. Se deja como estaba.
+     */
+    private suspend fun restoreCron(before: String, existed: Boolean, cronWasRunning: Boolean) {
+        val current = ubus.fileRead(CRONTAB).orEmpty()
+        val target = restoredCrontab(before, current)
+        when {
+            !existed && target.isEmpty() -> optional { ubus.fileRemove(CRONTAB) }
+            target != current -> ubus.fileWrite(CRONTAB, target, mode = CRONTAB_MODE)
+        }
+        if (!cronWasRunning && !hasOtherJobs(target)) optional { ubus.initAction("cron", "stop") }
     }
 
     /** Tras instalar, rpcd se recarga y tarda en volver a atender: se espera a que conteste. */

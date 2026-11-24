@@ -66,6 +66,15 @@ internal fun withoutVnstatLine(crontab: String): String {
     return if (lines.isEmpty()) "" else lines.joinToString("\n") + "\n"
 }
 
+/**
+ * Cómo dejar el crontab al terminar, si ahora es [current] y antes era [before]: tal cual estaba
+ * (byte a byte) si nadie más lo ha tocado mientras tanto; si no, lo de ahora sin la línea de la app.
+ */
+internal fun restoredCrontab(before: String, current: String): String {
+    val clean = withoutVnstatLine(current)
+    return if (clean == withoutVnstatLine(before)) before else clean
+}
+
 /** ¿Hay algo que hacer en el crontab aparte de la línea de la app? */
 internal fun hasOtherJobs(crontab: String): Boolean =
     crontabLines(crontab).any { VNSTAT_MARK !in it && !it.trimStart().startsWith("#") }
