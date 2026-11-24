@@ -22,6 +22,9 @@ import dev.angel.wrtcontrol.ui.Proposals
  */
 data class DeviceChange(val label: String?, val fixedIp: String?, val owner: String? = null)
 
+/** Lo que se puede hacer con el internet de un aparato. [status]: cómo está si está cortado, o null. */
+class InternetControl(val status: String?, val onPause: (minutes: Long?) -> Unit, val onResume: () -> Unit)
+
 class DevicesViewModel(private val router: RouterAccess, private val monitor: RouterMonitor) : ViewModel() {
 
     private val changes = ChangeRunner(viewModelScope)

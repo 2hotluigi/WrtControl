@@ -60,14 +60,9 @@
     <string name="status_protocol">Protocol</string>
     <string name="status_device">Device</string>
     <string name="status_connected_for">Connected</string>
-    <plurals name="devices_count">
-        <item quantity="one">%1$d device on the network</item>
-        <item quantity="other">%1$d devices on the network</item>
-    </plurals>
     <string name="devices_none">No devices found.</string>
     <string name="devices_unnamed">Unnamed</string>
     <string name="devices_unnamed_vendor">%1$s device</string>
-    <string name="devices_private_mac">Private MAC</string>
     <string name="devices_private_mac_hint">It uses an address made up for this network instead of the factory one, so its brand can\'t be known. If it changes the address, the router will see it as a new device.</string>
     <string name="devices_ipv6_only">IPv6 only</string>
     <string name="devices_static_ip">Static IP</string>
@@ -81,7 +76,6 @@
     <string name="devices_edit_name_label">Name</string>
     <string name="devices_edit_name_help">Every phone with the app will see it. Leave it empty to use the name the device reports.</string>
     <string name="devices_edit_fixed_title">Fixed address</string>
-    <string name="devices_edit_fixed_help">The router will always give it %1$s. Handy for printers, cameras and consoles.</string>
     <string name="devices_edit_fixed_unavailable">It has no home address to reserve right now. Connect it and try again.</string>
     <string name="devices_edit_person_title">Whose is it?</string>
     <string name="devices_edit_person_help">That person\'s pauses, schedules and filters apply to this device.</string>
@@ -89,7 +83,6 @@
     <string name="devices_edit_no_profiles">Add people in Family to assign their devices to them.</string>
     <string name="devices_edit_save">Save</string>
     <string name="devices_edit_cancel">Cancel</string>
-    <string name="devices_edit_hint">Tap a device to name it, fix its address or say whose it is.</string>
     <string name="devices_busy_saving">Saving “%1$s”…</string>
     <string name="devices_paused_until">No internet until %1$s</string>
     <string name="devices_blocked">Blocked: no internet</string>
@@ -138,4 +131,35 @@
     <string name="overview_tile_paused">Paused</string>
     <string name="overview_tile_others">Another device</string>
     <string name="overview_tile_none">Not set up</string>
+    <string name="devices_stat_total">Total</string>
+    <string name="devices_stat_online">Online</string>
+    <string name="devices_stat_offline">Away</string>
+    <string name="devices_group_all">All</string>
+    <string name="devices_group_person">By person</string>
+    <string name="devices_group_kind">By type</string>
+    <string name="devices_section_all">Devices</string>
+    <string name="devices_section_online">Online</string>
+    <string name="devices_section_offline">Offline</string>
+    <string name="devices_section_no_person">No person</string>
+    <string name="devices_kind_phone">Phones and tablets</string>
+    <string name="devices_kind_computer">Computers</string>
+    <string name="devices_kind_tv">TVs and consoles</string>
+    <string name="devices_kind_network">Network</string>
+    <string name="devices_kind_smart">Smart home</string>
+    <string name="devices_kind_other">Other</string>
+    <string name="device_gone">This device is no longer on the network.</string>
+    <string name="device_stat_month">This month</string>
+    <string name="device_section_details">Details</string>
+    <string name="device_row_name">Name</string>
+    <string name="device_row_person">Person</string>
+    <string name="device_row_ip">IP address</string>
+    <string name="device_row_mac">MAC address</string>
+    <string name="device_row_vendor">Maker</string>
+    <string name="device_fixed_supporting">Always %1$s</string>
+    <string name="device_fixed_footer">The router will always give it the same address. Handy for printers, cameras and consoles.</string>
+    <string name="device_pause_30">30 min</string>
+    <string name="device_pause_60">1 hour</string>
+    <string name="device_pause_120">2 hours</string>
+    <string name="device_action_pause">Pause</string>
+    <string name="device_action_block_caption">No limit</string>
 </resources>

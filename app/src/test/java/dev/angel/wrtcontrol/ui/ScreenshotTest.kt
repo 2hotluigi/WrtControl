@@ -48,6 +48,7 @@ import dev.angel.wrtcontrol.openwrt.WifiRadio
 import dev.angel.wrtcontrol.openwrt.WifiSchedule
 import dev.angel.wrtcontrol.openwrt.WifiSecurity
 import dev.angel.wrtcontrol.openwrt.WifiState
+import dev.angel.wrtcontrol.openwrt.identify
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.parental.ApplyPhase
 import dev.angel.wrtcontrol.parental.Pause
@@ -62,10 +63,12 @@ import dev.angel.wrtcontrol.ui.home.ChannelSection
 import dev.angel.wrtcontrol.ui.home.ClientsSection
 import dev.angel.wrtcontrol.ui.home.CountrySection
 import dev.angel.wrtcontrol.ui.home.DeviceChange
+import dev.angel.wrtcontrol.ui.home.DeviceDetail
 import dev.angel.wrtcontrol.ui.home.DevicePauses
 import dev.angel.wrtcontrol.ui.home.DevicesContent
 import dev.angel.wrtcontrol.ui.home.GuestContent
 import dev.angel.wrtcontrol.ui.home.HomeWifi
+import dev.angel.wrtcontrol.ui.home.InternetControl
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
@@ -325,6 +328,47 @@ class ScreenshotTest {
                 LocalDateTime.of(2026, 11, 5, 18, 0),
             ),
             onOpen = {},
+            usage = mapOf(
+                "9C:29:76:00:00:01" to DeviceUsage("9C:29:76:00:00:01", 6L * GIB, GIB / 4),
+                "B8:27:EB:00:00:02" to DeviceUsage("B8:27:EB:00:00:02", 41L * GIB, 9L * GIB),
+            ),
+        )
+    }
+
+    /** La ficha de un aparato: de una persona, en línea, con lo de este mes y los controles de internet. */
+    @Test
+    fun `ficha de un dispositivo`() = both("ficha-dispositivo") {
+        val vendors = (RuntimeEnvironment.getApplication() as WrtApp).vendors
+        val phone = Device("9C:29:76:00:00:01", "moto-g-de-Ana", listOf("192.168.1.20"), emptyList(), LeaseState.Expires(40_000))
+            .copy(presence = Presence.Online, fixedIp = "192.168.1.20")
+        DeviceDetail(
+            device = phone,
+            identity = identify(phone, vendors),
+            profiles = listOf(Profile("a1", "Ana", listOf(phone.mac))),
+            canAssign = true,
+            progress = null,
+            error = null,
+            usage = DeviceUsage(phone.mac, 6L * GIB, GIB / 4),
+            internet = InternetControl(status = null, onPause = {}, onResume = {}),
+            thisPhone = false,
+        )
+    }
+
+    /** La misma, con internet cortado hasta las 19:30 y sin contar el consumo. */
+    @Test
+    fun `ficha de un dispositivo en pausa`() = both("ficha-dispositivo-pausa") {
+        val vendors = (RuntimeEnvironment.getApplication() as WrtApp).vendors
+        val phone = Device("A6:11:22:00:00:04", null, listOf("192.168.1.23"), emptyList(), LeaseState.Expires(40_000)).copy(presence = Presence.Idle)
+        DeviceDetail(
+            device = phone,
+            identity = identify(phone, vendors),
+            profiles = emptyList(),
+            canAssign = true,
+            progress = null,
+            error = null,
+            usage = null,
+            internet = InternetControl(status = "Sin internet hasta las 19:30", onPause = {}, onResume = {}),
+            thisPhone = false,
         )
     }
 

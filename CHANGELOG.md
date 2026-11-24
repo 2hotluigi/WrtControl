@@ -14,6 +14,9 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
   teléfono y desconectar, en Ajustes (el engranaje de arriba).
 - Inicio rehecho: si hay internet en grande, cuántos dispositivos hay y cuántos están en línea,
   lo que pide atención, lo gastado en las últimas 24 horas y un acceso a cada función con su estado.
+- Dispositivos rehecho: cuántos hay y cuántos están en línea, y la lista por estado, por persona o
+  por tipo. Cada aparato abre su ficha en una pantalla propia, con lo que ha gastado este mes,
+  botones para pausar o bloquear su internet y sus datos.
 
 ## [0.5.0]
 

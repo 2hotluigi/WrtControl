@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -86,53 +88,66 @@ fun GroupRow(
 ) {
     val palette = LocalPalette.current
     val inset = if (leading != null) RowPadding + LeadingSize + 12.dp else RowPadding
-    Row(
-        modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = 52.dp)
-            .drawBehind {
-                if (divider) {
-                    val y = size.height - 0.5.dp.toPx()
-                    drawLine(palette.separator, Offset(inset.toPx(), y), Offset(size.width, y), strokeWidth = 1.dp.toPx() / 2)
+    // El valor ocupa como mucho [VALUE_SHARE] del ancho; la etiqueta, lo que quede.
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val valueMax = maxWidth * VALUE_SHARE
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .heightIn(min = 52.dp)
+                .drawBehind {
+                    if (divider) {
+                        val y = size.height - 0.5.dp.toPx()
+                        drawLine(palette.separator, Offset(inset.toPx(), y), Offset(size.width, y), strokeWidth = 1.dp.toPx() / 2)
+                    }
                 }
-            }
-            .padding(horizontal = RowPadding, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        leading?.let { Box(Modifier.size(LeadingSize), contentAlignment = Alignment.Center) { it() } }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = palette.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            supporting?.let {
+                .padding(horizontal = RowPadding, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            leading?.let { Box(Modifier.size(LeadingSize), contentAlignment = Alignment.Center) { it() } }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.secondary,
-                    maxLines = supportingLines,
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = palette.label,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                supporting?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.secondary,
+                        maxLines = supportingLines,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-        }
-        // La etiqueta y el valor se reparten el ancho: si el valor no cabe, se corta él y no la etiqueta.
-        value?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodyLarge,
-                color = palette.secondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-        }
-        trailing?.invoke(this)
-        if (chevron) {
-            val chevronIcon = painterResource(R.drawable.ic_chevron)
-            Icon(chevronIcon, contentDescription = null, tint = palette.tertiary, modifier = Modifier.size(20.dp))
+            // Si el valor no cabe, se corta él y no la etiqueta.
+            value?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = palette.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.widthIn(max = valueMax),
+                )
+            }
+            trailing?.invoke(this)
+            if (chevron) {
+                val chevronIcon = painterResource(R.drawable.ic_chevron)
+                Icon(chevronIcon, contentDescription = null, tint = palette.tertiary, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
+
+/** Lo más que puede ocupar el valor de una fila. */
+private const val VALUE_SHARE = 0.6f
 
 private val LeadingSize = 32.dp
 

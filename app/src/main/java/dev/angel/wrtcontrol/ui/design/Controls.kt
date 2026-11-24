@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /** Dos o tres cifras grandes en una tarjeta, separadas por líneas verticales. */
 @Composable
@@ -43,7 +46,13 @@ fun StatStrip(stats: List<Stat>, modifier: Modifier = Modifier) {
                         stat.dot?.let { Box(Modifier.size(7.dp).clip(CircleShape).background(it)) }
                         Text(stat.label, style = MaterialTheme.typography.bodySmall, color = palette.secondary, maxLines = 1)
                     }
-                    Text(stat.value, style = BigNumber, color = palette.label, maxLines = 1)
+                    // Con tres cifras largas ("256 MiB") no caben a tamaño completo: la letra se reduce sola.
+                    BasicText(
+                        stat.value,
+                        style = BigNumber.copy(color = palette.label),
+                        maxLines = 1,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = BigNumber.fontSize),
+                    )
                 }
             }
         }
