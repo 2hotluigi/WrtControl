@@ -365,7 +365,7 @@ fun ProfileEditor(
                     }
                     item {
                         val included = filter.level != FilterLevel.None
-                        SwitchRow(
+                        HelpSwitch(
                             title = stringResource(R.string.profile_safe_search),
                             help = if (included) {
                                 stringResource(R.string.profile_safe_search_included)
@@ -490,7 +490,7 @@ fun ProfileEditor(
 
                     item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
                     item {
-                        SwitchRow(
+                        HelpSwitch(
                             title = stringResource(R.string.profile_protect_router_title),
                             help = stringResource(R.string.profile_protect_router_help),
                             checked = protectRouter,

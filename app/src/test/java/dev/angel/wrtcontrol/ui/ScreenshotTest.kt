@@ -51,11 +51,16 @@ import dev.angel.wrtcontrol.openwrt.WifiState
 import dev.angel.wrtcontrol.openwrt.identify
 import dev.angel.wrtcontrol.openwrt.linkAdvice
 import dev.angel.wrtcontrol.parental.ApplyPhase
+import dev.angel.wrtcontrol.parental.ContentFilter
+import dev.angel.wrtcontrol.parental.FilterLevel
+import dev.angel.wrtcontrol.parental.ParentalSettings
+import dev.angel.wrtcontrol.parental.ParentalSnapshot
 import dev.angel.wrtcontrol.parental.Pause
 import dev.angel.wrtcontrol.parental.Profile
 import dev.angel.wrtcontrol.parental.Schedule
 import dev.angel.wrtcontrol.raw
 import dev.angel.wrtcontrol.ubus.SessionAcl
+import dev.angel.wrtcontrol.ui.design.CardGap
 import dev.angel.wrtcontrol.ui.home.AddNetworkCard
 import dev.angel.wrtcontrol.ui.home.Attention
 import dev.angel.wrtcontrol.ui.home.ChannelSearch
@@ -85,6 +90,10 @@ import dev.angel.wrtcontrol.ui.home.devicePreview
 import dev.angel.wrtcontrol.ui.login.CountryStepState
 import dev.angel.wrtcontrol.ui.login.SetupContent
 import dev.angel.wrtcontrol.ui.login.SetupStep
+import dev.angel.wrtcontrol.ui.parental.AppLockCard
+import dev.angel.wrtcontrol.ui.parental.ParentalData
+import dev.angel.wrtcontrol.ui.parental.ProfileCard
+import dev.angel.wrtcontrol.ui.parental.QuarantineCard
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -370,6 +379,54 @@ class ScreenshotTest {
             internet = InternetControl(status = "Sin internet hasta las 19:30", onPause = {}, onResume = {}),
             thisPhone = false,
         )
+    }
+
+    /** Familia: una persona en pausa, otra con su horario y una sin aparatos. */
+    @Test
+    fun familia() = both("familia") {
+        val now = LocalDateTime.of(2026, 11, 23, 18, 15)
+        val school = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        val profiles = listOf(
+            Profile(
+                "a1", "Ana", listOf("9C:29:76:00:00:01"),
+                pause = Pause.Until(now.plusMinutes(45)),
+                schedules = listOf(Schedule("s1", school, LocalTime.of(21, 30), LocalTime.of(7, 0))),
+                filter = ContentFilter(level = FilterLevel.Strict),
+            ),
+            Profile("b2", "Leo", listOf("3C:22:FB:00:00:07"), schedules = listOf(Schedule("s2", school, LocalTime.of(22, 30), LocalTime.of(7, 0)))),
+            Profile("c3", "Sofía", emptyList()),
+        )
+        val devices = listOf(
+            Device("9C:29:76:00:00:01", "movil-de-ana", listOf("192.168.1.20"), emptyList(), LeaseState.Expires(40_000)),
+            Device("3C:22:FB:00:00:07", "portatil-de-leo", listOf("192.168.1.26"), emptyList(), LeaseState.Expires(40_000)),
+        )
+        val snapshot = ParentalSnapshot(
+            profiles = profiles, routerNow = now, routerOffsetSeconds = 0, routerZone = null,
+            flowOffloading = false, markConflicts = emptyList(),
+        )
+        val data = ParentalData(snapshot, devices)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(CardGap)) {
+            profiles.forEach { ProfileCard(it, data, busy = false, onEdit = {}, onPause = {}, onResume = {}, onExtraTime = {}, onClearExtraTime = {}) }
+        }
+    }
+
+    /** Seguridad: la cuarentena con un aparato esperando y el bloqueo de la app. */
+    @Test
+    fun seguridad() = both("seguridad") {
+        val now = LocalDateTime.of(2026, 11, 23, 18, 15)
+        val devices = listOf(
+            Device("9C:29:76:00:00:01", "movil-de-ana", listOf("192.168.1.20"), emptyList(), LeaseState.Expires(40_000)),
+            Device("5E:10:44:00:00:09", null, listOf("192.168.1.41"), emptyList(), LeaseState.Expires(40_000)),
+        )
+        val snapshot = ParentalSnapshot(
+            profiles = listOf(Profile("a1", "Ana", listOf("9C:29:76:00:00:01"))), routerNow = now, routerOffsetSeconds = 0,
+            routerZone = null, flowOffloading = false, markConflicts = emptyList(),
+            settings = ParentalSettings(quarantine = true, approved = listOf("9C:29:76:00:00:01", "F0:EF:86:00:00:06"), admins = listOf("B8:27:EB:00:00:02")),
+        )
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(CardGap)) {
+            QuarantineCard(ParentalData(snapshot, devices), busy = false, phoneIps = emptySet(), onToggle = {}, onApprove = {}, onAssign = {}, onShowApproved = {})
+            AppLockCard(enabled = true, available = true, admins = 1, onToggle = {}, onShowAdmins = {})
+        }
     }
 
     /** Los pasos de la puesta en marcha, con un router sin contraseña ni país del Wi-Fi (el caso que más enseña). */

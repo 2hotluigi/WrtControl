@@ -84,6 +84,7 @@ fun GroupRow(
     trailing: (@Composable RowScope.() -> Unit)? = null,
     chevron: Boolean = false,
     divider: Boolean = true,
+    labelColor: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val palette = LocalPalette.current
@@ -111,7 +112,7 @@ fun GroupRow(
                 Text(
                     label,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = palette.label,
+                    color = labelColor ?: palette.label,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -168,25 +169,49 @@ fun RowIcon(icon: Int, tint: Color, badge: Color? = null) {
     }
 }
 
+/** Lo apagado se ve, pero más tenue. */
+private const val DISABLED_ALPHA = 0.5f
+
 /** Una fila con interruptor. */
 @Composable
-fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, divider: Boolean = true, supporting: String? = null) {
+fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    divider: Boolean = true,
+    supporting: String? = null,
+    enabled: Boolean = true,
+    leading: (@Composable () -> Unit)? = null,
+) {
     val palette = LocalPalette.current
-    GroupRow(label, supporting = supporting, divider = divider, onClick = { onChange(!checked) }, trailing = {
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = palette.accent,
-                checkedBorderColor = palette.accent,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = palette.raised,
-                uncheckedBorderColor = palette.raised,
-            ),
-            thumbContent = null,
-        )
-    })
+    GroupRow(
+        label,
+        supporting = supporting,
+        leading = leading,
+        divider = divider,
+        onClick = { if (enabled) onChange(!checked) },
+        modifier = modifier,
+        trailing = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onChange,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = palette.accent,
+                    checkedBorderColor = palette.accent,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = palette.raised,
+                    uncheckedBorderColor = palette.raised,
+                    disabledUncheckedThumbColor = Color.White.copy(alpha = DISABLED_ALPHA),
+                    disabledUncheckedTrackColor = palette.raised.copy(alpha = DISABLED_ALPHA),
+                    disabledUncheckedBorderColor = palette.raised.copy(alpha = DISABLED_ALPHA),
+                ),
+                thumbContent = null,
+            )
+        },
+    )
 }
 
 /** Una acción sola en su grupo, centrada: azul, o roja si no tiene vuelta atrás. */

@@ -149,7 +149,13 @@ marcha guiada. Cada uno se apoya en los anteriores.
       IP y lo de este mes. La ficha es una pantalla (antes un diálogo): consumo del mes, controles
       redondos de internet, detalles (nombre y persona se cambian desde su fila) y la dirección fija
       con su interruptor. Probado en el emulador contra el GL-MT6000 (20 aparatos), solo mirando.
-    - Familia y Seguridad.
+    - ~~Familia y Seguridad~~: hecho. Cada persona es una tarjeta con su inicial, cómo está su
+      internet (en color), sus aparatos, filtro y horarios, y controles redondos (pausar o
+      reanudar, más tiempo, editar); "Nuevo perfil" es una fila al final en vez del botón flotante.
+      Seguridad en grupos: aparatos nuevos (cuarentena, aprobados, los que esperan con Aprobar y
+      Asignar) y esta app (huella o PIN, administradores). El botón redondo lleva un punto si el
+      router no tiene contraseña o hay aparatos esperando. Capturas nuevas y probado en el
+      emulador contra el GL-MT6000, solo mirando.
     - Uso de internet, Wi-Fi, Invitados, Funciones del router y Router.
 - **Puesta en marcha guiada:** detectar la puerta de enlace, comprobar versión y capacidades, poner
   contraseña si no tiene, crear el usuario de la app y explicar qué va a cambiar en el router.

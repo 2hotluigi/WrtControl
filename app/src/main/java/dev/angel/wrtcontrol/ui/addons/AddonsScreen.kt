@@ -76,7 +76,7 @@ import dev.angel.wrtcontrol.ui.StatusPill
 import dev.angel.wrtcontrol.ui.formatBytes
 import dev.angel.wrtcontrol.ui.formatDuration
 import dev.angel.wrtcontrol.ui.parental.DismissibleError
-import dev.angel.wrtcontrol.ui.parental.SwitchRow
+import dev.angel.wrtcontrol.ui.parental.HelpSwitch
 import java.util.Locale
 import kotlin.math.roundToLong
 
@@ -648,7 +648,7 @@ private fun SqmContent(
     }
     queues.forEach { q ->
         HorizontalDivider()
-        SwitchRow(
+        HelpSwitch(
             title = q.device.ifBlank { q.section },
             help = stringResource(R.string.addons_sqm_summary, formatMbit(q.downloadKbit), formatMbit(q.uploadKbit), q.qdisc),
             checked = q.enabled,
@@ -775,7 +775,7 @@ private fun UpnpContent(
     onSecure: (Boolean) -> Unit,
     onClose: (UpnpMapping) -> Unit,
 ) {
-    SwitchRow(
+    HelpSwitch(
         title = stringResource(R.string.addons_upnp_enabled),
         help = stringResource(
             when {
@@ -796,7 +796,7 @@ private fun UpnpContent(
             color = MaterialTheme.colorScheme.error,
         )
     }
-    SwitchRow(
+    HelpSwitch(
         title = stringResource(R.string.addons_upnp_secure),
         help = stringResource(R.string.addons_upnp_secure_help),
         checked = upnp.secureMode,

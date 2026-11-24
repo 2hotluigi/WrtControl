@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Quarantine -->
-    <string name="protection_quarantine_title">New devices without internet</string>
+    <string name="protection_quarantine_title">Hold new devices</string>
     <string name="protection_quarantine_help">Anything that connects to your network for the first time won\'t get internet until you approve it here. That way a new phone, or one with a different MAC, can\'t get around the profiles.</string>
     <string name="protection_no_pending">No devices waiting.</string>
     <plurals name="protection_pending_count">
@@ -11,11 +11,7 @@
     <string name="protection_disconnected">Disconnected</string>
     <string name="protection_this_phone">This phone</string>
     <string name="protection_approve">Approve</string>
-    <string name="protection_assign_to_profile">Assign to a profile</string>
-    <plurals name="protection_approved_without_profile_count">
-        <item quantity="one">%1$d approved device without a profile</item>
-        <item quantity="other">%1$d approved devices without a profile</item>
-    </plurals>
+    <string name="protection_assign_to_profile">Assign</string>
 
     <!-- Quarantine confirmation -->
     <string name="protection_quarantine_confirm_title">Keep new devices off the internet?</string>
@@ -47,13 +43,9 @@
     <string name="protection_add">Add</string>
 
     <!-- App lock -->
-    <string name="protection_app_lock_title">Require fingerprint or PIN to open WrtControl</string>
+    <string name="protection_app_lock_title">Fingerprint or PIN</string>
     <string name="protection_app_lock_help">That way nobody else can remove the rules from this phone.</string>
     <string name="protection_app_lock_unavailable">Set up a screen lock on your phone to use this.</string>
-    <plurals name="protection_admins_count">
-        <item quantity="one">%1$d phone with WrtControl</item>
-        <item quantity="other">%1$d phones with WrtControl</item>
-    </plurals>
 
     <!-- Router password -->
     <string name="protection_password_title">Router password</string>
@@ -68,4 +60,9 @@
     <!-- Extra time -->
     <string name="protection_extra_time_title">Extra time for %1$s</string>
     <string name="protection_extra_time_help">They\'ll have internet even during a schedule. When the time is up, the router goes back to the schedule on its own.</string>
+    <string name="protection_section_new">New devices</string>
+    <string name="protection_approved_row">Approved, no person</string>
+    <string name="protection_pending_header">Waiting</string>
+    <string name="protection_section_app">This app</string>
+    <string name="protection_admins_row">Admins</string>
 </resources>

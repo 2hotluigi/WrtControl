@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.angel.wrtcontrol.R
 import dev.angel.wrtcontrol.data.Connection
 import dev.angel.wrtcontrol.data.Link
+import dev.angel.wrtcontrol.openwrt.remembered
 import dev.angel.wrtcontrol.ui.LocalRepository
 import dev.angel.wrtcontrol.ui.addons.AddonsScreen
 import dev.angel.wrtcontrol.ui.deviceTitle
@@ -58,6 +59,7 @@ fun HomeScreen(connection: Connection.SignedIn) {
         pageTitle = page?.let { stringResource(it.title) } ?: open?.let { deviceName(it) },
         onBack = { if (page != null) page = page?.parent else device = null },
         onSettings = { page = MorePage.Settings },
+        securityBadge = securityAlert(connection),
     ) {
         val current = page
         when {
@@ -83,6 +85,18 @@ private fun linkSubtitle(link: Link, address: String): String = when (link) {
     Link.Direct -> address
     Link.Connecting -> stringResource(R.string.home_link_connecting, address)
     Link.Tunnel -> stringResource(R.string.home_link_tunnel, address)
+}
+
+/** Seguridad pide atención: el router no tiene contraseña o hay aparatos nuevos esperando. */
+@Composable
+private fun securityAlert(connection: Connection.SignedIn): Boolean {
+    val monitor = LocalRepository.current.monitor
+    val parental by monitor.parental.watchAsState(PROFILES_REFRESH)
+    val devices by monitor.devices.watchAsState(DEVICES_REFRESH)
+    val snapshot = parental.data ?: return connection.emptyPassword
+    val waiting = snapshot.settings.quarantine &&
+        devices.data.orEmpty().any { it.mac !in snapshot.config.approvedMacs && !it.remembered }
+    return connection.emptyPassword || waiting
 }
 
 /** El nombre del aparato [mac] para la barra de arriba, o "Dispositivos" mientras no se sabe. */
