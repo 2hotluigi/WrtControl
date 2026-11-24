@@ -4,12 +4,16 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import dev.angel.wrtcontrol.data.parsePairingLink
 import dev.angel.wrtcontrol.ui.AppLockGate
 import dev.angel.wrtcontrol.ui.AppRoot
 import dev.angel.wrtcontrol.ui.LocalNetworkGate
 import dev.angel.wrtcontrol.ui.WrtTheme
+import dev.angel.wrtcontrol.ui.design.LocalPalette
 
 /** FragmentActivity: la pide BiometricPrompt para el bloqueo con huella o PIN. */
 class MainActivity : FragmentActivity() {
@@ -23,7 +27,12 @@ class MainActivity : FragmentActivity() {
         if (savedInstanceState == null && !fromHistory) offerPairing(intent)
         setContent {
             WrtTheme {
-                AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings, app.vendors) } }
+                // El fondo y el color del texto de la paleta para todo: también para lo que se ve
+                // antes de entrar (el permiso de red local), que si no sale en negro sobre gris.
+                val palette = LocalPalette.current
+                Surface(Modifier.fillMaxSize(), color = palette.background, contentColor = palette.label) {
+                    AppLockGate(app.settings) { LocalNetworkGate { AppRoot(app.repository, app.settings, app.vendors) } }
+                }
             }
         }
     }
