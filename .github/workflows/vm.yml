@@ -109,7 +109,11 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      # Las tres versiones usan las mismas dependencias: solo una guarda caché (en master, como
+      # siempre) y las otras la leen. Así no ocupan tres entradas del límite de 10 GB del repositorio.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/master' || matrix.openwrt != '25.12' }}
 
       - name: VmIntegrationTest, AddonsVmTest y DevicesVmTest
         run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*VmTest*' --rerun
