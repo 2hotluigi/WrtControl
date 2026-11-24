@@ -6,6 +6,11 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Añadido
+- Reiniciar el router y restablecerlo de fábrica desde Ajustes, cada uno con su confirmación. Al
+  reiniciar, la app espera a que vuelva y entra sola; al restablecer, sale y explica cómo volver
+  a entrar.
+
 ## [0.6.0]
 
 Diseño nuevo de toda la app.
