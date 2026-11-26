@@ -6,6 +6,11 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Añadido
+- Reiniciar el router y restablecerlo de fábrica desde Ajustes, cada uno con su confirmación. Al
+  reiniciar, la app espera a que vuelva y entra sola; al restablecer, sale y explica cómo volver
+  a entrar.
+
 ### Corregido
 - Uso de internet: "Quién gasta más" no contaba nada de lo que va por IPv6 cuando el router pasa a
   casa las direcciones IPv6 del proveedor (modo relay), que suele ser un tercio del tráfico o más.

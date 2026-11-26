@@ -77,10 +77,14 @@ import dev.angel.wrtcontrol.ui.home.InternetControl
 import dev.angel.wrtcontrol.ui.home.Overview
 import dev.angel.wrtcontrol.ui.home.OverviewContent
 import dev.angel.wrtcontrol.ui.home.PairScreen
+import dev.angel.wrtcontrol.ui.home.PowerAccess
 import dev.angel.wrtcontrol.ui.home.PowerSection
+import dev.angel.wrtcontrol.ui.home.PowerState
 import dev.angel.wrtcontrol.ui.home.ReportCard
 import dev.angel.wrtcontrol.ui.home.ReportUi
+import dev.angel.wrtcontrol.ui.home.RouterPowerGroup
 import dev.angel.wrtcontrol.ui.home.ScheduleSection
+import dev.angel.wrtcontrol.ui.home.SettingsContent
 import dev.angel.wrtcontrol.ui.home.StatusContent
 import dev.angel.wrtcontrol.ui.home.UsageContent
 import dev.angel.wrtcontrol.ui.home.WidthSection
@@ -542,6 +546,16 @@ class ScreenshotTest {
     }
 
     /** Con funciones que ya funcionan en este router y otras sin probar aquí. */
+    @Test
+    fun ajustes() = both("ajustes") {
+        // La rueda, quieta: animada, la captura no acabaría.
+        CompositionLocalProvider(LocalInspectionMode provides true) {
+            SettingsContent(onPage = {}, onSignOut = {}) {
+                RouterPowerGroup(PowerState.Rebooting(), PowerAccess(reboot = true, reset = true), viaTunnel = false, onReboot = {}, onReset = {})
+            }
+        }
+    }
+
     @Test
     fun estado() = both("estado") {
         StatusContent(Loadable(status), capabilities, verified = setOf(Feature.Parental))

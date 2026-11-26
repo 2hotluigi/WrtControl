@@ -119,6 +119,12 @@ jobs:
       - name: VmIntegrationTest, AddonsVmTest y DevicesVmTest
         run: ./gradlew :app:testDebugUnitTest --tests '*VmIntegrationTest*' --tests '*VmTest*' --rerun
 
+      # Al final: reiniciar el router se lleva el cliente de pruebas, que está en la RAM.
+      - name: Reiniciar el router (RouterPowerVmTest)
+        env:
+          WRTCONTROL_VM_REBOOT: '1'
+        run: ./gradlew :app:testDebugUnitTest --tests '*RouterPowerVmTest*' --rerun
+
       - name: Registro del router
         if: always()
         run: |

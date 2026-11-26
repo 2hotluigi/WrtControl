@@ -75,6 +75,8 @@ anything on the router.
 - **Features by outcome.** "Reach home from outside" (WireGuard, with the tunnel built into the
   app: no Android VPN slot used), "A fixed name for your home" (dynamic DNS), "Games and calls
   without lag" (SQM) and UPnP. The app installs and sets up the packages for you.
+- **Restart and reset.** Restart the router and wait for it to come back, or take it back to
+  factory settings, each with its own confirmation and an explanation of what will happen.
 
 ## Safe by design
 

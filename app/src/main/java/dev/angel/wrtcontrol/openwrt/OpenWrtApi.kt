@@ -50,6 +50,9 @@ class OpenWrtApi(
     /** Lo que gasta cada aparato de casa (instala nlbwmon). */
     val deviceUsage = DeviceUsageApi(ubus, writeLock)
 
+    /** Reiniciarlo y restablecerlo de fábrica (solo cuando el usuario lo confirma). */
+    val power = RouterPower(ubus)
+
     /** El informe anonimizado del router, para compartirlo (solo lee). */
     val report = DeviceReportApi(ubus)
 

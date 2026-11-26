@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="power_reboot_title">Restart the router</string>
+    <string name="power_reboot_detail">It turns off and back on, keeping everything</string>
+    <string name="power_reset_title">Factory reset</string>
+    <string name="power_reset_detail">Erases everything and leaves it as it came out of the box</string>
+    <string name="power_unavailable">This router doesn\'t allow it from the app</string>
+    <string name="power_footer">While it starts up, there\'s no internet or Wi-Fi at home.</string>
+    <string name="power_cancel">Cancel</string>
+    <string name="power_reboot_confirm_title">Restart the router?</string>
+    <string name="power_reboot_confirm_body">It turns off and back on, without losing any settings. For a minute or two there will be no internet or Wi-Fi at home.</string>
+    <string name="power_reboot_confirm_tunnel">You\'re away from home: the app signs back in by itself once it starts, but if it didn\'t come back, nothing could be done from here.</string>
+    <string name="power_reboot_confirm">Restart</string>
+    <string name="power_rebooting">Restarting the router…</string>
+    <string name="power_rebooting_detail">It takes a minute or two. The app signs back in by itself once it starts.</string>
+    <string name="power_back">The router is back</string>
+    <string name="power_late">The router isn\'t answering yet</string>
+    <string name="power_late_detail">Several minutes have passed. Check that its lights are on; if it doesn\'t come back, unplug it for a few seconds and plug it back in.</string>
+    <string name="power_reset_confirm_title">Factory reset?</string>
+    <string name="power_reset_confirm_body">Everything you set up is erased: the password, the Wi-Fi, the internet connection, the profiles, remote access and anything installed. For a few minutes there will be no internet, and then it has to be set up again (if your internet provider gave you a username and password, keep them at hand).</string>
+    <string name="power_reset_confirm_after">It goes back to its factory address (on OpenWrt, 192.168.1.1) with no password. If it comes with Wi-Fi off from the factory, like OpenWrt, you\'ll need a cable.</string>
+    <string name="power_reset_confirm_tunnel">You\'re away from home: afterwards you can only get in from home.</string>
+    <string name="power_reset_understood">I understand everything is erased</string>
+    <string name="power_reset_confirm">Erase everything</string>
+    <string name="power_resetting">Resetting the router…</string>
+    <string name="power_reset_failed">The router couldn\'t erase its settings: nothing has changed.</string>
+    <string name="power_reset_notice">The router is going back to factory settings: it takes a few minutes. Then connect the phone to it (through its factory Wi-Fi or a cable) and sign in at its factory address (on OpenWrt, 192.168.1.1) with no password: the app helps you set it up.</string>
+</resources>

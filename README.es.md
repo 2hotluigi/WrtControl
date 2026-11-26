@@ -74,6 +74,8 @@ deshace solo si algo sale mal. Para empezar no hay que instalar nada en el route
 - **Funciones por resultado.** "Entrar desde fuera de casa" (WireGuard, con el túnel dentro de la
   app: no ocupa la VPN de Android), "Nombre fijo para tu casa" (DNS dinámico), "Juegos y
   videollamadas sin lag" (SQM) y UPnP. La app instala y configura los paquetes por ti.
+- **Reiniciar y restablecer.** Reiniciar el router y esperar a que vuelva, o dejarlo como salió de
+  fábrica, cada uno con su confirmación y explicando qué va a pasar.
 
 ## Segura por diseño
 

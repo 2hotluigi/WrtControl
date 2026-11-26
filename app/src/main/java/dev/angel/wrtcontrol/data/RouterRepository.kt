@@ -170,6 +170,20 @@ class RouterRepository(
     }
 
     /**
+     * El router conectado está volviendo a como salió de fábrica (ver openwrt/RouterPower.kt): lo
+     * que este teléfono guardaba de él ya no vale. Se borra su acceso remoto (el router olvida su
+     * lado), se vuelve a ofrecer la puesta en marcha y se sale con [notice]. La copia de los perfiles
+     * se conserva: al volver a entrar, la app ofrece ponerlos otra vez.
+     */
+    suspend fun forgetAfterReset(notice: Txt) {
+        val signed = _state.value as? Connection.SignedIn ?: return
+        val id = routerId
+        if (id != null) store.saveTunnel(signed.address, id, null)
+        store.forgetAfterReset(signed.address, verifiedKey = signed.address + "|" + id)
+        signOut(notice)
+    }
+
+    /**
      * Ejecuta [block] con la API del router. Si el router ya no acepta las credenciales
      * guardadas (p. ej. cambiaron la contraseña), cierra la sesión y avisa al usuario.
      */

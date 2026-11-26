@@ -433,6 +433,30 @@ Nada de esto toca el router, salvo poner la contraseña si el usuario quiere. Qu
 apunta en el teléfono, por dirección del router: no se repite al volver a entrar, y quien ya usaba
 la app con ese router no la ve.
 
+## Reiniciar y restablecer: qué hace en el router
+
+En Ajustes, con los mismos permisos que LuCI (`openwrt/RouterPower.kt`). Son lo único que deja la
+casa sin internet a propósito, así que no pasan por `applySafely` (no hay nada que deshacer) y
+cada uno pide confirmación:
+
+- **Reiniciar:** `system.reboot` (grupo `luci-mod-system-reboot`). La app apunta cuánto llevaba
+  encendido el router y pregunta `system.info` cada 5 s: ha vuelto cuando lleva encendido menos
+  que antes (así no confunde el router que aún se está apagando con el que ya arrancó). La sesión
+  de rpcd se pierde al reiniciar y el cliente entra solo con la contraseña guardada. Pasados 4
+  minutos avisa de qué mirar (las luces, desenchufarlo) y sigue esperando hasta 20.
+- **Restablecer de fábrica:** `/sbin/firstboot -r -y` por `file.exec`, lo mismo que el botón de
+  LuCI (grupo `luci-mod-system-flash`). Borra la partición de ajustes y reinicia. El router casi
+  nunca contesta a la llamada: se reinicia sin terminarla, así que un corte cuenta como que empezó;
+  si dice que no (sin permiso, o el comando sale con error), no se ha borrado nada y se cuenta. La
+  confirmación pide marcar "Entiendo que se borra todo" y, si se está fuera de casa, avisa de que
+  después solo se podrá entrar desde casa. En cuanto empieza, el teléfono olvida lo que sabía del
+  router: el acceso remoto (el router borra su lado), la puesta en marcha (se vuelve a ofrecer) y
+  qué funciones se vieron funcionando. Sale a la pantalla de conexión con un aviso de cómo volver
+  a entrar. La copia de los perfiles se queda: si se vuelve a entrar con la misma dirección, se
+  ofrece restaurarlos.
+
+Si el ACL no deja (el usuario no tiene esos grupos), la fila lo dice y no se puede tocar.
+
 ## Wi-Fi: qué hace en el router
 
 "Tu Wi-Fi" son las redes de punto de acceso unidas a la red de casa (ver "Cuál es la red de casa") en

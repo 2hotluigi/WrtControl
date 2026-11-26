@@ -63,7 +63,13 @@ fun HomeScreen(connection: Connection.SignedIn) {
     ) {
         val current = page
         when {
-            current != null -> PageContent(current, connection, onPage = { page = it }, onSignOut = { scope.launch { repo.signOut() } })
+            current != null -> PageContent(
+                current,
+                connection,
+                link,
+                onPage = { page = it },
+                onSignOut = { scope.launch { repo.signOut() } },
+            )
             open != null -> DeviceScreen(connection.address, open)
             else -> SectionContent(
                 section,
@@ -134,9 +140,9 @@ private fun SectionContent(
 }
 
 @Composable
-private fun PageContent(page: MorePage, connection: Connection.SignedIn, onPage: (MorePage) -> Unit, onSignOut: () -> Unit) {
+private fun PageContent(page: MorePage, connection: Connection.SignedIn, link: Link, onPage: (MorePage) -> Unit, onSignOut: () -> Unit) {
     when (page) {
-        MorePage.Settings -> SettingsScreen(onPage, onSignOut)
+        MorePage.Settings -> SettingsScreen(connection.address, link == Link.Tunnel, onPage, onSignOut)
         MorePage.Wifi -> WifiScreen(connection.address)
         MorePage.Guest -> GuestScreen(connection.address)
         MorePage.Usage -> UsageScreen(connection.address)

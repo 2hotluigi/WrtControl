@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
+    <string name="power_reboot_title">Reiniciar el router</string>
+    <string name="power_reboot_detail">Se apaga y vuelve a encender con todo lo que tiene</string>
+    <string name="power_reset_title">Restablecer de fábrica</string>
+    <string name="power_reset_detail">Lo borra todo y lo deja como salió de la tienda</string>
+    <string name="power_unavailable">Este router no deja hacerlo desde la app</string>
+    <string name="power_footer">Mientras arranca, no hay internet ni Wi-Fi en casa.</string>
+    <string name="power_cancel">Cancelar</string>
+    <string name="power_reboot_confirm_title">¿Reiniciar el router?</string>
+    <string name="power_reboot_confirm_body">Se apaga y vuelve a encender, sin perder nada de lo configurado. Durante uno o dos minutos no habrá internet ni Wi-Fi en casa.</string>
+    <string name="power_reboot_confirm_tunnel">Estás fuera de casa: la app vuelve a entrar sola cuando arranque, pero si no volviera, no se podría hacer nada desde aquí.</string>
+    <string name="power_reboot_confirm">Reiniciar</string>
+    <string name="power_rebooting">Reiniciando el router…</string>
+    <string name="power_rebooting_detail">Tarda uno o dos minutos. La app vuelve a entrar sola cuando arranque.</string>
+    <string name="power_back">El router ya está de vuelta</string>
+    <string name="power_late">El router no contesta todavía</string>
+    <string name="power_late_detail">Han pasado varios minutos. Mira si tiene las luces encendidas; si no vuelve, desenchúfalo unos segundos y vuelve a enchufarlo.</string>
+    <string name="power_reset_confirm_title">¿Restablecer de fábrica?</string>
+    <string name="power_reset_confirm_body">Se borra todo lo configurado: la contraseña, el Wi-Fi, la conexión a internet, los perfiles, el acceso remoto y lo que se haya instalado. Durante unos minutos no habrá internet, y después habrá que configurarlo otra vez (si tu compañía de internet te dio usuario y contraseña, tenlos a mano).</string>
+    <string name="power_reset_confirm_after">Volverá a su dirección de fábrica (en OpenWrt, 192.168.1.1) y sin contraseña. Si de fábrica trae el Wi-Fi apagado, como OpenWrt, hará falta un cable.</string>
+    <string name="power_reset_confirm_tunnel">Estás fuera de casa: después solo se podrá entrar desde casa.</string>
+    <string name="power_reset_understood">Entiendo que se borra todo</string>
+    <string name="power_reset_confirm">Borrar todo</string>
+    <string name="power_resetting">Restableciendo el router…</string>
+    <string name="power_reset_failed">El router no pudo borrar sus ajustes: no ha cambiado nada.</string>
+    <string name="power_reset_notice">El router está volviendo a como salió de fábrica: tarda unos minutos. Después, conecta el teléfono a él (por su Wi-Fi de fábrica o con un cable) y entra con su dirección de fábrica (en OpenWrt, 192.168.1.1) sin contraseña: la app te ayuda a ponerlo en marcha.</string>
+</resources>
