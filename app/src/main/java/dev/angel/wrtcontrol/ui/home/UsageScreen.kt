@@ -76,9 +76,9 @@ class UsageViewModel(private val router: RouterAccess, private val monitor: Rout
 
     fun setUp() = run(txt(R.string.usage_busy_setup)) { it.usage.setUp(it.interfaces()) }
 
-    fun installDevices() = run(txt(R.string.usage_busy_installing_devices), installs = true) { it.deviceUsage.install() }
+    fun installDevices() = run(txt(R.string.usage_busy_installing_devices), installs = true) { it.deviceUsage.install(it.interfaces()) }
 
-    fun setUpDevices() = run(txt(R.string.usage_busy_setup_devices)) { it.deviceUsage.setUp() }
+    fun setUpDevices() = run(txt(R.string.usage_busy_setup_devices)) { it.deviceUsage.setUp(it.interfaces()) }
 
     private fun run(label: Txt, installs: Boolean = false, block: suspend (OpenWrtApi) -> Unit) {
         val refresh = {
@@ -156,7 +156,8 @@ fun UsageContent(
             if (perDevice is DeviceRecorder.Ready) item { DevicesUsageCard(perDevice, deviceNames) }
             item { SinceBoot(data.sinceBoot) }
             if (recorder != null && recorder !is Recorder.Ready) item { RecorderCard(recorder, actions) }
-            if (perDevice != null && perDevice !is DeviceRecorder.Ready) item { DeviceRecorderCard(perDevice, actions) }
+            val offerDevices = perDevice != null && (perDevice !is DeviceRecorder.Ready || perDevice.missesIpv6)
+            if (offerDevices) item { DeviceRecorderCard(perDevice, actions) }
         }
     }
 }

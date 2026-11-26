@@ -70,7 +70,16 @@ instala con un toque (`DeviceUsageApi`, ver `Nlbwmon.kt`):
 - **Cómo cuenta:** con las conexiones del cortafuegos (conntrack), por periodos (de serie, el mes
   desde el día 1). Solo TCP y UDP: un ping no cuenta. Tampoco lo que va de una red local a otra
   (`local_network`, de serie las privadas: 10/8, 172.16/12 y 192.168/16), como entrar al módem.
-  Tarda hasta 30 s en contar una conexión abierta.
+  Tarda hasta 30 s en contar una conexión abierta. Solo cuenta una conexión si un lado es local y
+  el otro no: si lo son los dos o ninguno, la descarta.
+- **IPv6 en relay:** si el router pasa a casa el prefijo IPv6 del proveedor tal cual (`ra`/`ndp` en
+  `relay` en /etc/config/dhcp), la red `lan` solo tiene la ULA y las direcciones públicas de los
+  aparatos no son de ninguna red local: nlbwmon no cuenta nada de su IPv6, que suele ser un tercio
+  del tráfico o más. La app lo detecta (las rutas IPv6 públicas de la salida a internet, sin la
+  por defecto) y ofrece "Ajustar": añade ese prefijo a `local_network` con `applySafely` y lo
+  anota en `wrtc_local_network`, para quitar el viejo si el proveedor lo cambia. Lo contado se
+  queda (nlbwmon lo guarda al pararse). No vale poner todo el IPv6 público (`2000::/3`): los dos
+  lados serían locales y lo descartaría todo.
 - **Qué se lee:** `nlbwmon-action download -g mac,ip` (su ACL lo deja). El propio router sale como
   un aparato más, con la IP de su WAN, y lo que no se sabe de quién es, con la MAC 00:00:...: los
   dos se quitan. Los nombres son los de Dispositivos.

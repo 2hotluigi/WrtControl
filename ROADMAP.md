@@ -417,6 +417,15 @@ marcha guiada. Cada uno se apoya en los anteriores.
     `uso-de-internet-aparatos` y `-ofertas`, y `UsageVmTest` (en la VM 25.12.6 desde cero: instala,
     guarda en la flash cada hora y cuenta al cliente de pruebas sin contar al router). Falta: los
     periodos anteriores (`periods`) y el aviso con la descarga de flujos por hardware (abajo).
+  - ~~*nlbwmon con IPv6 en relay:* en el GL-MT6000 de casa, "quién gasta más" sumaba unos 51 GiB
+    en dos días frente a los 79 de vnStat: con el IPv6 en relay, la `lan` solo tiene la ULA y
+    nlbwmon descartaba todo el IPv6 de los aparatos (20 MB, todo del router).~~ Hecho: con relay
+    en /etc/config/dhcp, la app añade a `local_network` las rutas IPv6 públicas de la salida a
+    internet ("Ajustar" bajo la lista) y las anota en `wrtc_local_network` para cambiarlas si
+    cambia el prefijo. Probado a mano en el GL-MT6000 (5 min: nlbwmon pasó del 45 % al 84 % de lo
+    que pasa por la WAN; el resto son cabeceras y lo que tarda en contar), `NlbwmonTest`, captura
+    `uso-de-internet-ipv6` y `UsageVmTest` (en la VM 25.12.6, relay simulado con una ruta
+    2001:db8 en la WAN: lo añade, lo cambia con el prefijo y lo deja todo como estaba).
   - *Descarga de flujos:* por software cuenta bien en los dos (fw4 crea la flowtable con
     `counter`; probado). Por hardware los paquetes no pasan por la CPU y es probable que cuenten de
     menos: comprobarlo en un Filogic. Con SQM no pasa (SQM ya obliga a no usarla, ver *Descarga de

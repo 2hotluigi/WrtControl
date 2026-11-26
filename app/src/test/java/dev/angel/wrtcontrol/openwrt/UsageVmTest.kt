@@ -119,8 +119,8 @@ class UsageVmTest {
         val free = api.systemInfo().root?.avail
 
         when (api.deviceUsage.recorder(interfaces, free)) {
-            is DeviceRecorder.Missing -> api.deviceUsage.install()
-            DeviceRecorder.NeedsSetup -> api.deviceUsage.setUp()
+            is DeviceRecorder.Missing -> api.deviceUsage.install(interfaces)
+            DeviceRecorder.NeedsSetup -> api.deviceUsage.setUp(interfaces)
             is DeviceRecorder.Ready -> Unit
         }
         assertEquals(NLBW_DIR, ssh("uci -q get nlbwmon.@nlbwmon[0].database_directory"))
@@ -145,6 +145,65 @@ class UsageVmTest {
         assertTrue("el router no sale como un aparato: $devices", devices.none { it.mac in routerMacs })
     }
 
+    /**
+     * IPv6 en relay (ver Nlbwmon.kt): la app añade a nlbwmon el prefijo público de casa, lo cambia
+     * si cambia el del proveedor y conserva lo demás. La VM no tiene IPv6 del proveedor: se simula
+     * con el relay en /etc/config/dhcp (sin recargar odhcpd) y una ruta de documentación en la WAN.
+     * Instala nlbwmon si falta y recarga la red: solo en una máquina virtual. Lo deja como estaba.
+     */
+    @Test
+    fun `nlbwmon - con el IPv6 en relay cuenta el prefijo de casa`(): Unit = runBlocking {
+        assumeTrue("Define WRTCONTROL_VM para probar contra la VM", vm != null)
+        assumeTrue("Solo en una máquina virtual", ssh("cat /sys/class/dmi/id/sys_vendor 2>/dev/null").let { "QEMU" in it || "innotek" in it })
+        val http = OkHttpClient.Builder().callTimeout(2, TimeUnit.MINUTES).build()
+        val api = OpenWrtApi(UbusClient(RouterAddress.endpoint(vm!!), http, Credentials("root", password)))
+        val free = api.systemInfo().root?.avail
+        when (api.deviceUsage.recorder(api.interfaces(), free)) {
+            is DeviceRecorder.Missing -> api.deviceUsage.install(api.interfaces())
+            DeviceRecorder.NeedsSetup -> api.deviceUsage.setUp(api.interfaces())
+            is DeviceRecorder.Ready -> Unit
+        }
+        val stock = ssh("uci -q get nlbwmon.@nlbwmon[0].local_network")
+        ssh("cp /etc/config/dhcp /tmp/wrtc-dhcp.bak; cp /etc/config/network /tmp/wrtc-network.bak; cp /etc/config/nlbwmon /tmp/wrtc-nlbwmon.bak")
+        try {
+            ssh("uci set dhcp.lan.ra=relay; uci set dhcp.lan.ndp=relay; uci commit dhcp")
+            providerPrefix(FIRST_PREFIX)
+            val before = api.deviceUsage.recorder(api.interfaces(), free)
+            assertTrue("pide ajustarlo: $before", before is DeviceRecorder.Ready && before.missesIpv6)
+
+            api.deviceUsage.setUp(api.interfaces())
+            assertEquals("$stock $FIRST_PREFIX", ssh("uci -q get nlbwmon.@nlbwmon[0].local_network"))
+            assertEquals(FIRST_PREFIX, ssh("uci -q get nlbwmon.@nlbwmon[0].$NLBW_OWN_NETWORKS"))
+            // Su init lo pasa con -s: que el servicio en marcha lo tenga.
+            assertTrue("nlbwmon lo usa", ssh("grep -c -- '$FIRST_PREFIX' /proc/$(pidof nlbwmon)/cmdline") == "1")
+            val after = api.deviceUsage.recorder(api.interfaces(), free)
+            assertTrue("ya no lo pide: $after", after is DeviceRecorder.Ready && !after.missesIpv6)
+
+            // El proveedor da otro prefijo: se cambia el de la app y lo demás se queda.
+            providerPrefix(SECOND_PREFIX)
+            val changed = api.deviceUsage.recorder(api.interfaces(), free)
+            assertTrue("lo pide otra vez: $changed", changed is DeviceRecorder.Ready && changed.missesIpv6)
+            api.deviceUsage.setUp(api.interfaces())
+            assertEquals("$stock $SECOND_PREFIX", ssh("uci -q get nlbwmon.@nlbwmon[0].local_network"))
+            assertEquals(SECOND_PREFIX, ssh("uci -q get nlbwmon.@nlbwmon[0].$NLBW_OWN_NETWORKS"))
+        } finally {
+            ssh(
+                "cp /tmp/wrtc-dhcp.bak /etc/config/dhcp; cp /tmp/wrtc-network.bak /etc/config/network; " +
+                    "cp /tmp/wrtc-nlbwmon.bak /etc/config/nlbwmon; ubus call network reload; /etc/init.d/nlbwmon restart; " +
+                    "rm -f /tmp/wrtc-dhcp.bak /tmp/wrtc-network.bak /tmp/wrtc-nlbwmon.bak",
+            )
+        }
+        assertEquals(stock, ssh("uci -q get nlbwmon.@nlbwmon[0].local_network"))
+    }
+
+    /** Simula que el proveedor da [prefix] a la WAN: una ruta en ella, que netifd enseña en su estado. */
+    private fun providerPrefix(prefix: String) {
+        ssh(
+            "uci -q delete network.wrtctest6; uci set network.wrtctest6=route6; uci set network.wrtctest6.interface=wan; " +
+                "uci set network.wrtctest6.target=$prefix; uci commit network; ubus call network reload; sleep $NETWORK_RELOAD_S",
+        )
+    }
+
     private companion object {
         /** Cada cuánto lee vnStat los contadores (UpdateInterval). */
         const val VNSTAT_UPDATE_S = 25
@@ -152,6 +211,13 @@ class UsageVmTest {
         /** Lo que tarda nlbwmon en contar una conexión abierta (refresh_interval), con margen. */
         const val NLBW_REFRESH_S = 35
         const val CLIENT_MAC = "02:00:00:00:00:99"
+
+        /** Prefijos de documentación (2001:db8::/32): no son de nadie. */
+        const val FIRST_PREFIX = "2001:db8:77:1::/64"
+        const val SECOND_PREFIX = "2001:db8:77:2::/64"
+
+        /** Lo que tarda netifd en poner la ruta nueva tras recargar. */
+        const val NETWORK_RELOAD_S = 5
         const val INTERNET_HOST = "downloads.openwrt.org"
 
         /** El crontab de root tal cual, o que no existe (no es lo mismo que vacío: con él, cron arranca). */

@@ -106,7 +106,10 @@ private fun DeviceUsageRow(usage: DeviceUsage, name: String, top: Long, divider:
     }
 }
 
-/** Ofrece instalar nlbwmon o terminar de configurarlo, para ver lo que gasta cada aparato. */
+/**
+ * Ofrece instalar nlbwmon o terminar de configurarlo, para ver lo que gasta cada aparato; o, si ya
+ * cuenta pero no lo de IPv6 (va en relay), ajustarlo.
+ */
 @Composable
 fun DeviceRecorderCard(recorder: DeviceRecorder, actions: RecorderActions) {
     val enabled = actions.enabled && actions.progress == null
@@ -130,6 +133,16 @@ fun DeviceRecorderCard(recorder: DeviceRecorder, actions: RecorderActions) {
             actionTag = "usage-devices-setup",
             modifier = Modifier.testTag("usage-devices-offer"),
         )
-        is DeviceRecorder.Ready -> Unit
+        is DeviceRecorder.Ready -> if (recorder.missesIpv6) {
+            OfferGroup(
+                stringResource(R.string.usage_devices_ipv6_title),
+                stringResource(R.string.usage_devices_ipv6_body),
+                action = stringResource(R.string.usage_devices_ipv6_action),
+                onAction = actions.onSetUpDevices,
+                enabled = enabled,
+                actionTag = "usage-devices-ipv6",
+                modifier = Modifier.testTag("usage-devices-ipv6-offer"),
+            )
+        }
     }
 }
