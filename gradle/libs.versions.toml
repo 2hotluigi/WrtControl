@@ -17,7 +17,7 @@ fragment = "1.9.1"
 detekt = "2.0.0-alpha.6"
 kover = "0.9.11"
 roborazzi = "1.79.0"
-robolectric = "4.18"
+robolectric = "4.18.1"
 # Librerías que AGP, Kover y lint traen al build con versiones vulnerables (alertas de Dependabot).
 # Solo se usan al compilar y ninguna va en el APK. Se fuerzan hacia arriba en build.gradle.kts y
 # app/build.gradle.kts; quitarlas cuando el plugin que las trae ya pida una versión igual o mayor.
