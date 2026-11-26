@@ -26,36 +26,56 @@ class DeviceUsageApi internal constructor(
         return when {
             section == null || out == null -> DeviceRecorder.Missing(freeKiB)
             !nlbwKeepsData(section) -> DeviceRecorder.NeedsSetup
-            // Recién arrancado, aún no responde: nada contado todavía.
-            out.code != 0 -> DeviceRecorder.Ready(emptyList(), monthly)
             else -> {
-                val json = UbusJson.decodeFromString(NlbwJson.serializer(), out.stdout)
-                DeviceRecorder.Ready(parseDeviceUsage(json, routerAddresses(interfaces)), monthly)
+                // Lo que la app puso y ya no vale se quita al ajustarlo por otra cosa: no cuenta nada de más.
+                val relay = ipv6Relay(optional { ubus.uciSections("dhcp", "dhcp") }.orEmpty())
+                val missesIpv6 = relayPrefixes(interfaces, relay).any { it !in section.items("local_network") }
+                // Recién arrancado, aún no responde: nada contado todavía.
+                val devices = if (out.code != 0) {
+                    emptyList()
+                } else {
+                    parseDeviceUsage(UbusJson.decodeFromString(NlbwJson.serializer(), out.stdout), routerAddresses(interfaces))
+                }
+                DeviceRecorder.Ready(devices, monthly, missesIpv6)
             }
         }
     }
 
     /** Instala nlbwmon y lo deja guardando en la flash ([setUp]). */
-    suspend fun install() {
+    suspend fun install(interfaces: List<NetInterface>) {
         writeLock.withLock {
             val tool = ubus.installedPackages()?.tool ?: throw UserFacingException(txt(R.string.usage_recorder_cannot_install))
             ubus.installPackages(tool, listOf(NLBW_PACKAGE))
             ubus.awaitAfterInstall("nlbwmon", pollMs)
         }
-        setUp()
+        setUp(interfaces)
     }
 
     /**
-     * Deja nlbwmon guardando en [NLBW_DIR] cada hora, con reversión: se da por bueno cuando el
-     * servicio ha vuelto a arrancar y responde. Lo que llevase contado en la RAM se pierde.
+     * Deja nlbwmon guardando en [NLBW_DIR] cada hora y contando el IPv6 de casa si va en relay
+     * ([relayPrefixes]), con reversión: se da por bueno cuando el servicio ha vuelto a arrancar y
+     * responde. Al cambiar dónde guarda, lo que llevase contado en la RAM se pierde; al cambiar
+     * solo las redes, lo contado se queda (lo guarda al pararse).
      */
-    suspend fun setUp() = writeLock.withLock {
+    suspend fun setUp(interfaces: List<NetInterface>) = writeLock.withLock {
         val tx = ubus.openSession()
         tx.ensureNoPendingApply()
         val before = tx.uciSections("nlbwmon", "nlbwmon")
         val section = before.firstOrNull() ?: throw UserFacingException(txt(R.string.usage_devices_no_config))
-        if (nlbwKeepsData(section)) return@withLock
-        tx.uciSet("nlbwmon", section.name, mapOf("database_directory" to NLBW_DIR, "commit_interval" to NLBW_COMMIT_INTERVAL))
+        val wanted = relayPrefixes(interfaces, ipv6Relay(optional { tx.uciSections("dhcp", "dhcp") }.orEmpty()))
+        val networks = nlbwNetworks(section, wanted)
+        val keepsData = nlbwKeepsData(section)
+        val ownChanged = section.items(NLBW_OWN_NETWORKS) != wanted
+        if (keepsData && networks == section.items("local_network") && !ownChanged) return@withLock
+        if (!keepsData) {
+            tx.uciSet("nlbwmon", section.name, mapOf("database_directory" to NLBW_DIR, "commit_interval" to NLBW_COMMIT_INTERVAL))
+        }
+        if (networks != section.items("local_network")) tx.uciSetList("nlbwmon", section.name, "local_network", networks)
+        when {
+            !ownChanged -> Unit
+            wanted.isEmpty() -> tx.uciDeleteOption("nlbwmon", section.name, NLBW_OWN_NETWORKS)
+            else -> tx.uciSetList("nlbwmon", section.name, NLBW_OWN_NETWORKS, wanted)
+        }
         tx.applySafely(
             failure = txt(R.string.usage_devices_not_started),
             isReverted = { fresh -> fresh.uciSections("nlbwmon", "nlbwmon") == before },

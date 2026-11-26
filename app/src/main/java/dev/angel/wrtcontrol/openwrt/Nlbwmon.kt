@@ -20,6 +20,12 @@ import kotlinx.serialization.json.longOrNull
  *   de vnStat, se cambia por UCI (su ACL deja escribir la config `nlbwmon`) y el servicio se recarga
  *   solo. Al cambiarlo empieza de cero: se hace al instalar.
  * - Tarda hasta `refresh_interval` (30 s) en contar una conexión abierta.
+ * - Solo cuenta las conexiones con un lado en `local_network` y el otro fuera (si los dos son
+ *   locales o ninguno, las descarta). De serie son los rangos privados de IPv4 y la red `lan`, que
+ *   su init traduce a sus subredes, también las de IPv6. Con el IPv6 en relay (odhcpd reparte en
+ *   casa el prefijo del proveedor tal cual), la `lan` solo tiene la ULA: las direcciones públicas
+ *   de los aparatos no son de ninguna red local y todo su IPv6 se pierde. La app añade ese prefijo
+ *   ([relayPrefixes]) y lo anota en [NLBW_OWN_NETWORKS] para cambiarlo si el proveedor lo cambia.
  */
 
 internal const val NLBW_ACTION = "/usr/libexec/nlbwmon-action"
@@ -32,6 +38,9 @@ const val NLBW_DIR = "/etc/wrtc_nlbwmon"
 
 /** Cada cuánto guarda en la flash: una vez por hora, como vnStat (de serie, una vez al día). */
 internal const val NLBW_COMMIT_INTERVAL = "1h"
+
+/** Lo que la app ha añadido a `local_network` (lista en la misma sección), para poder quitarlo luego. */
+internal const val NLBW_OWN_NETWORKS = "wrtc_local_network"
 
 /** Lo que ocupa con lo que necesita (unos 250 KB), con margen. */
 const val NLBW_SPACE_KIB = 1024L
@@ -53,9 +62,10 @@ sealed interface DeviceRecorder {
 
     /**
      * Cuenta y guarda: lo de cada aparato este periodo, de más a menos. [monthly]: el periodo es el
-     * mes desde el día 1 (lo de serie); si no, el que se puso en LuCI.
+     * mes desde el día 1 (lo de serie); si no, el que se puso en LuCI. [missesIpv6]: con el IPv6 en
+     * relay, aún no tiene el prefijo de casa (o el proveedor lo cambió) y no cuenta lo de IPv6.
      */
-    data class Ready(val devices: List<DeviceUsage>, val monthly: Boolean = true) : DeviceRecorder
+    data class Ready(val devices: List<DeviceUsage>, val monthly: Boolean = true, val missesIpv6: Boolean = false) : DeviceRecorder
 }
 
 /** Lo que da `nlbwmon-action download`: el nombre de cada columna y las filas. */
@@ -94,3 +104,47 @@ internal fun nlbwKeepsData(section: UciSection): Boolean =
 /** Las direcciones del propio router, para no contarlo como un aparato de casa. */
 internal fun routerAddresses(interfaces: List<NetInterface>): Set<String> =
     interfaces.flatMap { it.ipv4 + it.routerIpv6 }.map { it.address }.toSet()
+
+/**
+ * ¿Reparte el router en casa el IPv6 del proveedor tal cual (relay)? Lo dice una sección de
+ * /etc/config/dhcp que no sea la de la WAN (`master`) con `ra` o `ndp` en relay.
+ */
+internal fun ipv6Relay(dhcp: List<UciSection>): Boolean =
+    dhcp.any { it.text("master") != "1" && (it.text("ra") == RELAY || it.text("ndp") == RELAY) }
+
+private const val RELAY = "relay"
+
+/**
+ * Los prefijos IPv6 públicos de los aparatos con el IPv6 en relay: las rutas de la salida a
+ * internet hacia su red (la /64 del proveedor, sin la ruta por defecto). Vacío sin relay.
+ */
+internal fun relayPrefixes(interfaces: List<NetInterface>, relay: Boolean): List<String> =
+    if (!relay) {
+        emptyList()
+    } else {
+        interfaces.filter { it.up && it.hasDefaultRoute }
+            .flatMap { it.routes }
+            .filter { it.mask in 1..MAX_IPV6_MASK && isGlobalIpv6(it.target) }
+            .map { "${it.target.lowercase()}/${it.mask}" }
+            .distinct()
+    }
+
+private const val MAX_IPV6_MASK = 128
+
+/** Unicast global de IPv6 (2000::/3): lo que da el proveedor, no la ULA (fd..) ni la de enlace (fe80). */
+private fun isGlobalIpv6(address: String): Boolean =
+    ':' in address && address.substringBefore(':').toIntOrNull(radix = HEX)?.let { it in GLOBAL_FIRST..GLOBAL_LAST } == true
+
+private const val HEX = 16
+private const val GLOBAL_FIRST = 0x2000
+private const val GLOBAL_LAST = 0x3fff
+
+/**
+ * Las redes locales de nlbwmon con los prefijos [wanted] y sin los que la app puso antes y ya no
+ * valen. Lo que puso otro se queda.
+ */
+internal fun nlbwNetworks(section: UciSection, wanted: List<String>): List<String> {
+    val stale = (section.items(NLBW_OWN_NETWORKS) - wanted.toSet()).toSet()
+    val current = section.items("local_network")
+    return (current - stale) + wanted.filter { it !in current }
+}

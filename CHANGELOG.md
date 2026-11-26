@@ -6,6 +6,11 @@ añade una línea en "Sin publicar"; al publicar, esa sección pasa a ser la de 
 
 ## [Sin publicar]
 
+### Corregido
+- Uso de internet: "Quién gasta más" no contaba nada de lo que va por IPv6 cuando el router pasa a
+  casa las direcciones IPv6 del proveedor (modo relay), que suele ser un tercio del tráfico o más.
+  Ahora la app lo avisa y lo arregla con "Ajustar"; lo contado hasta entonces se queda.
+
 ## [0.6.0]
 
 Diseño nuevo de toda la app.

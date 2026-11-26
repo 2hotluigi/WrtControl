@@ -47,6 +47,9 @@
     <string name="usage_devices_setup_body">nlbwmon is installed, but it keeps its data in memory that\'s wiped when the router restarts. Setting it up starts counting from zero.</string>
     <string name="usage_busy_installing_devices">Installing nlbwmon…</string>
     <string name="usage_busy_setup_devices">Setting up nlbwmon…</string>
+    <string name="usage_devices_ipv6_title">IPv6 traffic is missing</string>
+    <string name="usage_devices_ipv6_body">Your router passes your provider\'s IPv6 addresses straight to your home network, and nlbwmon doesn\'t see them as local: nothing that goes over IPv6 is counted, and that\'s usually a lot (video, social media). Adjusting it starts counting it; what\'s been counted so far is kept.</string>
+    <string name="usage_devices_ipv6_action">Adjust</string>
     <string name="usage_devices_no_config">nlbwmon is installed but its settings are missing. Reinstall it from LuCI.</string>
     <string name="usage_devices_not_started">nlbwmon didn\'t start again with the change, so everything was left as it was.</string>
     <string name="usage_devices_period_other">In nlbwmon\'s current period (set in LuCI).</string>

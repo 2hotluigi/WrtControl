@@ -493,6 +493,15 @@ class ScreenshotTest {
         UsageContent(Loadable(state), UsagePeriod.Day, onPeriod = {}, deviceNames = names)
     }
 
+    /** Con el IPv6 en relay nlbwmon no cuenta lo de IPv6: la lista sigue y debajo se ofrece ajustarlo. */
+    @Test
+    fun `uso de internet sin IPv6 por aparato`() = both("uso-de-internet-ipv6") {
+        val devices = listOf(DeviceUsage("AA:00:00:00:00:01", 41L * GIB, 3L * GIB), DeviceUsage("AA:00:00:00:00:02", 6L * GIB, GIB / 2))
+        val names = mapOf("AA:00:00:00:00:01" to "Tele de la sala", "AA:00:00:00:00:02" to "Consola")
+        val state = UsageState(sinceBoot, null, DeviceRecorder.Ready(devices, missesIpv6 = true))
+        UsageContent(Loadable(state), UsagePeriod.Day, onPeriod = {}, deviceNames = names)
+    }
+
     /** Las dos ofertas: guardar por horas y días (vnStat) y lo de cada aparato (nlbwmon). */
     @Test
     fun `uso de internet sin nada instalado`() = both("uso-de-internet-ofertas") {

@@ -124,6 +124,15 @@ suspend fun UbusCaller.uciSet(config: String, section: String, values: Map<Strin
     })
 }
 
+/** Cambia una lista entera de una sección (`uci set` con un array la sustituye). */
+suspend fun UbusCaller.uciSetList(config: String, section: String, option: String, values: List<String>) {
+    call("uci", "set", buildJsonObject {
+        put("config", config)
+        put("section", section)
+        putJsonObject("values") { putJsonArray(option) { values.forEach { add(it) } } }
+    })
+}
+
 /** Aplica los cambios pendientes de la sesión. Con [rollback], el router los deshace solo si no se confirman a tiempo. */
 suspend fun UbusCaller.uciApply(rollback: Boolean, timeoutSeconds: Int) {
     call("uci", "apply", buildJsonObject {

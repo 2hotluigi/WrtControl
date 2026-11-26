@@ -5,7 +5,6 @@ import dev.angel.wrtcontrol.UserFacingException
 import dev.angel.wrtcontrol.parental.applySafely
 import dev.angel.wrtcontrol.parental.ensureNoPendingApply
 import dev.angel.wrtcontrol.txt
-import dev.angel.wrtcontrol.ubus.UbusCaller
 import dev.angel.wrtcontrol.ubus.UbusClient
 import dev.angel.wrtcontrol.ubus.UbusException
 import dev.angel.wrtcontrol.ubus.UbusJson
@@ -17,11 +16,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
 
 /** Si el router guarda lo que se gasta por horas y días (vnStat, ver Vnstat.kt) y qué le falta. */
 sealed interface Recorder {
@@ -191,15 +185,6 @@ internal fun vnstatDevices(json: String): Set<String> = try {
     throw e
 } catch (@Suppress("TooGenericExceptionCaught") _: Exception) {
     emptySet()
-}
-
-/** Cambia una lista entera de una sección (`uci set` con un array la sustituye). */
-private suspend fun UbusCaller.uciSetList(config: String, section: String, option: String, values: List<String>) {
-    call("uci", "set", buildJsonObject {
-        put("config", config)
-        put("section", section)
-        putJsonObject("values") { putJsonArray(option) { values.forEach { add(it) } } }
-    })
 }
 
 /** Lo que puede faltar (paquete sin instalar, sin permiso): null en vez de error. Si no se llega al router, sí falla. */
